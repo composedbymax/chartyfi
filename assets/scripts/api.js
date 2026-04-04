@@ -1,0 +1,1 @@
+window.CFG={api:'api/api.php'}

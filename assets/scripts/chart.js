@@ -1,0 +1,118 @@
+import {toast} from './message.js';
+const INTERVALS_S={
+  '1m':60,'2m':120,'5m':300,'15m':900,'30m':1800,
+  '1h':3600,'4h':14400,'1d':86400,'1wk':604800,'1mo':2592000,'3mo':7776000
+};
+const CHART_OPTS={
+  layout:{background:{type:'solid',color:'#0d0d0d'},textColor:'#999'},
+  grid:{vertLines:{color:'#1a1a1a'},horzLines:{color:'#1a1a1a'}},
+  timeScale:{timeVisible:true,secondsVisible:false,borderColor:'#2a2a2a'},
+  rightPriceScale:{borderColor:'#2a2a2a'},
+  crosshair:{vertLine:{color:'#444'},horzLine:{color:'#444'}},
+  handleScroll:true,handleScale:true
+};
+export class Chart {
+  constructor(container,api) {
+    this.container=container;this.api=api;
+    this.sym=null;this.int='1d';
+    this.mode='candle';this.field='close';this.volMode='overlay';
+    this._data=[];this._p1=0;this._p2=0;
+    this._chart=null;this._main=null;this._vol=null;
+    this._listeners=[];
+    this._init();
+  }
+  _init() {
+    this._chart=LightweightCharts.createChart(this.container,{...CHART_OPTS,width:this.container.clientWidth,height:this.container.clientHeight});
+    new ResizeObserver(()=>this._chart.resize(this.container.clientWidth,this.container.clientHeight)).observe(this.container);
+    this._buildSeries();
+  }
+  _buildSeries() {
+    if(this._main){try{this._chart.removeSeries(this._main)}catch(e){}}
+    if(this._vol){try{this._chart.removeSeries(this._vol)}catch(e){}}
+    this._vol=null;
+    if(this.mode==='candle') {
+      this._main=this._chart.addSeries(LightweightCharts.CandlestickSeries,{
+        upColor:'#22c55e',downColor:'#ef4444',borderUpColor:'#22c55e',borderDownColor:'#ef4444',
+        wickUpColor:'#22c55e',wickDownColor:'#ef4444'
+      });
+    } else {
+      this._main=this._chart.addSeries(LightweightCharts.LineSeries,{color:'#3b82f6',lineWidth:2});
+    }
+    if(this.volMode!=='off') this._buildVolSeries();
+    if(this._data.length) this._apply();
+  }
+  _buildVolSeries() {
+    const paneIdx=this.volMode==='pane'?1:0;
+    const opts={priceFormat:{type:'volume'},color:'rgba(100,116,139,0.4)',priceScaleId:paneIdx===0?'vol':''};
+    try {
+      this._vol=this._chart.addSeries(LightweightCharts.HistogramSeries,opts,paneIdx);
+    } catch(e) {
+      this._vol=this._chart.addSeries(LightweightCharts.HistogramSeries,{...opts,priceScaleId:'vol'});
+    }
+    if(paneIdx===0) {
+      try {this._chart.priceScale('vol').applyOptions({scaleMargins:{top:0.82,bottom:0}})} catch(e){}
+    }
+  }
+  _apply() {
+    if(!this._data.length) return;
+    if(this.mode==='candle') {
+      this._main.setData(this._data.map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close})));
+    } else {
+      this._main.setData(this._data.map(c=>({time:c.time,value:c[this.field]})));
+    }
+    if(this._vol) {
+      this._vol.setData(this._data.map(c=>({time:c.time,value:c.volume,color:c.close>=c.open?'rgba(34,197,94,0.35)':'rgba(239,68,68,0.35)'})));
+    }
+  }
+  async load(sym,int,p1,p2) {
+    this.sym=sym;this.int=int||this.int;
+    const res=await this.api.chartData(sym,this.int,p1,p2);
+    if(res.error){toast(res.error,'error');return}
+    this._data=res.candles||[];
+    this._p1=res.p1;this._p2=res.p2;
+    this._buildSeries();
+    this._emit('load',{sym,int:this.int,count:this._data.length});
+  }
+  async extendBefore(bars) {
+    const step=INTERVALS_S[this.int]||86400;
+    const p2=this._p1-1;
+    const p1=p2-bars*step;
+    const res=await this.api.chartData(this.sym,this.int,p1,p2);
+    if(res.error){toast(res.error,'error');return}
+    if(!res.candles?.length){toast('No more data available','warn');return}
+    this._data=[...res.candles,...this._data];
+    this._p1=Math.min(this._p1,res.p1);
+    this._apply();
+  }
+  async extendAfter(bars) {
+    const step=INTERVALS_S[this.int]||86400;
+    const p1=this._p2+1;
+    const p2=p1+bars*step;
+    const res=await this.api.chartData(this.sym,this.int,p1,p2);
+    if(res.error){toast(res.error,'error');return}
+    if(!res.candles?.length){toast('No more data available','warn');return}
+    this._data=[...this._data,...res.candles];
+    this._p2=Math.max(this._p2,res.p2);
+    this._apply();
+  }
+  appendCandles(candles) {
+    if(!candles?.length) return;
+    const existing=new Set(this._data.map(c=>c.time));
+    const fresh=candles.filter(c=>!existing.has(c.time));
+    if(!fresh.length) return;
+    this._data=[...this._data,...fresh].sort((a,b)=>a.time-b.time);
+    this._p2=this._data[this._data.length-1].time;
+    this._apply();
+    toast(`${fresh.length} new bar${fresh.length>1?'s':''}`,'info',2000);
+  }
+  setMode(mode) {this.mode=mode;this._buildSeries()}
+  setField(f) {this.field=f;if(this.mode==='line')this._apply()}
+  setVolMode(m) {this.volMode=m;this._buildSeries()}
+  get currentSymbol(){return this.sym}
+  get currentInterval(){return this.int}
+  getLastTimestamp(){return this._data.length?this._data[this._data.length-1].time:0}
+  getCurrentData(){return this._data}
+  getRange(){return{p1:this._p1,p2:this._p2}}
+  on(evt,fn){this._listeners.push({evt,fn})}
+  _emit(evt,data){this._listeners.filter(l=>l.evt===evt).forEach(l=>l.fn(data))}
+}
