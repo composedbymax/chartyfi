@@ -5,6 +5,7 @@ export const INTERVALS_S={
   '1h':3600,'4h':14400,'1d':86400,'1wk':604800,'1mo':2592000,'3mo':7776000
 };
 export const INTERVALS=Object.keys(INTERVALS_S);
+const INITIAL_LIMIT=1500;
 const CHART_OPTS={
   layout:{background:{type:'solid',color:'#0d0d0d'},textColor:'#999'},
   grid:{vertLines:{color:'#1a1a1a'},horzLines:{color:'#1a1a1a'}},
@@ -84,7 +85,7 @@ export class Chart {
   async load(sym,int,p1,p2) {
     this.sym=sym;this.int=int||this.int;
     this._tzOffsetMin=this._tzOffset(this._timezone);
-    const res=await this.api.chartData(sym,this.int,p1,p2);
+    const res=await this.api.chartData(sym,this.int,p1,p2,INITIAL_LIMIT);
     if(res.error){toast(res.error,'error');return}
     this._data=res.candles||[];
     this._p1=res.p1;this._p2=res.p2;

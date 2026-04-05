@@ -28,18 +28,18 @@ export class ApiClient {
     const r=await fetch(this.ep,{method:'POST',body});
     return r.json();
   }
-  userConfig()       {return this._get({action:'user_config'})}
-  chartData(sym,int,p1,p2) {return this._get({action:'chart_data',symbol:sym,interval:int,...(p1?{p1}:{}),...(p2?{p2}:{})})}
-  search(q)          {return this._get({action:'search',q})}
-  checkUpdates(sym,int,since) {return this._get({action:'check_updates',symbol:sym,interval:int,since})}
-  setTrack(sym,int,en) {return this._post('set_track',{symbol:sym,interval:int,enabled:en?'1':'0'})}
-  removeTrack(sym,int){return this._post('remove_track',{symbol:sym,interval:int})}
-  addStream(d)       {return this._post('add_stream',d)}
-  removeStream(id)   {return this._post('remove_stream',{id})}
-  toggleStream(id,en){return this._post('toggle_stream',{id,enabled:en?'1':'0'})}
-  manualPost(d)      {return this._post('manual_post',d)}
-  async getApiKey()  {return idbGet('cycles_api_key')}
-  async setApiKey(k) {return idbSet('cycles_api_key',k)}
-  async getChartTz() {return idbGet('chart_timezone')||'UTC'}
-  async setChartTz(tz){return idbSet('chart_timezone',tz)}
+  userConfig()                    {return this._get({action:'user_config'})}
+  chartData(sym,int,p1,p2,limit)  {return this._get({action:'chart_data',symbol:sym,interval:int,...(p1?{p1}:{}),...(p2?{p2}:{}),...(limit?{limit}:{})})}
+  search(q)                       {return this._get({action:'search',q})}
+  checkUpdates(sym,int,since)     {return this._get({action:'check_updates',symbol:sym,interval:int,since})}
+  setTrack(sym,int,en)            {return this._post('set_track',{symbol:sym,interval:int,enabled:en?'1':'0'})}
+  removeTrack(sym,int)            {return this._post('remove_track',{symbol:sym,interval:int})}
+  addStream(d)                    {return this._post('add_stream',d)}
+  removeStream(id)                {return this._post('remove_stream',{id})}
+  toggleStream(id,en)             {return this._post('toggle_stream',{id,enabled:en?'1':'0'})}
+  manualPost(d)                   {return this._post('manual_post',d)}
+  async getApiKey()               {return idbGet('cycles_api_key')}
+  async setApiKey(k)              {return idbSet('cycles_api_key',k)}
+  async getChartTz()              {return idbGet('chart_timezone')||'UTC'}
+  async setChartTz(tz)            {return idbSet('chart_timezone',tz)}
 }

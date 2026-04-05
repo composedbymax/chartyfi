@@ -44,6 +44,7 @@ function doChartData() {
   $int=in_array($_GET['interval']??'',ALLOWED_INTERVALS)?$_GET['interval']:'1d';
   $p2=(int)($_GET['p2']??time());
   $p1=(int)($_GET['p1']??($p2-(DEFAULT_DAYS[$int]??60)*86400));
+  $limit=isset($_GET['limit'])&&(int)$_GET['limit']>0?(int)$_GET['limit']:null;
   if(!$sym) err('No symbol');
   $range=getCachedRange($pdo,$sym,$int);
   $mn=(int)($range['mn']??0);$mx=(int)($range['mx']??0);
@@ -54,6 +55,10 @@ function doChartData() {
     if($p2>$mx) storeCandles($pdo,$sym,$int,fetchYahoo($sym,$int,max($mx+1,$p1),min($p2,time())));
   }
   $data=getCachedCandles($pdo,$sym,$int,$p1,$p2);
+  if($limit!==null&&count($data)>$limit) {
+    $data=array_slice($data,-$limit);
+    $p1=$data[0]['time'];
+  }
   ok(['candles'=>$data,'symbol'=>$sym,'interval'=>$int,'p1'=>$p1,'p2'=>$p2]);
 }
 function doSearch() {
