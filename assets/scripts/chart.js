@@ -1,9 +1,10 @@
 import {toast} from './message.js';
 import {offsetMinutesForZone,shiftTimestamp} from './timezone.js';
-const INTERVALS_S={
+export const INTERVALS_S={
   '1m':60,'2m':120,'5m':300,'15m':900,'30m':1800,
   '1h':3600,'4h':14400,'1d':86400,'1wk':604800,'1mo':2592000,'3mo':7776000
 };
+export const INTERVALS=Object.keys(INTERVALS_S);
 const CHART_OPTS={
   layout:{background:{type:'solid',color:'#0d0d0d'},textColor:'#999'},
   grid:{vertLines:{color:'#1a1a1a'},horzLines:{color:'#1a1a1a'}},
@@ -78,6 +79,7 @@ export class Chart {
     if(this._vol) {
       this._vol.setData(this._data.map(c=>({time:this._shiftTime(c.time),value:c.volume,color:c.close>=c.open?'rgba(34,197,94,0.35)':'rgba(239,68,68,0.35)'})));
     }
+    this._emit('barsChanged',{count:this._data.length});
   }
   async load(sym,int,p1,p2) {
     this.sym=sym;this.int=int||this.int;
@@ -126,6 +128,7 @@ export class Chart {
   setVolMode(m) {this.volMode=m;this._buildSeries()}
   get currentSymbol(){return this.sym}
   get currentInterval(){return this.int}
+  getBarCount(){return this._data.length}
   getLastTimestamp(){return this._data.length?this._data[this._data.length-1].time:0}
   getCurrentData(){return this._data}
   getRange(){return{p1:this._p1,p2:this._p2}}

@@ -1,5 +1,5 @@
 import {toast,confirm,deny} from './message.js';
-const INTERVALS=['1m','2m','5m','15m','30m','1h','4h','1d','1wk','1mo','3mo'];
+import {Chart,INTERVALS} from './chart.js';
 export class Sidebar {
   constructor(container,chart,api,config,localTimezone) {
     this.el=container;this.chart=chart;this.api=api;this.config=config;
@@ -12,6 +12,7 @@ export class Sidebar {
       if(tz&&tz!==this._chartTz){this._chartTz=tz;this._applyChartTz();}
     }).catch(()=>{});
     this._render();
+    this.chart.on('barsChanged',({count})=>this._updateBarCount(count));
     document.addEventListener('symbol-changed',e=>this._onSymbolChange(e.detail));
     this._handleOutsideClick=this._handleOutsideClick.bind(this);
     this._handleKeydown=this._handleKeydown.bind(this);
@@ -91,11 +92,18 @@ export class Sidebar {
         <label for="bars-after">Extend after</label>
         <input type="number" id="bars-after" value="200" min="1" max="2000">
         <button id="btn-after">Fetch →</button>
+      </div>
+      <div class="ctrl-row bar-count-row">
+        <span id="sb-bar-count">Bars on chart: ${this.chart.getBarCount().toLocaleString()}</span>
       </div>`;
     wrap.querySelector('#btn-before').onclick=()=>this.chart.extendBefore(+wrap.querySelector('#bars-before').value||200);
     wrap.querySelector('#btn-after').onclick=()=>this.chart.extendAfter(+wrap.querySelector('#bars-after').value||200);
     this.el.appendChild(wrap);
     const d=document.createElement('div');d.className='sb-divider';this.el.appendChild(d);
+  }
+  _updateBarCount(count) {
+    const el=document.getElementById('sb-bar-count');
+    if(el) el.textContent=`Bars on chart: ${count.toLocaleString()}`;
   }
   _renderSavedAssets() {
     const tracked=this._config?.tracked||[];
