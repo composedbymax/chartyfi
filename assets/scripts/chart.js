@@ -24,6 +24,7 @@ export class Chart {
     this._listeners=[];
     this._timezone=timezone;
     this._tzOffsetMin=0;
+    this._indicators=[];
     this._init();
   }
   _tzOffset(iana){
@@ -83,6 +84,7 @@ export class Chart {
     this._emit('barsChanged',{count:this._data.length});
   }
   async load(sym,int,p1,p2) {
+    this.clearIndicators();
     this.sym=sym;this.int=int||this.int;
     this._tzOffsetMin=this._tzOffset(this._timezone);
     const res=await this.api.chartData(sym,this.int,p1,p2,INITIAL_LIMIT,true);
@@ -127,6 +129,9 @@ export class Chart {
   setMode(mode) {this.mode=mode;this._buildSeries()}
   setField(f) {this.field=f;if(this.mode==='line')this._apply()}
   setVolMode(m) {this.volMode=m;this._buildSeries()}
+  setIndicators(items){this._indicators=(items||[]).map(i=>({type:i.type,label:i.label,opts:i.opts||{},data:(i.data||[]).map(p=>({...p})),upper:(i.upper||[]).map(p=>({...p})),lower:(i.lower||[]).map(p=>({...p}))}))}
+  clearIndicators(){this._indicators=[]}
+  getIndicators(){return this._indicators.slice()}
   get currentSymbol(){return this.sym}
   get currentInterval(){return this.int}
   getBarCount(){return this._data.length}
@@ -135,4 +140,6 @@ export class Chart {
   getRange(){return{p1:this._p1,p2:this._p2}}
   on(evt,fn){this._listeners.push({evt,fn})}
   _emit(evt,data){this._listeners.filter(l=>l.evt===evt).forEach(l=>l.fn(data))}
+  buy(time) { this._emit('trade',{type:'buy',time}) }
+  sell(time) { this._emit('trade',{type:'sell',time}) }
 }
