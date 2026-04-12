@@ -3,6 +3,8 @@ import { createExplorePanel, createShareModal } from './editorShare.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
+const HELP_CACHE_KEY='editor-help-content';
+const HELP_JSON_URL='././api/editorHelp.json';
 function openDB(){
   return new Promise((res,rej)=>{
     const req=indexedDB.open(DB_NAME,DB_VER);
@@ -53,76 +55,15 @@ async function deleteSnippet(id){
     req.onerror=e=>rej(e.target.error);
   });
 }
-const HELP_CONTENT=`<div class="editor-help">
-<h3>Indicator API</h3>
-<p>Your script runs in a sandboxed context. Use the <code>bars</code> array and return series data to plot on the chart. Plotted values are exported with the chart.</p>
-<h4>Available</h4>
-<ul>
-  <li><code>bars</code> — array of <code>{time, open, high, low, close, volume}</code></li>
-  <li><code>plot(label, data, opts?)</code> — draw a line series. <code>data</code> is <code>[{time, value}]</code></li>
-  <li><code>plotHist(label, data, opts?)</code> — draw a histogram</li>
-  <li><code>plotBand(label, upper, lower, opts?)</code> — draw a band between two lines</li>
-  <li><code>plotDot(label, data, opts?)</code> — draw points / particles</li>
-  <li><code>plotArea(label, data, opts?)</code> — draw a filled area</li>
-  <li><code>plotCandle(label, candles, opts?)</code> — draw synthetic candles</li>
-  <li><code>buy(time, price?)</code> — record a long entry</li>
-  <li><code>sell(time, price?)</code> — record an exit</li>
-</ul>
-<h4>Example — SMA</h4>
-<pre>const period = 20;
-const sma = bars.slice(period - 1).map((b, i) => {
-  const slice = bars.slice(i, i + period);
-  const avg = slice.reduce((s, c) => s + c.close, 0) / period;
-  return { time: b.time, value: avg };
-});
-plot('SMA20', sma, { color: '#f59e0b', lineWidth: 2 });</pre>
-<h4>Example — RSI</h4>
-<pre>const period = 14;
-let gains = 0, losses = 0;
-for (let i = 1; i <= period; i++) {
-  const d = bars[i].close - bars[i - 1].close;
-  d >= 0 ? (gains += d) : (losses -= d);
+async function fetchHelpContent(){
+  const cached=sessionStorage.getItem(HELP_CACHE_KEY);
+  if(cached) return cached;
+  const res=await fetch(HELP_JSON_URL);
+  if(!res.ok) throw new Error(`Failed to load help (${res.status})`);
+  const json=await res.json();
+  sessionStorage.setItem(HELP_CACHE_KEY,json.html);
+  return json.html;
 }
-let avgG = gains / period, avgL = losses / period;
-const rsi = [];
-for (let i = period + 1; i < bars.length; i++) {
-  const d = bars[i].close - bars[i - 1].close;
-  avgG = (avgG * (period - 1) + Math.max(d, 0)) / period;
-  avgL = (avgL * (period - 1) + Math.max(-d, 0)) / period;
-  const rs = avgL === 0 ? 100 : avgG / avgL;
-  rsi.push({ time: bars[i].time, value: 100 - 100 / (1 + rs) });
-}
-plotHist('RSI14', rsi, { color: '#3b82f6' });</pre>
-<h4>Example — Dots</h4>
-<pre>const dots = bars.map((b, i) => ({
-  time: b.time,
-  value: i ? (b.close > bars[i - 1].close ? 1 : -1) : 0
-}));
-plotDot('Signals', dots, { color: '#22c55e' });</pre>
-<h4>Example — Area</h4>
-<pre>const area = bars.map((b, i) => ({
-  time: b.time,
-  value: i ? b.close - bars[i - 1].close : 0
-}));
-plotArea('Delta', area, { color: '#a78bfa' });</pre>
-<h4>Example — Candles</h4>
-<pre>const synthetic = bars.slice(1).map((b, i) => ({
-  time: b.time,
-  open: bars[i].close,
-  high: Math.max(b.high, bars[i].close),
-  low: Math.min(b.low, bars[i].close),
-  close: b.close
-}));
-plotCandle('Synthetic', synthetic);</pre>
-<h4>plot() opts</h4>
-<pre>{ color: '#hex', lineWidth: 1|2|3, lineStyle: 0|1|2, pane: 0|1 }</pre>
-<h4>Example — Strategy</h4>
-<pre>bars.forEach((b,i)=>{
-  if(i===0) return;
-  if(b.close < bars[i - 1].close) buy(b.time);
-  if(b.close > bars[i - 1].close) sell(b.time);
-});</pre>
-</div>`;
 export class Editor{
   constructor(container,chart){
     this.el=container;
@@ -131,7 +72,10 @@ export class Editor{
     this._snippetId=null;
     this._snippetName='Untitled';
     this._showHelp=false;
-    this._overlays=[];
+    this._helpLoaded=false;
+    this._indicatorGroups=[];
+    this._indicatorListCollapsed=false;
+    this._groupCounter=0;
     this._rendered=false;
     this._shareUi=null;
     this._exploreUi=null;
@@ -152,11 +96,35 @@ export class Editor{
       edArea.classList.add('hidden');
       helpArea.classList.remove('hidden');
       if(btn) btn.classList.add('active');
+      this._ensureHelpContent(helpArea);
     }else{
       edArea.classList.remove('hidden');
       helpArea.classList.add('hidden');
       if(btn) btn.classList.remove('active');
     }
+  }
+  _ensureHelpContent(helpArea){
+    if(this._helpLoaded) return;
+    helpArea.innerHTML='<p class="ed-help-loading">Loading…</p>';
+    fetchHelpContent()
+      .then(html=>{
+        this._helpLoaded=true;
+        helpArea.innerHTML=html;
+        helpArea.querySelectorAll('pre').forEach(pre=>{
+          const w=document.createElement('div');
+          w.className='pre-wrap';
+          pre.replaceWith(w);
+          w.appendChild(pre);
+          const b=document.createElement('button');
+          b.className='pre-copy-btn';
+          b.textContent='Copy';
+          b.onclick=()=>navigator.clipboard.writeText(pre.textContent).then(()=>{b.textContent='✓';setTimeout(()=>{b.textContent='Copy'},1500)});
+          w.appendChild(b);
+        });
+      })
+      .catch(err=>{
+        helpArea.innerHTML=`<p class="ed-help-error">Failed to load help content. ${err.message}</p>`;
+      });
   }
   render(){
     this._rendered=true;
@@ -179,18 +147,6 @@ export class Editor{
     this.el.appendChild(toolbar);
     const helpArea=document.createElement('div');
     helpArea.className='ed-help-area hidden';
-    helpArea.innerHTML=HELP_CONTENT;
-    helpArea.querySelectorAll('pre').forEach(pre=>{
-      const w=document.createElement('div');
-      w.className='pre-wrap';
-      pre.replaceWith(w);
-      w.appendChild(pre);
-      const b=document.createElement('button');
-      b.className='pre-copy-btn';
-      b.textContent='Copy';
-      b.onclick=()=>navigator.clipboard.writeText(pre.textContent).then(()=>{b.textContent='✓';setTimeout(()=>{b.textContent='Copy'},1500)});
-      w.appendChild(b);
-    });
     this.el.appendChild(helpArea);
     const codeArea=document.createElement('div');
     codeArea.className='ed-code-area';
@@ -204,8 +160,12 @@ export class Editor{
     this.el.appendChild(codeArea);
     const runRow=document.createElement('div');
     runRow.className='ed-run-row';
-    runRow.innerHTML=`<button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button><button class="btn-sm" id="ed-clear">Clear</button>`;
+    runRow.innerHTML=`<button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button><button class="btn-sm" id="ed-clear">Clear All</button>`;
     this.el.appendChild(runRow);
+    const indicatorList=document.createElement('div');
+    indicatorList.className='ed-indicator-list';
+    indicatorList.id='ed-indicator-list';
+    this.el.appendChild(indicatorList);
     this._shareUi=createShareModal({getSource:()=>document.querySelector('.tv-lightweight-charts,#chart-wrap')});
     this._exploreUi=createExplorePanel({onLoad:item=>this._loadSharedItem(item)});
     this.el.appendChild(this._shareUi.root);
@@ -213,6 +173,7 @@ export class Editor{
     this._populateSnippets();
     this._bindEvents(ta);
     this._updateHelpToggle();
+    this._renderIndicatorList();
   }
   _loadSharedItem(item){
     this._snippetId=null;
@@ -316,13 +277,76 @@ export class Editor{
     this.el.querySelector('#ed-clear').onclick=()=>this._clearOverlays();
   }
   _clearOverlays(silent=false){
-    this._overlays.forEach(s=>{
-      try{this.chart._chart.removeSeries(s)}catch(e){}
+    this._indicatorGroups.forEach(g=>{
+      g.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
     });
-    this._overlays=[];
+    this._indicatorGroups=[];
     this.chart.clearIndicators();
     if(typeof this.chart.clearTrades==='function') this.chart.clearTrades();
-    if(!silent) toast('Overlays cleared','info');
+    this._renderIndicatorList();
+    if(!silent) toast('All overlays cleared','info');
+  }
+  _removeGroup(id){
+    const idx=this._indicatorGroups.findIndex(g=>g.id===id);
+    if(idx===-1) return;
+    const g=this._indicatorGroups[idx];
+    g.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
+    this._indicatorGroups.splice(idx,1);
+    const remaining=this._indicatorGroups.flatMap(grp=>grp.plotFns||[]);
+    this.chart.setIndicators(remaining);
+    this._renderIndicatorList();
+    toast(`Removed "${g.name}"`,'info');
+  }
+  _renderIndicatorList(){
+    const el=this.el.querySelector('#ed-indicator-list');
+    if(!el) return;
+    if(!this._indicatorGroups.length){
+      el.innerHTML='';
+      el.classList.remove('has-items');
+      return;
+    }
+    el.classList.add('has-items');
+    el.innerHTML='';
+    const hdr=document.createElement('div');
+    hdr.className='ed-indlist-hdr';
+    const caret=document.createElement('span');
+    caret.className='ed-indlist-caret';
+    caret.setAttribute('aria-label','Toggle indicator list');
+    caret.innerHTML=this._indicatorListCollapsed?'&#9654;':'&#9660;';
+    const hdrLabel=document.createElement('span');
+    hdrLabel.textContent='Active indicators';
+    hdr.appendChild(caret);
+    hdr.appendChild(hdrLabel);
+    hdr.onclick=()=>{
+      this._indicatorListCollapsed=!this._indicatorListCollapsed;
+      caret.innerHTML=this._indicatorListCollapsed?'&#9654;':'&#9660;';
+      rows.forEach(r=>r.style.display=this._indicatorListCollapsed?'none':'');
+    };
+    el.appendChild(hdr);
+    const rows=[];
+    this._indicatorGroups.forEach(g=>{
+      const row=document.createElement('div');
+      row.className='ed-indicator-row';
+      if(this._indicatorListCollapsed) row.style.display='none';
+      const swatch=document.createElement('span');
+      swatch.className='ed-ind-swatch';
+      swatch.style.background=g.color||'#a78bfa';
+      const lbl=document.createElement('span');
+      lbl.className='ed-indicator-lbl';
+      lbl.textContent=g.name;
+      lbl.title=g.name;
+      const badge=document.createElement('span');
+      badge.className='ed-ind-badge';
+      badge.textContent=g.series.length;
+      const btn=document.createElement('button');
+      btn.className='icon-btn ed-indicator-rm';
+      btn.innerHTML='&times;';
+      btn.title=`Remove "${g.name}"`;
+      btn.onclick=e=>{e.stopPropagation();this._removeGroup(g.id)};
+      row.append(swatch,lbl,badge,btn);
+      el.appendChild(row);
+      rows.push(row);
+    });
   }
   _run(){
     const bars=this.chart.getCurrentData();
@@ -330,7 +354,6 @@ export class Editor{
       deny('No chart data available');
       return;
     }
-    this._clearOverlays(true);
     const plotFns=[];
     const trades=[];
     const findBar=time=>bars.find(b=>b.time===time)||null;
@@ -355,39 +378,48 @@ export class Editor{
       deny('Error: '+err.message);
       return;
     }
-    this.chart.setIndicators(plotFns);
-    if(typeof this.chart.setTrades==='function') this.chart.setTrades(trades);
-    let count=0;
+    if(!plotFns.length&&!trades.length){
+      toast('No series produced','warn');
+      return;
+    }
+    const allIndicators=[
+      ...this._indicatorGroups.flatMap(g=>g.plotFns||[]),
+      ...plotFns
+    ];
+    this.chart.setIndicators(allIndicators);
+    if(trades.length&&typeof this.chart.setTrades==='function') this.chart.setTrades(trades);
+    const groupColor=plotFns[0]?.opts?.color||plotFns[0]?.opts?.upColor||'#a78bfa';
+    const groupId=++this._groupCounter;
+    const groupName=this._snippetName.trim()||`Run ${groupId}`;
+    const groupSeries=[];
+    let errorCount=0;
     plotFns.forEach(pf=>{
       try{
+        let s=null;
         if(pf.type==='line'){
-          const s=this.chart._chart.addSeries(LightweightCharts.LineSeries,{
+          s=this.chart._chart.addSeries(LightweightCharts.LineSeries,{
             color:pf.opts.color||'#a78bfa',
             lineWidth:pf.opts.lineWidth||2,
             lineStyle:pf.opts.lineStyle||0,
             title:pf.label
           },pf.opts.pane||0);
           s.setData(pf.data);
-          this._overlays.push(s);
-          count++;
         }else if(pf.type==='hist'){
-          const s=this.chart._chart.addSeries(LightweightCharts.HistogramSeries,{
+          s=this.chart._chart.addSeries(LightweightCharts.HistogramSeries,{
             color:pf.opts.color||'#3b82f6',
             title:pf.label
           },pf.opts.pane!=null?pf.opts.pane:1);
           s.setData(pf.data);
-          this._overlays.push(s);
-          count++;
         }else if(pf.type==='band'){
           const c=pf.opts.color||'#a78bfa';
           const su=this.chart._chart.addSeries(LightweightCharts.LineSeries,{color:c,lineWidth:1,title:pf.label+' U'},pf.opts.pane||0);
           const sl=this.chart._chart.addSeries(LightweightCharts.LineSeries,{color:c,lineWidth:1,title:pf.label+' L'},pf.opts.pane||0);
           su.setData(pf.upper);
           sl.setData(pf.lower);
-          this._overlays.push(su,sl);
-          count++;
+          groupSeries.push(su,sl);
+          s=null;
         }else if(pf.type==='dot'){
-          const s=this.chart._chart.addSeries(LightweightCharts.LineSeries,{
+          s=this.chart._chart.addSeries(LightweightCharts.LineSeries,{
             color:pf.opts.color||'#f59e0b',
             lineVisible:false,
             pointMarkersVisible:true,
@@ -397,10 +429,8 @@ export class Editor{
             title:pf.label
           },pf.opts.pane!=null?pf.opts.pane:1);
           s.setData(pf.data);
-          this._overlays.push(s);
-          count++;
         }else if(pf.type==='area'){
-          const s=this.chart._chart.addSeries(LightweightCharts.AreaSeries,{
+          s=this.chart._chart.addSeries(LightweightCharts.AreaSeries,{
             lineColor:pf.opts.color||'#a78bfa',
             topColor:pf.opts.topColor||'rgba(167,139,250,0.35)',
             bottomColor:pf.opts.bottomColor||'rgba(167,139,250,0.02)',
@@ -408,10 +438,8 @@ export class Editor{
             title:pf.label
           },pf.opts.pane||0);
           s.setData(pf.data);
-          this._overlays.push(s);
-          count++;
         }else if(pf.type==='candle'){
-          const s=this.chart._chart.addSeries(LightweightCharts.CandlestickSeries,{
+          s=this.chart._chart.addSeries(LightweightCharts.CandlestickSeries,{
             upColor:pf.opts.upColor||'#22c55e',
             downColor:pf.opts.downColor||'#ef4444',
             borderUpColor:pf.opts.upColor||'#22c55e',
@@ -421,14 +449,24 @@ export class Editor{
             title:pf.label
           },pf.opts.pane||0);
           s.setData(pf.data);
-          this._overlays.push(s);
-          count++;
         }
+        if(s) groupSeries.push(s);
       }catch(e){
+        errorCount++;
         deny('Plot error ('+pf.label+'): '+e.message);
       }
     });
-    if(count>0) toast(`Plotted ${count} series`,'success');
+    if(groupSeries.length){
+      this._indicatorGroups.push({
+        id:groupId,
+        name:groupName,
+        color:groupColor,
+        series:groupSeries,
+        plotFns
+      });
+      this._renderIndicatorList();
+      toast(`"${groupName}" added (${groupSeries.length} series)`,'success');
+    }
     if(trades.length) toast(`Recorded ${trades.length} trades`,'success');
   }
 }
