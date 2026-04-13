@@ -1,6 +1,7 @@
 import { toast, confirm, deny } from './message.js';
 import { createExplorePanel, createShareModal } from './editorShare.js';
 import { codeIcon } from './svg.js';
+import { tooltip } from './tooltip.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
@@ -146,6 +147,12 @@ export class Editor{
         <button class="btn-sm" id="ed-save">Save</button>
         <button class="btn-sm danger" id="ed-delete">Del</button>
       </div>`;
+    tooltip(toolbar.querySelector('#ed-help-toggle'), 'Help / Docs');
+    tooltip(toolbar.querySelector('#ed-share'), 'Share indicator publicly');
+    tooltip(toolbar.querySelector('#ed-explore'), 'Explore public indicators');
+    tooltip(toolbar.querySelector('#ed-new'), 'Add new indicator');
+    tooltip(toolbar.querySelector('#ed-save'), 'Save indicator locally');
+    tooltip(toolbar.querySelector('#ed-delete'), 'Delete local indicator');
     this.el.appendChild(toolbar);
     const helpArea=document.createElement('div');
     helpArea.className='ed-help-area hidden';
@@ -163,6 +170,9 @@ export class Editor{
     const runRow=document.createElement('div');
     runRow.className='ed-run-row';
     runRow.innerHTML=`<button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button><button class="btn-sm" id="ed-update">↺ Update</button><button class="btn-sm" id="ed-clear">Clear All</button>`;
+    tooltip(runRow.querySelector('#ed-run'), 'Run indicator');
+    tooltip(runRow.querySelector('#ed-update'), 'Update chart');
+    tooltip(runRow.querySelector('#ed-clear'), 'Clear all indicators');
     this.el.appendChild(runRow);
     const indicatorList=document.createElement('div');
     indicatorList.className='ed-indicator-list';

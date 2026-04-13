@@ -3,6 +3,7 @@ import {settingsIcon, codeIcon} from './svg.js';
 import {Chart,INTERVALS} from './chart.js';
 import {Exporter} from './export.js';
 import {Editor} from './editor.js';
+import { tooltip } from './tooltip.js';
 export class Sidebar {
   constructor(container,chart,api,config,localTimezone) {
     this.el=container;this.chart=chart;this.api=api;this.config=config;
@@ -73,35 +74,47 @@ export class Sidebar {
   _renderTop() {
     let title = 'Menu';
     if (this.showSettings) title = 'Settings';
-    if (this.showEditor)   title = 'Indicators';
+    if (this.showEditor) title = 'Indicators';
     const row = Object.assign(document.createElement('div'), {
       className: 'sb-section sb-top-row',
       innerHTML: `<span class="sb-menu-title">${title}</span>
         <div class="sb-top-btns">
           ${(this.showSettings || this.showEditor)
-            ? `<button class="icon-btn" id="sb-back" title="Back">←</button>`
-            : `<button class="icon-btn" id="sb-editor-toggle" title="Indicators"></button>
-              <button class="icon-btn" id="sb-settings-toggle" title="Settings"></button>`
+            ? `<button class="icon-btn" id="sb-back">←</button>`
+            : `<button class="icon-btn" id="sb-editor-toggle"></button>
+              <button class="icon-btn" id="sb-settings-toggle"></button>`
           }
         </div>`
     });
     this.el.append(row, Object.assign(document.createElement('div'), { className: 'sb-divider' }));
     if (this.showSettings || this.showEditor) {
-      row.querySelector('#sb-back').onclick = () => {
-        this.showSettings = false; this.showEditor = false;
+      const back = row.querySelector('#sb-back');
+      back.title = 'Back';
+      tooltip(back, 'Back');
+      back.onclick = () => {
+        this.showSettings = false;
+        this.showEditor = false;
         this._editor.setHelpVisible(false);
         this._render();
       };
     } else {
-      row.querySelector('#sb-editor-toggle')
-        .appendChild(codeIcon({ className: 'icon', title: 'Indicators' }));
-      row.querySelector('#sb-settings-toggle')
-        .appendChild(settingsIcon({ className: 'icon', title: 'Settings' }));
-      row.querySelector('#sb-editor-toggle').onclick = () => {
-        this.showEditor = true; this.showSettings = false; this._render();
+      const ed = row.querySelector('#sb-editor-toggle');
+      const st = row.querySelector('#sb-settings-toggle');
+      ed.appendChild(codeIcon({ className: 'icon' }));
+      st.appendChild(settingsIcon({ className: 'icon' }));
+      ed.title = 'Indicators';
+      st.title = 'Settings';
+      tooltip(ed, 'Indicators');
+      tooltip(st, 'Settings');
+      ed.onclick = () => {
+        this.showEditor = true;
+        this.showSettings = false;
+        this._render();
       };
-      row.querySelector('#sb-settings-toggle').onclick = () => {
-        this.showSettings = true; this.showEditor = false; this._render();
+      st.onclick = () => {
+        this.showSettings = true;
+        this.showEditor = false;
+        this._render();
       };
     }
   }
