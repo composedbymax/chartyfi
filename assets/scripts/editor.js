@@ -1,5 +1,7 @@
+//editor.js
 import { toast, confirm, deny } from './message.js';
 import { createExplorePanel, createShareModal } from './editorShare.js';
+import { codeIcon } from './svg.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
@@ -76,6 +78,7 @@ export class Editor{
     this._indicatorGroups=[];
     this._indicatorListCollapsed=false;
     this._groupCounter=0;
+    this._editingGroupId=null;
     this._rendered=false;
     this._shareUi=null;
     this._exploreUi=null;
@@ -160,7 +163,7 @@ export class Editor{
     this.el.appendChild(codeArea);
     const runRow=document.createElement('div');
     runRow.className='ed-run-row';
-    runRow.innerHTML=`<button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button><button class="btn-sm" id="ed-clear">Clear All</button>`;
+    runRow.innerHTML=`<button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button><button class="btn-sm" id="ed-update">↺ Update</button><button class="btn-sm" id="ed-clear">Clear All</button>`;
     this.el.appendChild(runRow);
     const indicatorList=document.createElement('div');
     indicatorList.className='ed-indicator-list';
@@ -217,9 +220,11 @@ export class Editor{
     this.el.querySelector('#ed-explore').onclick=()=>{this._exploreUi.open()};
     this.el.querySelector('#ed-new').onclick=()=>{
       this._code='';this._snippetId=null;this._snippetName='Untitled';
+      this._editingGroupId=null;
       ta.value='';
       this.el.querySelector('#ed-name').value='Untitled';
       this.el.querySelector('#ed-snippets').value='';
+      this._renderIndicatorList();
     };
     this.el.querySelector('#ed-save').onclick=async()=>{
       const name=this._snippetName.trim()||'Untitled';
@@ -274,6 +279,7 @@ export class Editor{
       }
     };
     this.el.querySelector('#ed-run').onclick=()=>this._run();
+    this.el.querySelector('#ed-update').onclick=()=>this._update();
     this.el.querySelector('#ed-clear').onclick=()=>this._clearOverlays();
   }
   _clearOverlays(silent=false){
@@ -281,6 +287,7 @@ export class Editor{
       g.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
     });
     this._indicatorGroups=[];
+    this._editingGroupId=null;
     this.chart.clearIndicators();
     if(typeof this.chart.clearTrades==='function') this.chart.clearTrades();
     this._renderIndicatorList();
@@ -292,6 +299,7 @@ export class Editor{
     const g=this._indicatorGroups[idx];
     g.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
     this._indicatorGroups.splice(idx,1);
+    if(this._editingGroupId===id) this._editingGroupId=null;
     const remaining=this._indicatorGroups.flatMap(grp=>grp.plotFns||[]);
     this.chart.setIndicators(remaining);
     this._renderIndicatorList();
@@ -327,6 +335,7 @@ export class Editor{
     this._indicatorGroups.forEach(g=>{
       const row=document.createElement('div');
       row.className='ed-indicator-row';
+      if(g.id===this._editingGroupId) row.classList.add('ed-indicator-row--selected');
       if(this._indicatorListCollapsed) row.style.display='none';
       const swatch=document.createElement('span');
       swatch.className='ed-ind-swatch';
@@ -335,18 +344,54 @@ export class Editor{
       lbl.className='ed-indicator-lbl';
       lbl.textContent=g.name;
       lbl.title=g.name;
+      const editBtn=document.createElement('button');
+      editBtn.className='icon-btn ed-indicator-edit';
+      editBtn.title=`Load "${g.name}" into editor`;
+      editBtn.appendChild(codeIcon({width:14,height:14}));
+      editBtn.onclick=e=>{
+        e.stopPropagation();
+        this._editingGroupId=g.id;
+        this._snippetName=g.name;
+        this._code=g.code||'';
+        const ta=this.el.querySelector('#ed-code');
+        const nameIn=this.el.querySelector('#ed-name');
+        if(ta) ta.value=this._code;
+        if(nameIn) nameIn.value=this._snippetName;
+        this._renderIndicatorList();
+        toast(`Editing "${g.name}"`,'info');
+      };
       const badge=document.createElement('span');
       badge.className='ed-ind-badge';
       badge.textContent=g.series.length;
-      const btn=document.createElement('button');
-      btn.className='icon-btn ed-indicator-rm';
-      btn.innerHTML='&times;';
-      btn.title=`Remove "${g.name}"`;
-      btn.onclick=e=>{e.stopPropagation();this._removeGroup(g.id)};
-      row.append(swatch,lbl,badge,btn);
+      const rmBtn=document.createElement('button');
+      rmBtn.className='icon-btn ed-indicator-rm';
+      rmBtn.innerHTML='&times;';
+      rmBtn.title=`Remove "${g.name}"`;
+      rmBtn.onclick=e=>{e.stopPropagation();this._removeGroup(g.id)};
+      row.append(swatch,lbl,editBtn,badge,rmBtn);
       el.appendChild(row);
       rows.push(row);
     });
+  }
+  _update(){
+    if(!this._editingGroupId){
+      toast('No indicator selected','warn');
+      return;
+    }
+    const idx=this._indicatorGroups.findIndex(g=>g.id===this._editingGroupId);
+    if(idx===-1){
+      toast('Selected indicator no longer exists','warn');
+      this._editingGroupId=null;
+      return;
+    }
+    const old=this._indicatorGroups[idx];
+    old.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
+    this._indicatorGroups.splice(idx,1);
+    this._run();
+    if(this._indicatorGroups.length){
+      this._editingGroupId=this._indicatorGroups[this._indicatorGroups.length-1].id;
+      this._renderIndicatorList();
+    }
   }
   _run(){
     const bars=this.chart.getCurrentData();
@@ -462,7 +507,8 @@ export class Editor{
         name:groupName,
         color:groupColor,
         series:groupSeries,
-        plotFns
+        plotFns,
+        code:this._code
       });
       this._renderIndicatorList();
       toast(`"${groupName}" added (${groupSeries.length} series)`,'success');

@@ -5,7 +5,7 @@
   --bg:#0d0d0d;--bg2:#161616;--bg3:#1e1e1e;--bg4:#262626;
   --border:#2a2a2a;--border2:#333;
   --text:#e2e2e2;--text2:#999;--text3:#666;
-  --accent:#3b82f6;--accent-h:#2563eb;
+  --accent:#3b82f6;--accent-h:#2564eba5;--accent-hl:#2564eb42;
   --green:#22c55e;--red:#ef4444;--yellow:#f59e0b;
   --sb-w:clamp(260px,28vw,320px);
   --hdr-h:48px;
@@ -228,7 +228,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 
 /* Share modal */
 .eds-share-modal{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:var(--shadow);backdrop-filter:blur(16px)}
-.eds-share-panel{width:min(680px,calc(100% - 24px));max-height:calc(100% - 24px);overflow:auto;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);display:flex;flex-direction:column}
+.eds-share-panel{width: min(680px, calc(100% - 24px));max-height: calc(100% - 24px);overflow: hidden;background: var(--bg2);border: 1px solid var(--border2);border-radius: var(--radius);display: flex;flex-direction: column;position: relative;}
 .eds-share-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border)}
 .eds-share-title{font-size:13px;font-weight:700}
 .eds-share-body{padding:12px;display:flex;flex-direction:column;gap:10px}
@@ -245,7 +245,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 .eds-card{position:relative;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border2);aspect-ratio:16/9;background:var(--bg3)}
 .eds-card-shot{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .eds-card-name{position:absolute;top:8px;left:8px;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7);max-width:calc(100% - 80px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.eds-card-load{position:absolute;bottom:8px;right:8px}
+.eds-card-load{position:absolute;top:8px;right:8px}
 
 /* Editor areas */
 .ed-actions .btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
@@ -280,4 +280,12 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 .ed-indicator-rm{flex-shrink:0;width:20px;height:20px;font-size:15px;line-height:1;color:var(--text3);border-radius:3px;padding:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .1s,color .1s;}
 .ed-indicator-row:hover .ed-indicator-rm{opacity:1;}
 .ed-indicator-rm:hover{color:var(--red);background:var(--bg4);}
-.eds-share-lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--shadow2);color:var(--text);font-size:13px;font-weight:600;border-radius:var(--radius);z-index:2;text-transform:uppercase;letter-spacing:.04em;}
+.eds-share-lock{position: absolute;inset: 0;display: flex;align-items: center;justify-content: center;text-align: center;background: var(--shadow2);font-size: 13px;font-weight: 600;border-radius: var(--radius);z-index: 2;padding: 0 24px;}
+
+/* svg */
+.svg-sprite{position: absolute;width: 0;height: 0;overflow: hidden;pointer-events: none;visibility: hidden;}
+.icon{width: 16px;height: 16px;color: var(--text2);}
+
+.ed-indicator-row--selected { background: var(--accent-hl); outline: 1px solid var(--accent); }
+.ed-indicator-edit { opacity: 0.6; }
+.ed-indicator-edit:hover { opacity: 1; }

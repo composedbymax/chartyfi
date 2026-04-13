@@ -73,7 +73,6 @@ export async function saveSharedIndicator({name,description,code,image}){
 export function createShareModal({getSource}={}){
   const root=$('div','eds-share-modal hidden');
   const panel=$('div','eds-share-panel');
-  panel.style.position='relative';
   const head=$('div','eds-share-head');
   const title=$('div','eds-share-title','Share indicator');
   const close=$('button','btn-sm','Close');
@@ -104,15 +103,21 @@ export function createShareModal({getSource}={}){
   const submit=$('button','btn-primary','Publish');
   actions.append(cancel,submit);
   body.append(mkField('Name',nameIn,'eds-share-name'),mkField('Description',descIn,'eds-share-description'),mkField('Screenshot',shotPrev),status,actions);
-  const lock=$('div','eds-share-lock','Sign in to share');
   head.append(title,close);
-  panel.append(head,body,lock);
+  panel.append(head,body);
+  if(window.userLoggedIn===false){
+    panel.style.position='relative';
+    const lock=$('div','eds-share-lock');
+    const signIn=$('a','','Sign in');
+    signIn.href='/auth/?redirect='+encodeURIComponent(location.pathname);
+    lock.append(signIn,document.createTextNode('\u00A0to post public indicators'));
+    panel.append(lock);
+  }
   root.append(panel);
   document.body.append(root);
   let currentCode='';
   let currentBlob=null;
   let shotUrl='';
-  const isLoggedIn=()=>window.userLoggedIn===true;
   const setStatus=t=>{status.textContent=t||''};
   const setPreview=blob=>{
     if(shotUrl) URL.revokeObjectURL(shotUrl);
@@ -131,10 +136,8 @@ export function createShareModal({getSource}={}){
     currentCode=code;
     nameIn.value=name||'Untitled';
     descIn.value=description||'';
-    lock.classList.toggle('hidden',isLoggedIn());
-    root.classList.remove('hidden');
-    if(!isLoggedIn()) return;
     setStatus('Capturing screenshot…');
+    root.classList.remove('hidden');
     try{
       const source=getSource&&getSource();
       const blob=await captureScreenshot(source||document.querySelector('.tv-lightweight-charts,#chart-wrap'));
@@ -166,16 +169,26 @@ export function createShareModal({getSource}={}){
   };
   return{root,open,close:closeModal};
 }
-function card(item,onLoad){
-  const wrap=$('div','eds-card');
-  const shot=$('img','eds-card-shot');
-  shot.loading='lazy';
-  shot.src=item.img||'';
-  shot.alt=item.name||'Public indicator screenshot';
-  const name=$('div','eds-card-name',item.name||'Untitled');
-  const load=$('button','btn-sm eds-card-load','Load');
-  load.onclick=()=>onLoad(item);
-  wrap.append(shot,name,load);
+function card(item, onLoad) {
+  const wrap = $('div', 'eds-card');
+  const shot = $('img', 'eds-card-shot');
+  shot.loading = 'lazy';
+  shot.src = item.img || '';
+  shot.alt = item.name || 'Public indicator screenshot';
+  const name = $('div', 'eds-card-name', item.name || 'Untitled');
+  const load = $('button', 'btn-sm eds-card-load', 'Load');
+  load.onclick = async () => {
+    load.disabled = true;
+    load.textContent = 'Loading…';
+    try {
+      const data = await loadPublicIndicator(item.id);
+      onLoad(data.item);
+    } catch (e) {
+      load.textContent = 'Error';
+      setTimeout(() => { load.disabled = false; load.textContent = 'Load'; }, 2000);
+    }
+  };
+  wrap.append(shot, name, load);
   return wrap;
 }
 export function createExplorePanel({onLoad}={}){
