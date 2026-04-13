@@ -1,4 +1,3 @@
-//editor.js
 import { toast, confirm, deny } from './message.js';
 import { createExplorePanel, createShareModal } from './editorShare.js';
 import { codeIcon } from './svg.js';
@@ -189,6 +188,9 @@ export class Editor{
     if(name) name.value=this._snippetName;
     if(sel) sel.value='';
     toast(item.description||item.name||'Untitled','info',6000);
+    this._run();
+    const last=this._indicatorGroups[this._indicatorGroups.length-1];
+    if(last){ this._editingGroupId=last.id; this._renderIndicatorList(); }
   }
   async _populateSnippets(){
     const sel=this.el.querySelector('#ed-snippets');
