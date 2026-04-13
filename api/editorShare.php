@@ -2,7 +2,6 @@
 header('Content-Type: application/json; charset=utf-8');
 $session = dirname(__DIR__) . '/../session.php';
 if (file_exists($session)) require $session;
-require __DIR__ . '/data.php';
 $user = $_SESSION['user'] ?? null;
 $dataDir = __DIR__ . '/data';
 if (!is_dir($dataDir)) mkdir($dataDir, 0775, true);
