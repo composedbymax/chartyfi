@@ -6,12 +6,28 @@ function getTooltip() {
   document.body.appendChild(tooltipEl);
   return tooltipEl;
 }
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
 function show(text, x, y) {
   const el = getTooltip();
   el.textContent = text;
   el.classList.add('visible');
-  el.style.left = `${x + 12}px`;
-  el.style.top = `${y + 12}px`;
+  const offset = 12;
+  const padding = 8;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = x + offset;
+  let top = y + offset;
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+  requestAnimationFrame(() => {
+    const rect = el.getBoundingClientRect();
+    left = clamp(left, padding, vw - rect.width - padding);
+    top = clamp(top, padding, vh - rect.height - padding);
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+  });
 }
 function hide() {
   if (!tooltipEl) return;
@@ -21,11 +37,13 @@ function findTarget(e) {
   return e.target.closest('[data-tooltip]');
 }
 document.addEventListener('mousemove', (e) => {
-  const el = findTarget(e);
-  if (!el) return;
-  const text = el.getAttribute('data-tooltip');
+  const target = findTarget(e);
+  if (!target) return;
+
+  const text = target.getAttribute('data-tooltip');
   if (!text) return;
-  show(text, e.pageX, e.pageY);
+
+  show(text, e.clientX, e.clientY);
 });
 document.addEventListener('mouseleave', hide, true);
 export function tooltip(target, text) {

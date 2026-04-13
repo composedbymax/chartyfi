@@ -4,6 +4,7 @@ import {Chart} from './chart.js';
 import {Search,initUrlState} from './search.js';
 import {Sidebar} from './sidebar.js';
 import {localTimezone,offsetMinutesForZone} from './timezone.js';
+import {initEmptyState} from './emptyState.js';
 document.getElementById('app').innerHTML=`
 <header id="hdr">
   <div class="hdr-l">
@@ -37,6 +38,8 @@ async function main() {
     chart.setTimezone(tz);
   };
   new Search(document.getElementById('search-in'),document.getElementById('search-res'),chart,api);
+  const willLoad = urlLoaded || !!(config?.tracked?.[0]);
+  initEmptyState(document.getElementById('chart-wrap'), chart, willLoad);
   document.getElementById('sb-toggle').addEventListener('click',()=>sidebar.toggle());
   chart.on('load',({sym,int})=>{
     const tracked=config?.tracked||[];

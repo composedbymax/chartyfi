@@ -1,3 +1,4 @@
+import { deny } from './message.js';
 const apiUrl=()=>window.EDS.api;
 const $=(tag,className='',text='')=>{
   const el=document.createElement(tag);
@@ -136,13 +137,11 @@ export function createShareModal({getSource}={}){
     currentCode=code;
     nameIn.value=name||'Untitled';
     descIn.value=description||'';
-    setStatus('Capturing screenshot…');
     root.classList.remove('hidden');
     try{
       const source=getSource&&getSource();
       const blob=await captureScreenshot(source||document.querySelector('.tv-lightweight-charts,#chart-wrap'));
       setPreview(blob);
-      setStatus('');
     }catch(e){
       setPreview(null);
       setStatus(e.message);
@@ -150,7 +149,6 @@ export function createShareModal({getSource}={}){
   };
   const publish=async()=>{
     if(!currentBlob) throw new Error('Screenshot not ready');
-    setStatus('Uploading…');
     const data=await saveSharedIndicator({name:nameIn.value.trim()||'Untitled',description:descIn.value.trim(),code:currentCode,image:currentBlob});
     closeModal();
     return data;
@@ -162,6 +160,7 @@ export function createShareModal({getSource}={}){
       await publish();
     }catch(e){
       setStatus(e.message);
+      deny(e.message);
     }
   };
   root.onclick=e=>{
@@ -184,6 +183,7 @@ function card(item, onLoad) {
       const data = await loadPublicIndicator(item.id);
       onLoad(data.item);
     } catch (e) {
+      deny(e.message);
       load.textContent = 'Error';
       setTimeout(() => { load.disabled = false; load.textContent = 'Load'; }, 2000);
     }
@@ -230,6 +230,7 @@ export function createExplorePanel({onLoad}={}){
       next.textContent='Next →';
       updateButtons();
     }catch(e){
+      deny(e.message);
       next.textContent='Retry';
       next.disabled=false;
       back.disabled=page===0;
