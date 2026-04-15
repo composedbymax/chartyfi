@@ -3,15 +3,15 @@ export function initUrlState(chart){
   const q=location.search.slice(1);
   if(q){
     const [sym,int]=q.split('=');
-    chart.on('load',({sym,int})=>{
+    chart._chartOn('load',({sym,int})=>{
       const u=new URL(location.href);
       u.search=`?${sym}=${int}`;
       history.replaceState(null,'',u);
     });
-    chart.load(sym,int||chart.currentInterval);
+    chart.load(sym,int||chart._currentInterval);
     return true;
   }
-  chart.on('load',({sym,int})=>{
+  chart._chartOn('load',({sym,int})=>{
     const u=new URL(location.href);
     u.search=`?${sym}=${int}`;
     history.replaceState(null,'',u);
@@ -83,7 +83,7 @@ export class Search{
     this.el.value='';
     document.getElementById('asset-name').textContent=name||sym;
     document.getElementById('asset-sym').textContent=sym;
-    this.chart.load(sym,this.chart.currentInterval);
+    this.chart.load(sym,this.chart._currentInterval);
     toast(`${name||sym} loaded`,'success');
     document.dispatchEvent(new CustomEvent('symbol-changed',{detail:{sym,name}}));
   }

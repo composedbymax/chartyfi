@@ -83,7 +83,7 @@ export class Editor{
     this._shareUi=null;
     this._exploreUi=null;
   }
-  setHelpVisible(v){
+  _setHelpVisible(v){
     this._showHelp=v;
     if(this._rendered) this._updateHelpToggle();
   }
@@ -129,7 +129,7 @@ export class Editor{
         helpArea.innerHTML=`<p class="ed-help-error">Failed to load help content. ${err.message}</p>`;
       });
   }
-  render(){
+  _render(){
     this._rendered=true;
     this.el.innerHTML='';
     const toolbar=document.createElement('div');
@@ -300,7 +300,7 @@ export class Editor{
     });
     this._indicatorGroups=[];
     this._editingGroupId=null;
-    this.chart.clearIndicators();
+    this.chart._clearIndicators();
     if(typeof this.chart.clearTrades==='function') this.chart.clearTrades();
     this._renderIndicatorList();
     if(!silent) toast('All overlays cleared','info');
@@ -313,7 +313,7 @@ export class Editor{
     this._indicatorGroups.splice(idx,1);
     if(this._editingGroupId===id) this._editingGroupId=null;
     const remaining=this._indicatorGroups.flatMap(grp=>grp.plotFns||[]);
-    this.chart.setIndicators(remaining);
+    this.chart._setIndicators(remaining);
     this._renderIndicatorList();
     toast(`Removed "${g.name}"`,'info');
   }
@@ -406,7 +406,7 @@ export class Editor{
     }
   }
   _run(){
-    const bars=this.chart.getCurrentData();
+    const bars=this.chart._getCurrentData();
     if(!bars.length){
       deny('No chart data available');
       return;
@@ -443,7 +443,7 @@ export class Editor{
       ...this._indicatorGroups.flatMap(g=>g.plotFns||[]),
       ...plotFns
     ];
-    this.chart.setIndicators(allIndicators);
+    this.chart._setIndicators(allIndicators);
     if(trades.length&&typeof this.chart.setTrades==='function') this.chart.setTrades(trades);
     const groupColor=plotFns[0]?.opts?.color||plotFns[0]?.opts?.upColor||'#a78bfa';
     const groupId=++this._groupCounter;
@@ -522,6 +522,7 @@ export class Editor{
         plotFns,
         code:this._code
       });
+      this._editingGroupId=groupId;
       this._renderIndicatorList();
       toast(`"${groupName}" added (${groupSeries.length} series)`,'success');
     }

@@ -41,7 +41,7 @@ async function main() {
   const willLoad = urlLoaded || !!(config?.tracked?.[0]);
   initEmptyState(document.getElementById('chart-wrap'), chart, willLoad);
   document.getElementById('sb-toggle').addEventListener('click',()=>sidebar.toggle());
-  chart.on('load',({sym,int})=>{
+  chart._chartOn('load',({sym,int})=>{
     const tracked=config?.tracked||[];
     const name=tracked.find(t=>t.symbol===sym)?.symbol||sym;
     document.getElementById('asset-name').textContent=name;
@@ -60,11 +60,11 @@ function setupPolling(config,chart,api) {
   setTimeout(()=>poll(chart,api,freq),wait);
 }
 async function poll(chart,api,freq) {
-  const sym=chart.currentSymbol;const int=chart.currentInterval;
+  const sym=chart._currentSymbol;const int=chart._currentInterval;
   if(sym&&int) {
-    const since=chart.getLastTimestamp();
+    const since=chart._getLastTimestamp();
     const res=await api.checkUpdates(sym,int,since).catch(()=>null);
-    if(res?.candles?.length) chart.appendCandles(res.candles);
+    if(res?.candles?.length) chart._appendCandles(res.candles);
   }
   setTimeout(()=>poll(chart,api,freq),freq);
 }

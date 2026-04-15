@@ -5,10 +5,10 @@ export class Exporter {
     this.timezone = 'UTC';
   }
   _getData() {
-    return this._chart.getCurrentData();
+    return this._chart._getCurrentData();
   }
   _indicatorSeries() {
-    return typeof this._chart.getIndicators === 'function' ? this._chart.getIndicators() : [];
+    return typeof this._chart._getIndicators === 'function' ? this._chart._getIndicators() : [];
   }
   _baseCols() {
     const includeVol = this._chart.volMode === 'overlay' || this._chart.volMode === 'pane';
@@ -69,8 +69,8 @@ export class Exporter {
     return cols.map(c => c === 'time' ? this._formatTime(r.time) : (r[c] ?? ''));
   }
   _filename(ext) {
-    const sym = this._chart.currentSymbol || 'data';
-    const int = this._chart.currentInterval || '';
+    const sym = this._chart._currentSymbol || 'data';
+    const int = this._chart._currentInterval || '';
     return `${sym}_${int}.${ext}`;
   }
   _download(content, filename, mime) {
@@ -128,27 +128,27 @@ export class Exporter {
     });
     return rows;
   }
-  exportCSV() {
+  _exportCSV() {
     const layout = this._layout();
     const rows = this._mergeRows(layout.series);
     if (!rows.length) return;
     const body = rows.map(r => this._row(r, layout.cols).join(',')).join('\n');
     this._download(layout.cols.join(',') + '\n' + body, this._filename('csv'), 'text/csv');
   }
-  exportJSON() {
+  _exportJSON() {
     const layout = this._layout();
     const rows = this._mergeRows(layout.series);
     const data = rows.map(r => Object.fromEntries(layout.cols.map(c => [c, c === 'time' ? this._formatTime(r.time) : (r[c] ?? null)])));
     this._download(JSON.stringify(data, null, 2), this._filename('json'), 'application/json');
   }
-  exportTXT() {
+  _exportTXT() {
     const layout = this._layout();
     const rows = this._mergeRows(layout.series);
     if (!rows.length) return;
     const lines = rows.map(r => this._row(r, layout.cols).join('\t'));
     this._download(layout.cols.join('\t') + '\n' + lines.join('\n'), this._filename('txt'), 'text/plain');
   }
-  showTable() {
+  _showTable() {
     const layout = this._layout();
     const rows = this._mergeRows(layout.series);
     const overlay = document.createElement('div');
@@ -158,7 +158,7 @@ export class Exporter {
     overlay.innerHTML = `
       <div id="export-table-wrap">
         <div id="export-table-toolbar">
-          <span id="export-table-title">${this._chart.currentSymbol} ${this._chart.currentInterval} — ${rows.length} bars</span>
+          <span id="export-table-title">${this._chart._currentSymbol} ${this._chart._currentInterval} — ${rows.length} bars</span>
           <div id="export-table-actions">
             <button id="export-copy-btn">Copy</button>
             <button id="export-close-btn">✕</button>

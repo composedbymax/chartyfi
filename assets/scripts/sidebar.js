@@ -1,11 +1,12 @@
 import {toast,confirm,deny} from './message.js';
-import {settingsIcon, codeIcon} from './svg.js';
+import {settingsIcon,codeIcon} from './svg.js';
 import {Chart,INTERVALS} from './chart.js';
 import {Exporter} from './export.js';
 import {Editor} from './editor.js';
-import { tooltip } from './tooltip.js';
+import {tooltip} from './tooltip.js';
+import {Settings} from './settings.js';
 export class Sidebar {
-  constructor(container,chart,api,config,localTimezone) {
+  constructor(container,chart,api,config,localTimezone){
     this.el=container;this.chart=chart;this.api=api;this.config=config;
     this.open=false;this.showSettings=false;this.showEditor=false;
     this._config=config;
@@ -13,15 +14,19 @@ export class Sidebar {
     this._chartTz='UTC';
     this.onTimezoneChange=null;
     this._editor=new Editor(document.createElement('div'),chart);
+    this._settings=new Settings(chart,api,config,this._localTz,{
+      onTzChange:tz=>{this._chartTz=tz;this._applyChartTz();},
+      onRerender:()=>this._renderSidebar(),
+    });
     this.api.getChartTz().then(tz=>{
       if(tz&&tz!==this._chartTz){this._chartTz=tz;this._applyChartTz();}
     }).catch(()=>{});
-    this._render();
+    this._renderSidebar();
     this._restoreChartPrefs();
     this._exporter=new Exporter(chart);
     this._exporter.timezone=this._chartTz;
-    this.chart.on('barsChanged',({count})=>this._updateBarCount(count));
-    this.chart.on('load',({int})=>this._updateActiveTf(int));
+    this.chart._chartOn('barsChanged',({count})=>this._updateBarCount(count));
+    this.chart._chartOn('load',({int})=>this._updateActiveTf(int));
     document.addEventListener('symbol-changed',e=>this._onSymbolChange(e.detail));
     this._handleOutsideClick=this._handleOutsideClick.bind(this);
     this._handleKeydown=this._handleKeydown.bind(this);
@@ -29,7 +34,7 @@ export class Sidebar {
     document.addEventListener('keydown',this._handleKeydown);
     this.el.addEventListener('click',e=>e.stopPropagation());
   }
-  _updateActiveTf(int) {
+  _updateActiveTf(int){
     this.el.querySelectorAll('.tf-btn').forEach(b=>{
       b.classList.toggle('active',b.dataset.int===int);
     });
@@ -38,28 +43,28 @@ export class Sidebar {
     if(this._exporter) this._exporter.timezone=this._chartTz;
     if(this.onTimezoneChange) this.onTimezoneChange(this._chartTz);
   }
-  _restoreChartPrefs() {
+  _restoreChartPrefs(){
     const mode=localStorage.getItem('chart_mode');
     const field=localStorage.getItem('chart_field');
     const vol=localStorage.getItem('chart_vol');
-    if(mode) this.chart.setMode(mode);
-    if(field) this.chart.setField(field);
-    if(vol) this.chart.setVolMode(vol);
+    if(mode) this.chart._setMode(mode);
+    if(field) this.chart._setField(field);
+    if(vol) this.chart._setVolMode(vol);
   }
-  _handleOutsideClick(e) {
+  _handleOutsideClick(e){
     if(!this.open) return;
     const sidebarEl=document.getElementById('sidebar');
     const toggleBtn=document.getElementById('sb-toggle');
     if(!sidebarEl.contains(e.target)&&!toggleBtn?.contains(e.target)) this.toggle();
   }
-  _handleKeydown(e) {
+  _handleKeydown(e){
     if(e.key==='Escape'&&this.open) this.toggle();
   }
-  toggle() {
+  toggle(){
     this.open=!this.open;
     document.getElementById('sidebar').classList.toggle('open',this.open);
   }
-  _render() {
+  _renderSidebar(){
     this.el.classList.toggle('ed-mode',this.showEditor);
     this.el.innerHTML='';
     this._renderTop();
@@ -71,81 +76,76 @@ export class Sidebar {
       this._renderMain();
     }
   }
-  _renderTop() {
-    let title = 'Menu';
-    if (this.showSettings) title = 'Settings';
-    if (this.showEditor) title = 'Indicators';
-    const row = Object.assign(document.createElement('div'), {
-      className: 'sb-section sb-top-row',
-      innerHTML: `<span class="sb-menu-title">${title}</span>
+  _renderTop(){
+    let title='Menu';
+    if(this.showSettings) title='Settings';
+    if(this.showEditor) title='Indicators';
+    const row=Object.assign(document.createElement('div'),{
+      className:'sb-section sb-top-row',
+      innerHTML:`<span class="sb-menu-title">${title}</span>
         <div class="sb-top-btns">
-          ${(this.showSettings || this.showEditor)
-            ? `<button class="icon-btn" id="sb-back">←</button>`
-            : `<button class="icon-btn" id="sb-editor-toggle"></button>
+          ${(this.showSettings||this.showEditor)
+            ?`<button class="icon-btn" id="sb-back">←</button>`
+            :`<button class="icon-btn" id="sb-editor-toggle"></button>
               <button class="icon-btn" id="sb-settings-toggle"></button>`
           }
         </div>`
     });
-    this.el.append(row, Object.assign(document.createElement('div'), { className: 'sb-divider' }));
-    if (this.showSettings || this.showEditor) {
-      const back = row.querySelector('#sb-back');
-      back.title = 'Back';
-      tooltip(back, 'Back');
-      back.onclick = () => {
-        this.showSettings = false;
-        this.showEditor = false;
-        this._editor.setHelpVisible(false);
-        this._render();
+    this.el.append(row,Object.assign(document.createElement('div'),{className:'sb-divider'}));
+    if(this.showSettings||this.showEditor){
+      const back=row.querySelector('#sb-back');
+      back.title='Back';
+      tooltip(back,'Back');
+      back.onclick=()=>{
+        this.showSettings=false;
+        this.showEditor=false;
+        this._editor._setHelpVisible(false);
+        this._renderSidebar();
       };
-    } else {
-      const ed = row.querySelector('#sb-editor-toggle');
-      const st = row.querySelector('#sb-settings-toggle');
-      ed.appendChild(codeIcon({ className: 'icon' }));
-      st.appendChild(settingsIcon({ className: 'icon' }));
-      ed.title = 'Indicators';
-      st.title = 'Settings';
-      tooltip(ed, 'Indicators');
-      tooltip(st, 'Settings');
-      ed.onclick = () => {
-        this.showEditor = true;
-        this.showSettings = false;
-        this._render();
-      };
-      st.onclick = () => {
-        this.showSettings = true;
-        this.showEditor = false;
-        this._render();
-      };
+    }else{
+      const ed=row.querySelector('#sb-editor-toggle');
+      const st=row.querySelector('#sb-settings-toggle');
+      ed.appendChild(codeIcon({className:'icon'}));
+      st.appendChild(settingsIcon({className:'icon'}));
+      ed.title='Indicators';
+      st.title='Settings';
+      tooltip(ed,'Indicators');
+      tooltip(st,'Settings');
+      ed.onclick=()=>{this.showEditor=true;this.showSettings=false;this._renderSidebar();};
+      st.onclick=()=>{this.showSettings=true;this.showEditor=false;this._renderSidebar();};
     }
   }
   _renderEditor(){
     const editorEl=this._editor.el;
     editorEl.className='ed-container';
     this.el.appendChild(editorEl);
-    this._editor.render();
+    this._editor._render();
   }
-  _renderMain() {
+  _renderMain(){
     this._renderTimeframes();
     this._renderDataControls();
     if(window.userLoggedIn) this._renderSavedAssets();
   }
-  _renderTimeframes() {
+  _renderSettings(){
+    this._settings.render(this.el,this._chartTz);
+  }
+  _renderTimeframes(){
     const lbl=document.createElement('div');lbl.className='sb-label';lbl.textContent='Timeframe';
     this.el.appendChild(lbl);
     const grid=document.createElement('div');grid.className='tf-grid';
-    grid.innerHTML=INTERVALS.map(i=>`<button class="tf-btn${this.chart.currentInterval===i?' active':''}" data-int="${i}">${i}</button>`).join('');
+    grid.innerHTML=INTERVALS.map(i=>`<button class="tf-btn${this.chart._currentInterval===i?' active':''}" data-int="${i}">${i}</button>`).join('');
     grid.querySelectorAll('.tf-btn').forEach(b=>{
       b.onclick=()=>{
         grid.querySelectorAll('.tf-btn').forEach(x=>x.classList.remove('active'));
         b.classList.add('active');
-        const sym=this.chart.currentSymbol;
+        const sym=this.chart._currentSymbol;
         if(sym) this.chart.load(sym,b.dataset.int);
       };
     });
     this.el.appendChild(grid);
     const d=document.createElement('div');d.className='sb-divider';this.el.appendChild(d);
   }
-  _renderDataControls() {
+  _renderDataControls(){
     const lbl=document.createElement('div');lbl.className='sb-label';lbl.textContent='Data';
     this.el.appendChild(lbl);
     const wrap=document.createElement('div');wrap.className='data-ctrl';
@@ -161,7 +161,7 @@ export class Sidebar {
         <button id="btn-after">Fetch →</button>
       </div>
       <div class="ctrl-row bar-count-row">
-        <span id="sb-bar-count">Bars loaded: ${this.chart.getBarCount().toLocaleString()}</span>
+        <span id="sb-bar-count">Bars loaded: ${this.chart._getBarCount().toLocaleString()}</span>
       </div>
       <div class="ctrl-row export-row">
         <span class="export-label">Export</span>
@@ -177,21 +177,21 @@ export class Sidebar {
         <button class="btn-sm" id="exp-txt">TXT</button>
         <button class="btn-sm" id="exp-table">Table</button>
       </div>`;
-    wrap.querySelector('#btn-before').onclick=()=>this.chart.extendBefore(+wrap.querySelector('#bars-before').value||200);
-    wrap.querySelector('#btn-after').onclick=()=>this.chart.extendAfter(+wrap.querySelector('#bars-after').value||200);
+    wrap.querySelector('#btn-before').onclick=()=>this.chart._extendBefore(+wrap.querySelector('#bars-before').value||200);
+    wrap.querySelector('#btn-after').onclick=()=>this.chart._extendAfter(+wrap.querySelector('#bars-after').value||200);
     wrap.querySelector('#exp-timefmt').onchange=e=>{this._exporter.timeFmt=e.target.value};
-    wrap.querySelector('#exp-csv').onclick=()=>this._exporter.exportCSV();
-    wrap.querySelector('#exp-json').onclick=()=>this._exporter.exportJSON();
-    wrap.querySelector('#exp-txt').onclick=()=>this._exporter.exportTXT();
-    wrap.querySelector('#exp-table').onclick=()=>this._exporter.showTable();
+    wrap.querySelector('#exp-csv').onclick=()=>this._exporter._exportCSV();
+    wrap.querySelector('#exp-json').onclick=()=>this._exporter._exportJSON();
+    wrap.querySelector('#exp-txt').onclick=()=>this._exporter._exportTXT();
+    wrap.querySelector('#exp-table').onclick=()=>this._exporter._showTable();
     this.el.appendChild(wrap);
     const d=document.createElement('div');d.className='sb-divider';this.el.appendChild(d);
   }
-  _updateBarCount(count) {
+  _updateBarCount(count){
     const el=document.getElementById('sb-bar-count');
     if(el) el.textContent=`Bars loaded: ${count.toLocaleString()}`;
   }
-  _renderSavedAssets() {
+  _renderSavedAssets(){
     const tracked=this._config?.tracked||[];
     const streams=this._config?.streams||[];
     const lbl=this._collapsible('Saved Assets',true);
@@ -203,7 +203,7 @@ export class Sidebar {
       body.appendChild(this._assetCard(t,stream));
     });
   }
-  _assetCard(t,stream) {
+  _assetCard(t,stream){
     const uid=`${t.symbol}-${t.interval}`.replace(/[^a-z0-9]/gi,'-');
     const autoId=`auto-toggle-${uid}`;
     const card=document.createElement('div');card.className='asset-card';
@@ -228,7 +228,7 @@ export class Sidebar {
       const r=await this.api.removeTrack(t.symbol,t.interval);
       if(r.error){deny(r.error);return}
       this._config.tracked=this._config.tracked.filter(x=>!(x.symbol===t.symbol&&x.interval===t.interval));
-      toast('Removed','success');this._render();
+      toast('Removed','success');this._renderSidebar();
     };
     card.querySelector('.auto-toggle').onchange=async e=>{
       const en=e.target.checked;
@@ -252,7 +252,7 @@ export class Sidebar {
         const r=await this.api.removeStream(stream.id);
         if(r.error){deny(r.error);return}
         this._config.streams=this._config.streams.filter(s=>s.id!==stream.id);
-        toast('Stream removed','success');this._render();
+        toast('Stream removed','success');this._renderSidebar();
       };
     }else{
       sd.innerHTML=`<button class="btn-sm add-stream-btn btn-full-width">+ Add Stream</button>`;
@@ -261,7 +261,7 @@ export class Sidebar {
     card.appendChild(sd);
     return card;
   }
-  _showAddStreamForm(t,sd,card) {
+  _showAddStreamForm(t,sd){
     const uid=`asf-${t.symbol}-${t.interval}`.replace(/[^a-z0-9]/gi,'-');
     const sidId=`${uid}-sid`;
     const keyId=`${uid}-key`;
@@ -290,7 +290,7 @@ export class Sidebar {
         </div>
       </form>
     </div>`;
-    sd.querySelector('#asf-cancel').onclick=()=>this._render();
+    sd.querySelector('#asf-cancel').onclick=()=>this._renderSidebar();
     sd.querySelector('#asf-save').onclick=async()=>{
       const sid=sd.querySelector(`#${sidId}`).value.trim();
       let key=sd.querySelector(`#${keyId}`).value.trim();
@@ -302,135 +302,10 @@ export class Sidebar {
       if(r.error){deny(r.error);return}
       if(key) await this.api.setApiKey(key);
       this._config.streams.push({id:r.id,stream_id:sid,symbol:t.symbol,interval:t.interval,field,enabled:1,stream_timezone:streamTz});
-      toast('Stream added','success');this._render();
+      toast('Stream added','success');this._renderSidebar();
     };
   }
-  _renderSettings() {
-    const wrap=document.createElement('div');
-    wrap.className='settings-panel';
-    const localOpt=
-      this._localTz!=='UTC'
-        ?`<option value="${this._localTz}"${this._chartTz===this._localTz?' selected':''}>
-${this._localTz}</option>`:'';
-    const createToggleBtns=(items,active,attr)=>
-      items.map(i=>`<button class="toggle-btn${i===active?' active':''}" ${attr}="${i}">${i}</button>`).join('');
-    wrap.innerHTML=`
-      ${window.userLoggedIn
-        ?`<div class="user-info"><span class="name">${window.userName||'User'}</span><span class="role-badge">${window.userRole||'basic'}</span></div>`
-        :`<div class="setting-row"><a href="/auth?redirect=/chart/">Sign in</a> to enable auto-updates & streams</div>`}
-      <div class="sb-divider"></div>
-      <div class="setting-box">
-        <div class="setting-row">
-          <label for="chart-tz-select">Chart Timezone</label>
-          <select id="chart-tz-select"><option value="UTC"${this._chartTz==='UTC'?' selected':''}>UTC</option>${localOpt}</select>
-        </div>
-        <div class="setting-row chart-mode-row">
-          <fieldset class="fieldset-reset">
-            <legend class="setting-row-legend">Chart Mode</legend>
-            <div class="toggle-group">${createToggleBtns(['candle','line'],this.chart.mode,'data-mode')}</div>
-          </fieldset>
-        </div>
-        <div class="setting-row value-field-row${this.chart.mode==='candle'?' hidden':''}">
-          <fieldset class="fieldset-reset">
-            <legend class="setting-row-legend">Value Field</legend>
-            <div class="toggle-group">${createToggleBtns(['open','high','low','close'],this.chart.field,'data-field')}</div>
-          </fieldset>
-        </div>
-        <div class="setting-row">
-          <fieldset class="fieldset-reset">
-            <legend class="setting-row-legend">Volume</legend>
-            <div class="toggle-group">${createToggleBtns(['off','overlay','pane'],this.chart.volMode,'data-vol')}</div>
-          </fieldset>
-        </div>
-        <form id="manual-post-form" onsubmit="return false;">
-          <div class="setting-row">
-            <label for="api-key-in">Cycles API Key</label>
-            <input type="password" id="api-key-in" placeholder="Paste key to save…" autocomplete="off">
-          </div>
-          <div class="setting-row">
-            <label for="mp-sid">Manual Post to Cycles</label>
-            <div class="manual-post-wrap">
-              <div class="row">
-                <input type="text" id="mp-sid" placeholder="Stream ID">
-                <label for="mp-field" class="sr-only">Field</label>
-                <select id="mp-field">${['close','open','high','low'].map(f=>`<option value="${f}">${f}</option>`).join('')}</select>
-              </div>
-              <button class="btn-primary btn-mt" id="mp-btn">Post Current Chart Data</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    `;
-    this.el.appendChild(wrap);
-    const valueFieldRow=wrap.querySelector('.value-field-row');
-    const _bindToggleGroup=(selector,callback)=>{
-      wrap.querySelectorAll(selector).forEach(btn=>{
-        btn.onclick=()=>{
-          wrap.querySelectorAll(selector).forEach(b=>b.classList.remove('active'));
-          btn.classList.add('active');
-          callback(btn);
-        };
-      });
-    };
-    wrap.querySelector('#chart-tz-select').onchange=async e=>{
-      this._chartTz=e.target.value;
-      await this.api.setChartTz(this._chartTz);
-      this._applyChartTz();
-    };
-    _bindToggleGroup('[data-mode]',btn=>{
-      this.chart.setMode(btn.dataset.mode);
-      localStorage.setItem('chart_mode',btn.dataset.mode);
-      valueFieldRow.classList.toggle('hidden',btn.dataset.mode==='candle');
-    });
-    _bindToggleGroup('[data-field]',btn=>{
-      this.chart.setField(btn.dataset.field);
-      localStorage.setItem('chart_field',btn.dataset.field);
-    });
-    _bindToggleGroup('[data-vol]',btn=>{
-      this.chart.setVolMode(btn.dataset.vol);
-      localStorage.setItem('chart_vol',btn.dataset.vol);
-    });
-    const keyIn=wrap.querySelector('#api-key-in');
-    this.api.getApiKey().then(k=>{if(k) keyIn.value=k});
-    keyIn.onchange=async()=>{
-      if(keyIn.value.trim()){
-        await this.api.setApiKey(keyIn.value.trim());
-        toast('API key saved','success');
-      }
-    };
-    wrap.querySelector('#mp-btn').onclick=async()=>{
-      const sid=wrap.querySelector('#mp-sid').value.trim();
-      const key=keyIn.value.trim()||await this.api.getApiKey()||'';
-      const field=wrap.querySelector('#mp-field').value;
-      const sym=this.chart.currentSymbol;
-      const int=this.chart.currentInterval;
-      if(!sym){deny('No symbol loaded');return}
-      if(!sid||!key){deny('Stream ID and API Key required');return}
-      const r=this.chart.getRange();
-      const res=await this.api.manualPost({symbol:sym,interval:int,field,api_key:key,stream_id:sid,p1:r.p1,p2:r.p2});
-      if(res.error){deny(res.error);return}
-      toast(`Posted ${res.sent} bars`,'success');
-    };
-    if(window.userLoggedIn&&this.chart.currentSymbol){
-      const sym=this.chart.currentSymbol;
-      const int=this.chart.currentInterval;
-      const isTracked=this._config?.tracked?.some(t=>t.symbol===sym&&t.interval===int);
-      const btn=document.createElement('button');
-      btn.className=`btn-primary btn-track-wide${isTracked?' btn-tracked':''}`;
-      btn.textContent=isTracked?'✓ Auto-updating':'Enable Auto-Update';
-      btn.onclick=async()=>{
-        if(isTracked){toast('Already tracking','info');return}
-        const r=await this.api.setTrack(sym,int,true);
-        if(r.error){deny(r.error);return}
-        this._config.tracked.push({symbol:sym,interval:int,auto_update_enabled:1});
-        toast('Auto-update enabled','success');
-        this._render();
-      };
-      this.el.appendChild(document.createElement('div')).className='sb-divider';
-      this.el.appendChild(btn);
-    }
-  }
-  _collapsible(label,open=true) {
+  _collapsible(label,open=true){
     const div=document.createElement('div');
     div.className=`sb-label${open?'':' collapsed'}`;
     div.classList.add('sb-label-clickable');
@@ -442,8 +317,8 @@ ${this._localTz}</option>`:'';
     };
     return div;
   }
-  _onSymbolChange({sym}) {
+  _onSymbolChange({sym}){
     if(!this.showSettings) return;
-    this._render();
+    this._renderSidebar();
   }
 }

@@ -84,7 +84,7 @@ export class Chart {
     this._emit('barsChanged',{count:this._data.length});
   }
   async load(sym,int,p1,p2) {
-    this.clearIndicators();
+    this._clearIndicators();
     this.sym=sym;this.int=int||this.int;
     this._tzOffsetMin=this._tzOffset(this._timezone);
     const res=await this.api.chartData(sym,this.int,p1,p2,INITIAL_LIMIT,true);
@@ -94,7 +94,7 @@ export class Chart {
     this._buildSeries();
     this._emit('load',{sym,int:this.int,count:this._data.length});
   }
-  async extendBefore(bars) {
+  async _extendBefore(bars) {
     const step=INTERVALS_S[this.int]||86400;
     const p2=this._p1-1;
     const p1=p2-bars*step;
@@ -105,7 +105,7 @@ export class Chart {
     this._p1=Math.min(this._p1,res.p1);
     this._apply();
   }
-  async extendAfter(bars) {
+  async _extendAfter(bars) {
     const step=INTERVALS_S[this.int]||86400;
     const p1=this._p2+1;
     const p2=p1+bars*step;
@@ -116,7 +116,7 @@ export class Chart {
     this._p2=Math.max(this._p2,res.p2);
     this._apply();
   }
-  appendCandles(candles) {
+  _appendCandles(candles) {
     if(!candles?.length) return;
     const existing=new Set(this._data.map(c=>c.time));
     const fresh=candles.filter(c=>!existing.has(c.time));
@@ -126,19 +126,19 @@ export class Chart {
     this._apply();
     toast(`${fresh.length} new bar${fresh.length>1?'s':''}`,'info',2000);
   }
-  setMode(mode) {this.mode=mode;this._buildSeries()}
-  setField(f) {this.field=f;if(this.mode==='line')this._apply()}
-  setVolMode(m) {this.volMode=m;this._buildSeries()}
-  setIndicators(items){this._indicators=(items||[]).map(i=>({type:i.type,label:i.label,opts:i.opts||{},data:(i.data||[]).map(p=>({...p})),upper:(i.upper||[]).map(p=>({...p})),lower:(i.lower||[]).map(p=>({...p}))}))}
-  clearIndicators(){this._indicators=[]}
-  getIndicators(){return this._indicators.slice()}
-  get currentSymbol(){return this.sym}
-  get currentInterval(){return this.int}
-  getBarCount(){return this._data.length}
-  getLastTimestamp(){return this._data.length?this._data[this._data.length-1].time:0}
-  getCurrentData(){return this._data}
-  getRange(){return{p1:this._p1,p2:this._p2}}
-  on(evt,fn){this._listeners.push({evt,fn})}
+  _setMode(mode) {this.mode=mode;this._buildSeries()}
+  _setField(f) {this.field=f;if(this.mode==='line')this._apply()}
+  _setVolMode(m) {this.volMode=m;this._buildSeries()}
+  _setIndicators(items){this._indicators=(items||[]).map(i=>({type:i.type,label:i.label,opts:i.opts||{},data:(i.data||[]).map(p=>({...p})),upper:(i.upper||[]).map(p=>({...p})),lower:(i.lower||[]).map(p=>({...p}))}))}
+  _clearIndicators(){this._indicators=[]}
+  _getIndicators(){return this._indicators.slice()}
+  get _currentSymbol(){return this.sym}
+  get _currentInterval(){return this.int}
+  _getBarCount(){return this._data.length}
+  _getLastTimestamp(){return this._data.length?this._data[this._data.length-1].time:0}
+  _getCurrentData(){return this._data}
+  _getRange(){return{p1:this._p1,p2:this._p2}}
+  _chartOn(evt,fn){this._listeners.push({evt,fn})}
   _emit(evt,data){this._listeners.filter(l=>l.evt===evt).forEach(l=>l.fn(data))}
   buy(time) { this._emit('trade',{type:'buy',time}) }
   sell(time) { this._emit('trade',{type:'sell',time}) }
