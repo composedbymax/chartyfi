@@ -1,3 +1,4 @@
+import {storage} from './storage.js';
 let tooltipEl;
 function getTooltip() {
   if (tooltipEl) return tooltipEl;
@@ -37,12 +38,11 @@ function findTarget(e) {
   return e.target.closest('[data-tooltip]');
 }
 document.addEventListener('mousemove', (e) => {
+  if (!storage.getTooltips()) { hide(); return; }
   const target = findTarget(e);
   if (!target) return;
-
   const text = target.getAttribute('data-tooltip');
   if (!text) return;
-
   show(text, e.clientX, e.clientY);
 });
 document.addEventListener('mouseleave', hide, true);

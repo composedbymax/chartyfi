@@ -66,6 +66,40 @@ async function fetchHelpContent(){
   sessionStorage.setItem(HELP_CACHE_KEY,json.html);
   return json.html;
 }
+function rawPaneOf(pf) {
+  if (pf.type === 'hist' || pf.type === 'dot') {
+    return pf.opts.pane != null ? pf.opts.pane : 1;
+  }
+  return pf.opts.pane != null ? pf.opts.pane : 0;
+}
+function nextFreePaneBase(indicatorGroups) {
+  let next = 1;
+  for (const g of indicatorGroups) {
+    if (g.paneBase != null) {
+      next = Math.max(next, g.paneBase + g.panesUsed);
+    }
+  }
+  return next;
+}
+function buildPaneResolver(plotFns, indicatorGroups) {
+  const rawPanes = plotFns.map(rawPaneOf);
+  const subPanes = rawPanes.filter(p => p > 0);
+  if (!subPanes.length) {
+    return {
+      resolvePane: pf => rawPaneOf(pf),
+      paneBase: null,
+      panesUsed: 0,
+    };
+  }
+  const paneBase = nextFreePaneBase(indicatorGroups);
+  const panesUsed = Math.max(...subPanes);
+  const resolvePane = pf => {
+    const raw = rawPaneOf(pf);
+    if (raw === 0) return 0;
+    return paneBase + (raw - 1);
+  };
+  return { resolvePane, paneBase, panesUsed };
+}
 export class Editor{
   constructor(container,chart){
     this.el=container;
@@ -82,6 +116,7 @@ export class Editor{
     this._rendered=false;
     this._shareUi=null;
     this._exploreUi=null;
+    this.chart._chartOn('dataChanged', () => this._refreshIndicators());
   }
   _setHelpVisible(v){
     this._showHelp=v;
@@ -303,6 +338,7 @@ export class Editor{
     this.chart._clearIndicators();
     if(typeof this.chart.clearTrades==='function') this.chart.clearTrades();
     this._renderIndicatorList();
+    this.chart._forceResize();
     if(!silent) toast('All overlays cleared','info');
   }
   _removeGroup(id){
@@ -315,6 +351,7 @@ export class Editor{
     const remaining=this._indicatorGroups.flatMap(grp=>grp.plotFns||[]);
     this.chart._setIndicators(remaining);
     this._renderIndicatorList();
+    this.chart._forceResize();
     toast(`Removed "${g.name}"`,'info');
   }
   _renderIndicatorList(){
@@ -405,127 +442,165 @@ export class Editor{
       this._renderIndicatorList();
     }
   }
-  _run(){
-    const bars=this.chart._getCurrentData();
-    if(!bars.length){
-      deny('No chart data available');
+  _refreshIndicators() {
+    if (!this._indicatorGroups.length) return;
+    const groups = [...this._indicatorGroups];
+    const selectedIndex = groups.findIndex(g => g.id === this._editingGroupId);
+    const savedCode = this._code;
+    const savedName = this._snippetName;
+    const savedSnippetId = this._snippetId;
+    groups.forEach(g => {
+      g.series.forEach(s => {
+        try { this.chart._chart.removeSeries(s); } catch (e) {}
+      });
+    });
+    this.chart._clearIndicators();
+    this._indicatorGroups = [];
+    this._editingGroupId = null;
+    for (const g of groups) {
+      this._snippetName = g.name;
+      this._code = g.code || '';
+      this._run(true);
+    }
+    this._code = savedCode;
+    this._snippetName = savedName;
+    this._snippetId = savedSnippetId;
+    if (selectedIndex >= 0 && this._indicatorGroups[selectedIndex]) {
+      this._editingGroupId = this._indicatorGroups[selectedIndex].id;
+    } else {
+      this._editingGroupId = this._indicatorGroups.at(-1)?.id ?? null;
+    }
+    this._renderIndicatorList();
+  }
+  _run(silent = false) {
+    const bars = this.chart._getCurrentData();
+    if (!bars.length) {
+      if (!silent) deny('No chart data available');
       return;
     }
-    const plotFns=[];
-    const trades=[];
-    const findBar=time=>bars.find(b=>b.time===time)||null;
-    const normTrade=(type,time,price)=>{
-      const bar=findBar(time);
-      const px=price!=null?price:(bar?bar.close:null);
-      if(time==null||px==null) return;
-      trades.push({type,time,price:px});
+    const plotFns = [];
+    const trades = [];
+    const findBar = time => bars.find(b => b.time === time) || null;
+    const normTrade = (type, time, price) => {
+      const bar = findBar(time);
+      const px = price != null ? price : (bar ? bar.close : null);
+      if (time == null || px == null) return;
+      trades.push({ type, time, price: px });
     };
-    const plot=(label,data,opts={})=>plotFns.push({type:'line',label,data,opts});
-    const plotHist=(label,data,opts={})=>plotFns.push({type:'hist',label,data,opts});
-    const plotBand=(label,upper,lower,opts={})=>plotFns.push({type:'band',label,upper,lower,opts});
-    const plotDot=(label,data,opts={})=>plotFns.push({type:'dot',label,data,opts});
-    const plotArea=(label,data,opts={})=>plotFns.push({type:'area',label,data,opts});
-    const plotCandle=(label,data,opts={})=>plotFns.push({type:'candle',label,data,opts});
-    const buy=(time,price)=>normTrade('buy',time,price);
-    const sell=(time,price)=>normTrade('sell',time,price);
-    try{
-      const fn=new Function('bars','plot','plotHist','plotBand','plotDot','plotArea','plotCandle','buy','sell',this._code);
-      fn(bars,plot,plotHist,plotBand,plotDot,plotArea,plotCandle,buy,sell);
-    }catch(err){
-      deny('Error: '+err.message);
+    const plot = (label, data, opts = {}) => plotFns.push({ type: 'line', label, data, opts });
+    const plotHist = (label, data, opts = {}) => plotFns.push({ type: 'hist', label, data, opts });
+    const plotBand = (label, upper, lower, opts = {}) => plotFns.push({ type: 'band', label, upper, lower, opts });
+    const plotDot = (label, data, opts = {}) => plotFns.push({ type: 'dot', label, data, opts });
+    const plotArea = (label, data, opts = {}) => plotFns.push({ type: 'area', label, data, opts });
+    const plotCandle = (label, data, opts = {}) => plotFns.push({ type: 'candle', label, data, opts });
+    const buy = (time, price) => normTrade('buy', time, price);
+    const sell = (time, price) => normTrade('sell', time, price);
+    try {
+      const fn = new Function(
+        'bars', 'plot', 'plotHist', 'plotBand', 'plotDot', 'plotArea', 'plotCandle', 'buy', 'sell',
+        this._code
+      );
+      fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, buy, sell);
+    } catch (err) {
+      if (!silent) deny('Error: ' + err.message);
       return;
     }
-    if(!plotFns.length&&!trades.length){
-      toast('No series produced','warn');
+    if (!plotFns.length && !trades.length) {
+      if (!silent) toast('No series produced', 'warn');
       return;
     }
-    const allIndicators=[
-      ...this._indicatorGroups.flatMap(g=>g.plotFns||[]),
+    const allIndicators = [
+      ...this._indicatorGroups.flatMap(g => g.plotFns || []),
       ...plotFns
     ];
     this.chart._setIndicators(allIndicators);
-    if(trades.length&&typeof this.chart.setTrades==='function') this.chart.setTrades(trades);
-    const groupColor=plotFns[0]?.opts?.color||plotFns[0]?.opts?.upColor||'#a78bfa';
-    const groupId=++this._groupCounter;
-    const groupName=this._snippetName.trim()||`Run ${groupId}`;
-    const groupSeries=[];
-    let errorCount=0;
-    plotFns.forEach(pf=>{
-      try{
-        let s=null;
-        if(pf.type==='line'){
-          s=this.chart._chart.addSeries(LightweightCharts.LineSeries,{
-            color:pf.opts.color||'#a78bfa',
-            lineWidth:pf.opts.lineWidth||2,
-            lineStyle:pf.opts.lineStyle||0,
-            title:pf.label
-          },pf.opts.pane||0);
+    if (trades.length && typeof this.chart.setTrades === 'function') {
+      this.chart.setTrades(trades);
+    }
+    const groupColor = plotFns[0]?.opts?.color || plotFns[0]?.opts?.upColor || '#a78bfa';
+    const groupId = ++this._groupCounter;
+    const groupName = this._snippetName.trim() || `Run ${groupId}`;
+    const groupSeries = [];
+    const { resolvePane, paneBase, panesUsed } = buildPaneResolver(plotFns, this._indicatorGroups);
+    plotFns.forEach(pf => {
+      try {
+        const pane = resolvePane(pf);
+        let s = null;
+        if (pf.type === 'line') {
+          s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
+            color: pf.opts.color || '#a78bfa',
+            lineWidth: pf.opts.lineWidth || 2,
+            lineStyle: pf.opts.lineStyle || 0,
+            title: pf.label
+          }, pane);
           s.setData(pf.data);
-        }else if(pf.type==='hist'){
-          s=this.chart._chart.addSeries(LightweightCharts.HistogramSeries,{
-            color:pf.opts.color||'#3b82f6',
-            title:pf.label
-          },pf.opts.pane!=null?pf.opts.pane:1);
+        } else if (pf.type === 'hist') {
+          s = this.chart._chart.addSeries(LightweightCharts.HistogramSeries, {
+            color: pf.opts.color || '#3b82f6',
+            title: pf.label
+          }, pane);
           s.setData(pf.data);
-        }else if(pf.type==='band'){
-          const c=pf.opts.color||'#a78bfa';
-          const su=this.chart._chart.addSeries(LightweightCharts.LineSeries,{color:c,lineWidth:1,title:pf.label+' U'},pf.opts.pane||0);
-          const sl=this.chart._chart.addSeries(LightweightCharts.LineSeries,{color:c,lineWidth:1,title:pf.label+' L'},pf.opts.pane||0);
+        } else if (pf.type === 'band') {
+          const c = pf.opts.color || '#a78bfa';
+          const su = this.chart._chart.addSeries(LightweightCharts.LineSeries, { color: c, lineWidth: 1, title: pf.label + ' U' }, pane);
+          const sl = this.chart._chart.addSeries(LightweightCharts.LineSeries, { color: c, lineWidth: 1, title: pf.label + ' L' }, pane);
           su.setData(pf.upper);
           sl.setData(pf.lower);
-          groupSeries.push(su,sl);
-          s=null;
-        }else if(pf.type==='dot'){
-          s=this.chart._chart.addSeries(LightweightCharts.LineSeries,{
-            color:pf.opts.color||'#f59e0b',
-            lineVisible:false,
-            pointMarkersVisible:true,
-            lastValueVisible:false,
-            priceLineVisible:false,
-            crosshairMarkerVisible:false,
-            title:pf.label
-          },pf.opts.pane!=null?pf.opts.pane:1);
+          groupSeries.push(su, sl);
+        } else if (pf.type === 'dot') {
+          s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
+            color: pf.opts.color || '#f59e0b',
+            lineVisible: false,
+            pointMarkersVisible: true,
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
+            title: pf.label
+          }, pane);
           s.setData(pf.data);
-        }else if(pf.type==='area'){
-          s=this.chart._chart.addSeries(LightweightCharts.AreaSeries,{
-            lineColor:pf.opts.color||'#a78bfa',
-            topColor:pf.opts.topColor||'rgba(167,139,250,0.35)',
-            bottomColor:pf.opts.bottomColor||'rgba(167,139,250,0.02)',
-            lineWidth:pf.opts.lineWidth||2,
-            title:pf.label
-          },pf.opts.pane||0);
+        } else if (pf.type === 'area') {
+          s = this.chart._chart.addSeries(LightweightCharts.AreaSeries, {
+            lineColor: pf.opts.color || '#a78bfa',
+            topColor: pf.opts.topColor || 'rgba(167,139,250,0.35)',
+            bottomColor: pf.opts.bottomColor || 'rgba(167,139,250,0.02)',
+            lineWidth: pf.opts.lineWidth || 2,
+            title: pf.label
+          }, pane);
           s.setData(pf.data);
-        }else if(pf.type==='candle'){
-          s=this.chart._chart.addSeries(LightweightCharts.CandlestickSeries,{
-            upColor:pf.opts.upColor||'#22c55e',
-            downColor:pf.opts.downColor||'#ef4444',
-            borderUpColor:pf.opts.upColor||'#22c55e',
-            borderDownColor:pf.opts.downColor||'#ef4444',
-            wickUpColor:pf.opts.upColor||'#22c55e',
-            wickDownColor:pf.opts.downColor||'#ef4444',
-            title:pf.label
-          },pf.opts.pane||0);
+        } else if (pf.type === 'candle') {
+          s = this.chart._chart.addSeries(LightweightCharts.CandlestickSeries, {
+            upColor: pf.opts.upColor || '#22c55e',
+            downColor: pf.opts.downColor || '#ef4444',
+            borderUpColor: pf.opts.upColor || '#22c55e',
+            borderDownColor: pf.opts.downColor || '#ef4444',
+            wickUpColor: pf.opts.upColor || '#22c55e',
+            wickDownColor: pf.opts.downColor || '#ef4444',
+            title: pf.label
+          }, pane);
           s.setData(pf.data);
         }
-        if(s) groupSeries.push(s);
-      }catch(e){
-        errorCount++;
-        deny('Plot error ('+pf.label+'): '+e.message);
+        if (s) groupSeries.push(s);
+      } catch (e) {
+        if (!silent) deny('Plot error (' + pf.label + '): ' + e.message);
       }
     });
-    if(groupSeries.length){
+    if (groupSeries.length) {
       this._indicatorGroups.push({
-        id:groupId,
-        name:groupName,
-        color:groupColor,
-        series:groupSeries,
+        id: groupId,
+        name: groupName,
+        color: groupColor,
+        series: groupSeries,
         plotFns,
-        code:this._code
+        code: this._code,
+        paneBase,
+        panesUsed,
       });
-      this._editingGroupId=groupId;
-      this._renderIndicatorList();
-      toast(`"${groupName}" added (${groupSeries.length} series)`,'success');
+      this._editingGroupId = groupId;
+      if (!silent) {
+        this._renderIndicatorList();
+        toast(`"${groupName}" added (${groupSeries.length} series)`, 'success');
+      }
     }
-    if(trades.length) toast(`Recorded ${trades.length} trades`,'success');
+    if (trades.length && !silent) toast(`Recorded ${trades.length} trades`, 'success');
   }
 }

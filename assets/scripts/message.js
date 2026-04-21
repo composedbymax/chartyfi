@@ -1,3 +1,4 @@
+import {storage} from './storage.js';
 let toastWrap;
 export function initMessage() {
   toastWrap=document.createElement('div');
@@ -5,6 +6,7 @@ export function initMessage() {
   document.body.appendChild(toastWrap);
 }
 export function toast(msg,type='info',ms=3200) {
+  if(!storage.getToasts()) return;
   const el=document.createElement('div');
   el.className=`toast ${type}`;
   el.textContent=msg;

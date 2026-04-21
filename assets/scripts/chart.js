@@ -6,14 +6,18 @@ export const INTERVALS_S={
 };
 export const INTERVALS=Object.keys(INTERVALS_S);
 const INITIAL_LIMIT=1500;
-const CHART_OPTS={
-  layout:{background:{type:'solid',color:'#0d0d0d'},textColor:'#999'},
-  grid:{vertLines:{color:'#1a1a1a'},horzLines:{color:'#1a1a1a'}},
-  timeScale:{timeVisible:true,secondsVisible:false,borderColor:'#2a2a2a'},
-  rightPriceScale:{borderColor:'#2a2a2a'},
-  crosshair:{vertLine:{color:'#444'},horzLine:{color:'#444'}},
-  handleScroll:true,handleScale:true
-};
+function _chartOpts(){
+  const s=getComputedStyle(document.documentElement);
+  const v=n=>s.getPropertyValue(n).trim();
+  return {
+    layout:{background:{type:'solid',color:v('--bg')},textColor:v('--text2')},
+    grid:{vertLines:{color:v('--bg3')},horzLines:{color:v('--bg3')}},
+    timeScale:{timeVisible:true,secondsVisible:false,borderColor:v('--border')},
+    rightPriceScale:{borderColor:v('--border')},
+    crosshair:{vertLine:{color:v('--border2')},horzLine:{color:v('--border2')}},
+    handleScroll:true,handleScale:true
+  };
+}
 export class Chart {
   constructor(container,api,timezone='UTC') {
     this.container=container;this.api=api;
@@ -31,7 +35,7 @@ export class Chart {
     if(iana==='UTC') return 0;
     try{return offsetMinutesForZone(iana)}catch(e){return 0}
   }
-  setTimezone(tz){
+  _setTimezone(tz){
     this._timezone=tz;
     this._tzOffsetMin=this._tzOffset(tz);
     if(this._data.length) this._apply();
@@ -40,9 +44,12 @@ export class Chart {
     return shiftTimestamp(unixSec,this._tzOffsetMin);
   }
   _init() {
-    this._chart=LightweightCharts.createChart(this.container,{...CHART_OPTS,width:this.container.clientWidth,height:this.container.clientHeight});
+    this._chart=LightweightCharts.createChart(this.container,{..._chartOpts(),width:this.container.clientWidth,height:this.container.clientHeight});
     new ResizeObserver(()=>this._chart.resize(this.container.clientWidth,this.container.clientHeight)).observe(this.container);
     this._buildSeries();
+  }
+  _applyTheme(){
+    this._chart.applyOptions(_chartOpts());
   }
   _buildSeries() {
     if(this._main){try{this._chart.removeSeries(this._main)}catch(e){}}
@@ -73,47 +80,66 @@ export class Chart {
   }
   _apply() {
     if(!this._data.length) return;
-    if(this.mode==='candle') {
-      this._main.setData(this._data.map(c=>({time:this._shiftTime(c.time),open:c.open,high:c.high,low:c.low,close:c.close})));
+    const clean = this._data.filter(c =>
+      c.open != null && c.high != null && c.low != null && c.close != null
+    ).map(c => ({ ...c, volume: c.volume ?? 0 }));
+    if(!clean.length) return;
+    if(this.mode === 'candle') {
+      this._main.setData(clean.map(c => ({time: this._shiftTime(c.time),open: c.open, high: c.high, low: c.low, close: c.close})));
     } else {
-      this._main.setData(this._data.map(c=>({time:this._shiftTime(c.time),value:c[this.field]})));
+      this._main.setData(clean.map(c => ({time: this._shiftTime(c.time),value: c[this.field]})));
     }
     if(this._vol) {
-      this._vol.setData(this._data.map(c=>({time:this._shiftTime(c.time),value:c.volume,color:c.close>=c.open?'rgba(34,197,94,0.35)':'rgba(239,68,68,0.35)'})));
+      this._vol.setData(clean.map(c => ({time: this._shiftTime(c.time),value: c.volume,color: c.close >= c.open ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)'})));
     }
-    this._emit('barsChanged',{count:this._data.length});
+    this._emit('barsChanged', { count: clean.length });
+    this._emit('dataChanged', {
+      sym: this.sym,
+      int: this.int,
+      count: clean.length
+    });
   }
-  async load(sym,int,p1,p2) {
-    this._clearIndicators();
-    this.sym=sym;this.int=int||this.int;
-    this._tzOffsetMin=this._tzOffset(this._timezone);
-    const res=await this.api._chartData(sym,this.int,p1,p2,INITIAL_LIMIT,true);
-    if(res.error){toast(res.error,'error');return}
-    this._data=res.candles||[];
-    this._p1=res.p1;this._p2=res.p2;
+  async load(sym, int, p1, p2) {
+    this.sym = sym;
+    this.int = int || this.int;
+    this._tzOffsetMin = this._tzOffset(this._timezone);
+    const res = await this.api._chartData(sym, this.int, p1, p2, INITIAL_LIMIT, true);
+    if(res.error){toast(res.error, 'error');return;}
+    this._data = res.candles || [];
+    this._p1 = res.p1;
+    this._p2 = res.p2;
     this._buildSeries();
-    this._emit('load',{sym,int:this.int,count:this._data.length});
+    this._emit('dataChanged', {sym: this.sym,int: this.int,count: this._data.length});
+    this._emit('load', { sym, int: this.int, count: this._data.length });
   }
   async _extendBefore(bars) {
-    const step=INTERVALS_S[this.int]||86400;
-    const p2=this._p1-1;
-    const p1=p2-bars*step;
-    const res=await this.api._chartData(this.sym,this.int,p1,p2);
+    const step = INTERVALS_S[this.int] || 86400;
+    const firstTs = this._data[0]?.time ?? this._p1;
+    const p2 = firstTs;
+    const p1 = p2 - bars * step;
+    const res = await this.api._chartData(this.sym, this.int, p1, p2);
     if(res.error){toast(res.error,'error');return}
     if(!res.candles?.length){toast('No more data available','warn');return}
-    this._data=[...res.candles,...this._data];
-    this._p1=Math.min(this._p1,res.p1);
+    const existing = new Set(this._data.map(c => c.time));
+    const fresh = res.candles.filter(c => !existing.has(c.time));
+    if(!fresh.length){toast('No new data available','warn');return}
+    this._data = [...fresh, ...this._data];
+    this._p1 = Math.min(this._p1, res.p1);
     this._apply();
   }
   async _extendAfter(bars) {
-    const step=INTERVALS_S[this.int]||86400;
-    const p1=this._p2+1;
-    const p2=p1+bars*step;
-    const res=await this.api._chartData(this.sym,this.int,p1,p2);
+    const step = INTERVALS_S[this.int] || 86400;
+    const lastTs = this._data[this._data.length - 1]?.time ?? this._p2;
+    const p1 = lastTs;
+    const p2 = p1 + bars * step;
+    const res = await this.api._chartData(this.sym, this.int, p1, p2);
     if(res.error){toast(res.error,'error');return}
     if(!res.candles?.length){toast('No more data available','warn');return}
-    this._data=[...this._data,...res.candles];
-    this._p2=Math.max(this._p2,res.p2);
+    const existing = new Set(this._data.map(c => c.time));
+    const fresh = res.candles.filter(c => !existing.has(c.time));
+    if(!fresh.length){toast('No new data available','warn');return}
+    this._data = [...this._data, ...fresh];
+    this._p2 = Math.max(this._p2, res.p2);
     this._apply();
   }
   _appendCandles(candles) {
@@ -138,6 +164,7 @@ export class Chart {
   _getLastTimestamp(){return this._data.length?this._data[this._data.length-1].time:0}
   _getCurrentData(){return this._data}
   _getRange(){return{p1:this._p1,p2:this._p2}}
+  _forceResize(){this._chart.resize(this.container.clientWidth,this.container.clientHeight)}
   _chartOn(evt,fn){this._listeners.push({evt,fn})}
   _emit(evt,data){this._listeners.filter(l=>l.evt===evt).forEach(l=>l.fn(data))}
   buy(time) { this._emit('trade',{type:'buy',time}) }

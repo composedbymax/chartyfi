@@ -5,6 +5,9 @@ import {Search,initUrlState} from './search.js';
 import {Sidebar} from './sidebar.js';
 import {localTimezone,offsetMinutesForZone} from './timezone.js';
 import {initEmptyState} from './emptyState.js';
+import {storage} from './storage.js';
+const _t=storage.getTheme();
+if(_t) document.documentElement.setAttribute('data-theme',_t);
 document.getElementById('app').innerHTML=`
 <header id="hdr">
   <div class="hdr-l">
@@ -35,7 +38,7 @@ async function main() {
   const sidebar=new Sidebar(document.getElementById('sb-inner'),chart,api,config,localTimezone);
   sidebar.onTimezoneChange=tz=>{
     chartTz=tz;
-    chart.setTimezone(tz);
+    chart._setTimezone(tz);
   };
   new Search(document.getElementById('search-in'),document.getElementById('search-res'),chart,api);
   const willLoad = urlLoaded || !!(config?.tracked?.[0]);

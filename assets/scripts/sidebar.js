@@ -1,10 +1,11 @@
 import {toast,confirm,deny} from './message.js';
-import {settingsIcon,codeIcon} from './svg.js';
+import {settingsIcon,codeIcon,miniAppsIcon} from './svg.js';
 import {Chart,INTERVALS} from './chart.js';
 import {Exporter} from './export.js';
 import {Editor} from './editor.js';
 import {tooltip} from './tooltip.js';
 import {Settings} from './settings.js';
+import {storage} from './storage.js';
 export class Sidebar {
   constructor(container,chart,api,config,localTimezone){
     this.el=container;this.chart=chart;this.api=api;this.config=config;
@@ -44,21 +45,23 @@ export class Sidebar {
     if(this.onTimezoneChange) this.onTimezoneChange(this._chartTz);
   }
   _restoreChartPrefs(){
-    const mode=localStorage.getItem('chart_mode');
-    const field=localStorage.getItem('chart_field');
-    const vol=localStorage.getItem('chart_vol');
+    const mode=storage.getChartMode();
+    const field=storage.getChartField();
+    const vol=storage.getChartVol();
     if(mode) this.chart._setMode(mode);
     if(field) this.chart._setField(field);
     if(vol) this.chart._setVolMode(vol);
   }
   _handleOutsideClick(e){
     if(!this.open) return;
+    if(storage.getSidebarSticky()) return;
+    if(e.target.closest('#export-table-overlay')) return;
     const sidebarEl=document.getElementById('sidebar');
     const toggleBtn=document.getElementById('sb-toggle');
     if(!sidebarEl.contains(e.target)&&!toggleBtn?.contains(e.target)) this.toggle();
   }
   _handleKeydown(e){
-    if(e.key==='Escape'&&this.open) this.toggle();
+    if(e.key==='Escape'&&this.open&&!storage.getSidebarSticky()) this.toggle();
   }
   toggle(){
     this.open=!this.open;

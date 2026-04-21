@@ -1,19 +1,21 @@
 import {toast} from './message.js';
 export function initUrlState(chart){
-  const q=location.search.slice(1);
+  const q = location.search.slice(1);
   if(q){
-    const [sym,int]=q.split('=');
+    const [symRaw,intRaw] = q.split('&');
+    const sym = decodeURIComponent(symRaw || '');
+    const int = decodeURIComponent(intRaw || '');
     chart._chartOn('load',({sym,int})=>{
-      const u=new URL(location.href);
-      u.search=`?${sym}=${int}`;
+      const u = new URL(location.href);
+      u.search = `?${encodeURIComponent(sym)}&${encodeURIComponent(int)}`;
       history.replaceState(null,'',u);
     });
-    chart.load(sym,int||chart._currentInterval);
+    chart.load(sym, int || chart._currentInterval);
     return true;
   }
   chart._chartOn('load',({sym,int})=>{
-    const u=new URL(location.href);
-    u.search=`?${sym}=${int}`;
+    const u = new URL(location.href);
+    u.search = `?${encodeURIComponent(sym)}&${encodeURIComponent(int)}`;
     history.replaceState(null,'',u);
   });
   return false;
