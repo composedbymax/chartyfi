@@ -7,6 +7,7 @@ import {Tools} from './tools.js';
 import {localTimezone,offsetMinutesForZone} from './timezone.js';
 import {initEmptyState} from './emptyState.js';
 import {storage} from './storage.js';
+import {AutoFetch,autofetchEnabled} from './autofetch.js';
 const _t=storage.getTheme();
 if(_t) document.documentElement.setAttribute('data-theme',_t);
 document.getElementById('app').innerHTML=`
@@ -37,6 +38,7 @@ async function main() {
   let chartTz='UTC';
   const chart=new Chart(document.getElementById('chart-wrap'),api,chartTz);
   const tools=new Tools(document.getElementById('tools-wrap'),chart,api,{visible:storage.getTools()});
+  const af=new AutoFetch(chart);autofetchEnabled._inst=af;
   window.addEventListener('toolsVisibility',e=>{tools.setVisible(e.detail);chart._forceResize();});
   const urlLoaded=initUrlState(chart);
   const sidebar=new Sidebar(document.getElementById('sb-inner'),chart,api,config,localTimezone);

@@ -112,20 +112,20 @@ export class Chart {
     this._emit('dataChanged', {sym: this.sym,int: this.int,count: this._data.length});
     this._emit('load', { sym, int: this.int, count: this._data.length });
   }
-  async _extendBefore(bars) {
-    const step = INTERVALS_S[this.int] || 86400;
-    const firstTs = this._data[0]?.time ?? this._p1;
-    const p2 = firstTs;
-    const p1 = p2 - bars * step;
-    const res = await this.api._chartData(this.sym, this.int, p1, p2);
-    if(res.error){toast(res.error,'error');return}
-    if(!res.candles?.length){toast('No more data available','warn');return}
-    const existing = new Set(this._data.map(c => c.time));
-    const fresh = res.candles.filter(c => !existing.has(c.time));
-    if(!fresh.length){toast('No new data available','warn');return}
-    this._data = [...fresh, ...this._data];
-    this._p1 = Math.min(this._p1, res.p1);
+  async _extendBefore(bars,silent=false) {
+    const step=INTERVALS_S[this.int]||86400;
+    const firstTs=this._data[0]?.time??this._p1;
+    const p2=firstTs;const p1=p2-bars*step;
+    const res=await this.api._chartData(this.sym,this.int,p1,p2);
+    if(res.error){toast(res.error,'error');return 0}
+    if(!res.candles?.length){if(!silent)toast('No more data available','warn');return 0}
+    const existing=new Set(this._data.map(c=>c.time));
+    const fresh=res.candles.filter(c=>!existing.has(c.time));
+    if(!fresh.length){if(!silent)toast('No new data available','warn');return 0}
+    this._data=[...fresh,...this._data];
+    this._p1=Math.min(this._p1,res.p1);
     this._apply();
+    return fresh.length;
   }
   async _extendAfter(bars) {
     const step = INTERVALS_S[this.int] || 86400;
