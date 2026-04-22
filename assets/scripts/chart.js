@@ -12,9 +12,9 @@ function _chartOpts(){
   return {
     layout:{background:{type:'solid',color:v('--bg')},textColor:v('--text2')},
     grid:{vertLines:{color:v('--bg3')},horzLines:{color:v('--bg3')}},
-    timeScale:{timeVisible:true,secondsVisible:false,borderColor:v('--border')},
-    rightPriceScale:{borderColor:v('--border')},
-    crosshair:{vertLine:{color:v('--border2')},horzLine:{color:v('--border2')}},
+    timeScale:{timeVisible:true,secondsVisible:false,borderColor:v('--bg5')},
+    rightPriceScale:{borderColor:v('--bg5')},
+    crosshair:{vertLine:{color:v('--bg52')},horzLine:{color:v('--bg52')}},
     handleScroll:true,handleScale:true
   };
 }
@@ -169,4 +169,6 @@ export class Chart {
   _emit(evt,data){this._listeners.filter(l=>l.evt===evt).forEach(l=>l.fn(data))}
   buy(time) { this._emit('trade',{type:'buy',time}) }
   sell(time) { this._emit('trade',{type:'sell',time}) }
+  fitContent(){this._chart?.timeScale().fitContent()}
+  scrollToRealTime(){this._chart?.timeScale().scrollToRealTime()}
 }

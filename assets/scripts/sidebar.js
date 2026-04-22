@@ -1,5 +1,5 @@
 import {toast,confirm,deny} from './message.js';
-import {settingsIcon,codeIcon,miniAppsIcon} from './svg.js';
+import {settingsIcon,codeIcon} from './svg.js';
 import {Chart,INTERVALS} from './chart.js';
 import {Exporter} from './export.js';
 import {Editor} from './editor.js';
@@ -138,11 +138,12 @@ export class Sidebar {
     const grid=document.createElement('div');grid.className='tf-grid';
     grid.innerHTML=INTERVALS.map(i=>`<button class="tf-btn${this.chart._currentInterval===i?' active':''}" data-int="${i}">${i}</button>`).join('');
     grid.querySelectorAll('.tf-btn').forEach(b=>{
-      b.onclick=()=>{
-        grid.querySelectorAll('.tf-btn').forEach(x=>x.classList.remove('active'));
+      b.onclick = () => {
+        grid.querySelectorAll('.tf-btn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
-        const sym=this.chart._currentSymbol;
-        if(sym) this.chart.load(sym,b.dataset.int);
+        const sym = this.chart._currentSymbol;
+        if (sym) {this.chart.load(sym, b.dataset.int);} 
+        else {this.chart.int = b.dataset.int;}
       };
     });
     this.el.appendChild(grid);

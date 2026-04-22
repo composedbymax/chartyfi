@@ -1,7 +1,8 @@
 import {toast,deny} from './message.js';
 import {storage} from './storage.js';
 import {tooltip} from './tooltip.js';
-import {nonStickyIcon,stickyIcon,sunIcon,moonIcon} from './svg.js';
+import {toolsVisibility} from './tools.js';
+import {nonStickyIcon,stickyIcon,sunIcon,moonIcon,toolsIcon} from './svg.js';
 export class Settings {
   constructor(chart,api,config,localTz,{onTzChange,onRerender}){
     this.chart=chart;
@@ -39,6 +40,7 @@ export class Settings {
       ['Toasts',    storage.getToasts(),          '✓', '✕', 'Show toast notifications',                  v=>storage.setToasts(v)],
       ['Tooltips',  storage.getTooltips(),         '?', '✕', 'Show hover tooltips',                       v=>storage.setTooltips(v)],
       ['Sticky Sidebar', storage.getSidebarSticky(), stickyIcon({className:'icon'}), nonStickyIcon({className:'icon'}), 'Sidebar stays open when clicking outside', v=>storage.setSidebarSticky(v)],
+      ['Tools Bar',storage.getTools(),toolsIcon({className:'icon'}),'✕','Show chart tools column',v=>{storage.setTools(v);toolsVisibility.set(v)}],
       ['Light Mode', isLight, sunIcon({className:'icon'}), moonIcon({className:'icon'}), 'Toggle light/dark theme', v=>{
         const t=v?'light':'dark';
         storage.setTheme(t);

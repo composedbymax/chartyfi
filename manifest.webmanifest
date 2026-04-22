@@ -1,10 +1,10 @@
 {
-  "name": "MW – Chart",
+  "name": "Charting App",
   "short_name": "Chart",
   "description": "Chart",
-  "start_url": "/chart/?source=pwa",
+  "start_url": "/chart/",
   "scope": "/chart/",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#000000",

@@ -1,4 +1,4 @@
-const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,theme:null,chart_mode:null,chart_field:null,chart_vol:null};
+const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,tools_bar:true,theme:null,chart_mode:null,chart_field:null,chart_vol:null};
 function read(key){
   const v=localStorage.getItem(key);
   if(v===null||v==='null') return DEFAULTS[key]??null;
@@ -17,6 +17,8 @@ export const storage={
   setTooltips:v=>write('tooltips',v),
   getSidebarSticky:()=>read('sidebar_sticky'),
   setSidebarSticky:v=>write('sidebar_sticky',v),
+  getTools:()=>read('tools_bar'),
+  setTools:v=>write('tools_bar',v),
   getTheme:()=>read('theme'),
   setTheme:v=>write('theme',v),
   getChartMode:()=>read('chart_mode'),

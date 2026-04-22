@@ -2,11 +2,13 @@ import { toast, confirm, deny } from './message.js';
 import { createExplorePanel, createShareModal } from './editorShare.js';
 import { codeIcon } from './svg.js';
 import { tooltip } from './tooltip.js';
+import { runBacktest } from './backtester.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
 const HELP_CACHE_KEY='editor-help-content';
 const HELP_JSON_URL='././api/editorHelp.json';
+const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 function openDB(){
   return new Promise((res,rej)=>{
     const req=indexedDB.open(DB_NAME,DB_VER);
@@ -75,8 +77,8 @@ function rawPaneOf(pf) {
 function nextFreePaneBase(indicatorGroups) {
   let next = 1;
   for (const g of indicatorGroups) {
-    if (g.paneBase != null) {
-      next = Math.max(next, g.paneBase + g.panesUsed);
+    if (g._paneBase != null) {
+      next = Math.max(next, g._paneBase + g._panesUsed);
     }
   }
   return next;
@@ -86,19 +88,19 @@ function buildPaneResolver(plotFns, indicatorGroups) {
   const subPanes = rawPanes.filter(p => p > 0);
   if (!subPanes.length) {
     return {
-      resolvePane: pf => rawPaneOf(pf),
-      paneBase: null,
-      panesUsed: 0,
+      _resolvePane: pf => rawPaneOf(pf),
+      _paneBase: null,
+      _panesUsed: 0,
     };
   }
-  const paneBase = nextFreePaneBase(indicatorGroups);
-  const panesUsed = Math.max(...subPanes);
-  const resolvePane = pf => {
+  const _paneBase = nextFreePaneBase(indicatorGroups);
+  const _panesUsed = Math.max(...subPanes);
+  const _resolvePane = pf => {
     const raw = rawPaneOf(pf);
     if (raw === 0) return 0;
-    return paneBase + (raw - 1);
+    return _paneBase + (raw - 1);
   };
-  return { resolvePane, paneBase, panesUsed };
+  return { _resolvePane, _paneBase, _panesUsed };
 }
 export class Editor{
   constructor(container,chart){
@@ -116,6 +118,7 @@ export class Editor{
     this._rendered=false;
     this._shareUi=null;
     this._exploreUi=null;
+    this._running=false;
     this.chart._chartOn('dataChanged', () => this._refreshIndicators());
   }
   _setHelpVisible(v){
@@ -164,6 +167,21 @@ export class Editor{
         helpArea.innerHTML=`<p class="ed-help-error">Failed to load help content. ${err.message}</p>`;
       });
   }
+  _showBtProgress(pct, label) {
+    const wrap  = this.el.querySelector('#ed-bt-progress');
+    const bar   = this.el.querySelector('#ed-bt-bar');
+    const lbl   = this.el.querySelector('#ed-bt-label');
+    if (!wrap) return;
+    wrap.classList.remove('hidden');
+    if (bar) bar.style.width = Math.min(100, pct).toFixed(1) + '%';
+    if (lbl) lbl.textContent = label || `Backtesting… ${pct.toFixed(0)}%`;
+  }
+  _hideBtProgress() {
+    const wrap = this.el.querySelector('#ed-bt-progress');
+    if (wrap) wrap.classList.add('hidden');
+    const bar = this.el.querySelector('#ed-bt-bar');
+    if (bar) bar.style.width = '0%';
+  }
   _render(){
     this._rendered=true;
     this.el.innerHTML='';
@@ -199,16 +217,26 @@ export class Editor{
     ta.id='ed-code';
     ta.spellcheck=false;
     ta.value=this._code;
-    ta.placeholder='// Write indicator logic here\n// Access: bars, plot(), plotHist(), plotBand()';
+    ta.placeholder='// Write indicator logic here\n// Access: bars, plot(), plotHist(), plotBand(), plotLabel()\n// Async supported: await backtest({ strategy, params })';
     codeArea.appendChild(ta);
     this.el.appendChild(codeArea);
     const runRow=document.createElement('div');
     runRow.className='ed-run-row';
-    runRow.innerHTML=`<button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button><button class="btn-sm" id="ed-update">↺ Update</button><button class="btn-sm" id="ed-clear">Clear All</button>`;
+    runRow.innerHTML=`
+      <button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button>
+      <button class="btn-sm" id="ed-update">↺ Update</button>
+      <button class="btn-sm" id="ed-clear">Clear All</button>`;
     tooltip(runRow.querySelector('#ed-run'), 'Run indicator');
     tooltip(runRow.querySelector('#ed-update'), 'Update chart');
     tooltip(runRow.querySelector('#ed-clear'), 'Clear all indicators');
     this.el.appendChild(runRow);
+    const btProgress=document.createElement('div');
+    btProgress.id='ed-bt-progress';
+    btProgress.className='ed-bt-progress hidden';
+    btProgress.innerHTML=`
+      <div class="ed-bt-track"><div class="ed-bt-bar" id="ed-bt-bar"></div></div>
+      <span class="ed-bt-label" id="ed-bt-label">Backtesting...</span>`;
+    this.el.appendChild(btProgress);
     const indicatorList=document.createElement('div');
     indicatorList.className='ed-indicator-list';
     indicatorList.id='ed-indicator-list';
@@ -233,9 +261,10 @@ export class Editor{
     if(name) name.value=this._snippetName;
     if(sel) sel.value='';
     toast(item.description||item.name||'Untitled','info',6000);
-    this._run();
-    const last=this._indicatorGroups[this._indicatorGroups.length-1];
-    if(last){ this._editingGroupId=last.id; this._renderIndicatorList(); }
+    this._run().then(()=>{
+      const last=this._indicatorGroups[this._indicatorGroups.length-1];
+      if(last){ this._editingGroupId=last.id; this._renderIndicatorList(); }
+    });
   }
   async _populateSnippets(){
     const sel=this.el.querySelector('#ed-snippets');
@@ -422,7 +451,7 @@ export class Editor{
       rows.push(row);
     });
   }
-  _update(){
+  async _update(){
     if(!this._editingGroupId){
       toast('No indicator selected','warn');
       return;
@@ -436,13 +465,13 @@ export class Editor{
     const old=this._indicatorGroups[idx];
     old.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
     this._indicatorGroups.splice(idx,1);
-    this._run();
+    await this._run();
     if(this._indicatorGroups.length){
       this._editingGroupId=this._indicatorGroups[this._indicatorGroups.length-1].id;
       this._renderIndicatorList();
     }
   }
-  _refreshIndicators() {
+  async _refreshIndicators() {
     if (!this._indicatorGroups.length) return;
     const groups = [...this._indicatorGroups];
     const selectedIndex = groups.findIndex(g => g.id === this._editingGroupId);
@@ -460,7 +489,7 @@ export class Editor{
     for (const g of groups) {
       this._snippetName = g.name;
       this._code = g.code || '';
-      this._run(true);
+      await this._run(true);
     }
     this._code = savedCode;
     this._snippetName = savedName;
@@ -472,35 +501,64 @@ export class Editor{
     }
     this._renderIndicatorList();
   }
-  _run(silent = false) {
+  async _run(silent = false) {
+    if (this._running) {
+      if (!silent) toast('Already running…', 'warn');
+      return;
+    }
+    this._running = true;
+    const runBtn = this.el.querySelector('#ed-run');
+    if (runBtn) { runBtn.disabled = true; runBtn.textContent = 'Running'; }
+    try {
+      await this._runInner(silent);
+    } finally {
+      this._running = false;
+      this._hideBtProgress();
+      if (runBtn) { runBtn.disabled = false; runBtn.textContent = '▶ Run'; }
+    }
+  }
+  async _runInner(silent = false) {
     const bars = this.chart._getCurrentData();
     if (!bars.length) {
       if (!silent) deny('No chart data available');
       return;
     }
     const plotFns = [];
-    const trades = [];
-    const findBar = time => bars.find(b => b.time === time) || null;
+    const trades  = [];
+    const findBar  = time => bars.find(b => b.time === time) || null;
     const normTrade = (type, time, price) => {
       const bar = findBar(time);
-      const px = price != null ? price : (bar ? bar.close : null);
+      const px  = price != null ? price : (bar ? bar.close : null);
       if (time == null || px == null) return;
       trades.push({ type, time, price: px });
     };
-    const plot = (label, data, opts = {}) => plotFns.push({ type: 'line', label, data, opts });
-    const plotHist = (label, data, opts = {}) => plotFns.push({ type: 'hist', label, data, opts });
-    const plotBand = (label, upper, lower, opts = {}) => plotFns.push({ type: 'band', label, upper, lower, opts });
-    const plotDot = (label, data, opts = {}) => plotFns.push({ type: 'dot', label, data, opts });
-    const plotArea = (label, data, opts = {}) => plotFns.push({ type: 'area', label, data, opts });
+    const plot       = (label, data, opts = {}) => plotFns.push({ type: 'line',   label, data, opts });
+    const plotHist   = (label, data, opts = {}) => plotFns.push({ type: 'hist',   label, data, opts });
+    const plotBand   = (label, upper, lower, opts = {}) => plotFns.push({ type: 'band',  label, upper, lower, opts });
+    const plotDot    = (label, data, opts = {}) => plotFns.push({ type: 'dot',    label, data, opts });
+    const plotArea   = (label, data, opts = {}) => plotFns.push({ type: 'area',   label, data, opts });
     const plotCandle = (label, data, opts = {}) => plotFns.push({ type: 'candle', label, data, opts });
-    const buy = (time, price) => normTrade('buy', time, price);
-    const sell = (time, price) => normTrade('sell', time, price);
+    const plotLabel  = (label, data, opts = {}) => plotFns.push({ type: 'label',  label, data, opts });
+    const buy        = (time, price) => normTrade('buy',  time, price);
+    const sell       = (time, price) => normTrade('sell', time, price);
+    const backtest = (opts) => {
+      return runBacktest({
+        ...opts,
+        bars,
+        onProgress: (pct, done, total) => {
+          this._showBtProgress(pct, `Backtesting... ${done}/${total} (${pct.toFixed(0)}%)`);
+          if (opts.onProgress) opts.onProgress(pct, done, total);
+        },
+      });
+    };
     try {
-      const fn = new Function(
-        'bars', 'plot', 'plotHist', 'plotBand', 'plotDot', 'plotArea', 'plotCandle', 'buy', 'sell',
+      const fn = new AsyncFunction(
+        'bars', 'plot', 'plotHist', 'plotBand', 'plotDot', 'plotArea', 'plotCandle',
+        'plotLabel',
+        'buy', 'sell', 'backtest',
         this._code
       );
-      fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, buy, sell);
+      await fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, buy, sell, backtest);
     } catch (err) {
       if (!silent) deny('Error: ' + err.message);
       return;
@@ -517,21 +575,21 @@ export class Editor{
     if (trades.length && typeof this.chart.setTrades === 'function') {
       this.chart.setTrades(trades);
     }
-    const groupColor = plotFns[0]?.opts?.color || plotFns[0]?.opts?.upColor || '#a78bfa';
-    const groupId = ++this._groupCounter;
-    const groupName = this._snippetName.trim() || `Run ${groupId}`;
+    const groupColor  = plotFns[0]?.opts?.color || plotFns[0]?.opts?.upColor || '#a78bfa';
+    const groupId     = ++this._groupCounter;
+    const groupName   = this._snippetName.trim() || `Run ${groupId}`;
     const groupSeries = [];
-    const { resolvePane, paneBase, panesUsed } = buildPaneResolver(plotFns, this._indicatorGroups);
+    const { _resolvePane, _paneBase, _panesUsed } = buildPaneResolver(plotFns, this._indicatorGroups);
     plotFns.forEach(pf => {
       try {
-        const pane = resolvePane(pf);
+        const pane = _resolvePane(pf);
         let s = null;
         if (pf.type === 'line') {
           s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
-            color: pf.opts.color || '#a78bfa',
+            color:     pf.opts.color     || '#a78bfa',
             lineWidth: pf.opts.lineWidth || 2,
             lineStyle: pf.opts.lineStyle || 0,
-            title: pf.label
+            title:     pf.label
           }, pane);
           s.setData(pf.data);
         } else if (pf.type === 'hist') {
@@ -541,7 +599,7 @@ export class Editor{
           }, pane);
           s.setData(pf.data);
         } else if (pf.type === 'band') {
-          const c = pf.opts.color || '#a78bfa';
+          const c  = pf.opts.color || '#a78bfa';
           const su = this.chart._chart.addSeries(LightweightCharts.LineSeries, { color: c, lineWidth: 1, title: pf.label + ' U' }, pane);
           const sl = this.chart._chart.addSeries(LightweightCharts.LineSeries, { color: c, lineWidth: 1, title: pf.label + ' L' }, pane);
           su.setData(pf.upper);
@@ -549,35 +607,56 @@ export class Editor{
           groupSeries.push(su, sl);
         } else if (pf.type === 'dot') {
           s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
-            color: pf.opts.color || '#f59e0b',
-            lineVisible: false,
-            pointMarkersVisible: true,
-            lastValueVisible: false,
-            priceLineVisible: false,
-            crosshairMarkerVisible: false,
-            title: pf.label
+            color:                   pf.opts.color || '#f59e0b',
+            lineVisible:             false,
+            pointMarkersVisible:     true,
+            lastValueVisible:        false,
+            priceLineVisible:        false,
+            crosshairMarkerVisible:  false,
+            title:                   pf.label
           }, pane);
           s.setData(pf.data);
         } else if (pf.type === 'area') {
           s = this.chart._chart.addSeries(LightweightCharts.AreaSeries, {
-            lineColor: pf.opts.color || '#a78bfa',
-            topColor: pf.opts.topColor || 'rgba(167,139,250,0.35)',
-            bottomColor: pf.opts.bottomColor || 'rgba(167,139,250,0.02)',
-            lineWidth: pf.opts.lineWidth || 2,
-            title: pf.label
+            lineColor:   pf.opts.color      || '#a78bfa',
+            topColor:    pf.opts.topColor   || 'rgba(167,139,250,0.35)',
+            bottomColor: pf.opts.bottomColor|| 'rgba(167,139,250,0.02)',
+            lineWidth:   pf.opts.lineWidth  || 2,
+            title:       pf.label
           }, pane);
           s.setData(pf.data);
         } else if (pf.type === 'candle') {
           s = this.chart._chart.addSeries(LightweightCharts.CandlestickSeries, {
-            upColor: pf.opts.upColor || '#22c55e',
-            downColor: pf.opts.downColor || '#ef4444',
-            borderUpColor: pf.opts.upColor || '#22c55e',
-            borderDownColor: pf.opts.downColor || '#ef4444',
-            wickUpColor: pf.opts.upColor || '#22c55e',
-            wickDownColor: pf.opts.downColor || '#ef4444',
-            title: pf.label
+            upColor:        pf.opts.upColor   || '#22c55e',
+            downColor:      pf.opts.downColor || '#ef4444',
+            borderUpColor:  pf.opts.upColor   || '#22c55e',
+            borderDownColor:pf.opts.downColor || '#ef4444',
+            wickUpColor:    pf.opts.upColor   || '#22c55e',
+            wickDownColor:  pf.opts.downColor || '#ef4444',
+            title:          pf.label
           }, pane);
           s.setData(pf.data);
+        } else if (pf.type === 'label') {
+          s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
+            lineVisible:            false,
+            pointMarkersVisible:    false,
+            lastValueVisible:       false,
+            priceLineVisible:       false,
+            crosshairMarkerVisible: false,
+            title:                  ''
+          }, pane);
+          s.setData(pf.data.map(d => ({ time: d.time, value: d.value })));
+          const markers = pf.data
+            .filter(d => d.text != null)
+            .map(d => ({
+              time:     d.time,
+              position: d.position || pf.opts.position || 'aboveBar',
+              color:    d.color    || pf.opts.color    || '#e2e8f0',
+              shape:    d.shape    || pf.opts.shape    || 'circle',
+              text:     String(d.text),
+              size:     d.size     || pf.opts.size     || 1,
+            }));
+          if (markers.length) LightweightCharts.createSeriesMarkers(s, markers);
         }
         if (s) groupSeries.push(s);
       } catch (e) {
@@ -592,8 +671,8 @@ export class Editor{
         series: groupSeries,
         plotFns,
         code: this._code,
-        paneBase,
-        panesUsed,
+        _paneBase,
+        _panesUsed,
       });
       this._editingGroupId = groupId;
       if (!silent) {

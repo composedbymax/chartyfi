@@ -3,6 +3,7 @@ import {ApiClient} from './apiClient.js';
 import {Chart} from './chart.js';
 import {Search,initUrlState} from './search.js';
 import {Sidebar} from './sidebar.js';
+import {Tools} from './tools.js';
 import {localTimezone,offsetMinutesForZone} from './timezone.js';
 import {initEmptyState} from './emptyState.js';
 import {storage} from './storage.js';
@@ -25,8 +26,9 @@ document.getElementById('app').innerHTML=`
   </div>
 </header>
 <div id="body-wrap">
-  <aside id="sidebar"><div id="sb-inner"></div></aside>
+  <aside id="tools-wrap"><div id="tools-inner"></div></aside>
   <div id="chart-wrap"></div>
+  <aside id="sidebar"><div id="sb-inner"></div></aside>
 </div>`;
 async function main() {
   initMessage();
@@ -34,6 +36,8 @@ async function main() {
   const config=await api._userConfig().catch(()=>({}));
   let chartTz='UTC';
   const chart=new Chart(document.getElementById('chart-wrap'),api,chartTz);
+  const tools=new Tools(document.getElementById('tools-wrap'),chart,api,{visible:storage.getTools()});
+  window.addEventListener('toolsVisibility',e=>{tools.setVisible(e.detail);chart._forceResize();});
   const urlLoaded=initUrlState(chart);
   const sidebar=new Sidebar(document.getElementById('sb-inner'),chart,api,config,localTimezone);
   sidebar.onTimezoneChange=tz=>{

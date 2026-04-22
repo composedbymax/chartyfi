@@ -49,10 +49,10 @@ function doChartData() {
   $range=getCachedRange($pdo,$sym,$int);
   $mn=(int)($range['mn']??0);$mx=(int)($range['mx']??0);
   if(!$mn) {
-    storeCandles($pdo,$sym,$int,fetchYahoo($sym,$int,$p1,min($p2,time())));
+    storeCandles($pdo,$sym,$int,fetchYahoo($sym,$int,$p1,time()));
   } else {
     if($p1<$mn) storeCandles($pdo,$sym,$int,fetchYahoo($sym,$int,$p1,min($mn-1,$p2)));
-    if($p2>$mx) storeCandles($pdo,$sym,$int,fetchYahoo($sym,$int,max($mx+1,$p1),min($p2,time())));
+    if($p2>$mx) {$sec=intervalSeconds($int);$fetchFrom=$sec>0?max($mx-$sec*5,1):max($mx+1,1);storeCandles($pdo,$sym,$int,fetchYahoo($sym,$int,$fetchFrom,time()));}
   }
   $data=getCachedCandles($pdo,$sym,$int,$p1,$p2);
   if($limit!==null&&count($data)>$limit) {

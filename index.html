@@ -10,18 +10,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <title>MW - Chart</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Intraday Chart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+    <meta name="description" content="Chart App using tradingview lightweight charts and yahoo finance data">
+    <meta name="keywords" content="market, data, view, crypto">
+    <meta name="author" content="Max Warren">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#101010">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta property="og:title" content="Chart App">
+    <meta property="og:site_name" content="Chart App">
+    <meta property="og:description" content="Chart App using tradingview lightweight charts and yahoo finance data">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:url" content="https://max.x10.mx/chart">
+    <meta property="og:image" content="https://max.x10.mx/_assets/img/chart.webp">
+    <meta name="twitter:image" content="https://max.x10.mx/_assets/img/chart.webp">
+    <meta name="twitter:site" content="@composedbymax">
+    <meta name="twitter:creator" content="@composedbymax">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Chart App">
+    <meta name="twitter:description" content="Chart App using tradingview lightweight charts and yahoo finance data">
+    <meta name="color-scheme" content="dark light">
+    <meta name="supported-color-schemes" content="dark light">
+    <meta name="application-name" content="Chart App">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="handheldfriendly" content="true">
+    <meta name="mobileoptimized" content="width">
+    <meta name="format-detection" content="telephone=no,email=no,address=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Chart App">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/_assets/img/icon/data-icon-192.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="canonical" href="https://max.x10.mx/chart/">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    <meta http-equiv="Permissions-Policy" content="geolocation=(), camera=(), microphone=(), fullscreen=(self)">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains; preload">
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Chart App","description":"Chart App using tradingview lightweight charts and yahoo finance data","applicationCategory":"FinanceApplication","operatingSystem":"Web"}</script>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="preload" href="assets/scripts/api.js" as="script">
     <script src ="assets/scripts/api.js"></script>
     <script src="/_assets/auth/check.js.php"></script>
     <script src="assets/scripts/libs/lightweight-charts.standalone.production.js"></script>
-    <link rel="manifest" href="manifest.webmanifest">
 </head>
     <body>
         <div id="app"></div>
-        <script type="module" src="assets/scripts/app.js"></script>
+        <script type="module" src="assets/scripts/app.bundled.js"></script>
     </body>
 </html>
