@@ -14,7 +14,7 @@ function _chartOpts(){
     grid:{vertLines:{color:v('--bg3')},horzLines:{color:v('--bg3')}},
     timeScale:{timeVisible:true,secondsVisible:false,borderColor:v('--bg5')},
     rightPriceScale:{borderColor:v('--bg5')},
-    crosshair:{vertLine:{color:v('--bg52')},horzLine:{color:v('--bg52')}},
+    crosshair:{vertLine:{color:v('--bg5')},horzLine:{color:v('--bg5')}},
     handleScroll:true,handleScale:true
   };
 }
@@ -169,6 +169,6 @@ export class Chart {
   _emit(evt,data){this._listeners.filter(l=>l.evt===evt).forEach(l=>l.fn(data))}
   buy(time) { this._emit('trade',{type:'buy',time}) }
   sell(time) { this._emit('trade',{type:'sell',time}) }
-  fitContent(){this._chart?.timeScale().fitContent()}
+  fitContent(){this._chart?.timeScale().fitContent();this._chart?.priceScale('right')?.applyOptions({autoScale:true});}
   scrollToRealTime(){this._chart?.timeScale().scrollToRealTime()}
 }

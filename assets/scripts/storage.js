@@ -1,4 +1,4 @@
-const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,tools_bar:true,theme:null,chart_mode:null,chart_field:null,chart_vol:null,autofetch:false};
+const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,tools_bar:true,theme:null,chart_mode:null,chart_field:null,chart_vol:null,autofetch:false,link:null,cycles_api_key:null,chart_timezone:'UTC'};
 function read(key){
   const v=localStorage.getItem(key);
   if(v===null||v==='null') return DEFAULTS[key]??null;
@@ -29,4 +29,10 @@ export const storage={
   setChartField:v=>write('chart_field',v),
   getChartVol:()=>read('chart_vol'),
   setChartVol:v=>write('chart_vol',v),
+  getLink:()=>read('link'),
+  setLink:v=>write('link',v),
+  getApiKey:()=>read('cycles_api_key'),
+  setApiKey:v=>write('cycles_api_key',v),
+  getChartTz:()=>read('chart_timezone'),
+  setChartTz:v=>write('chart_timezone',v),
 };

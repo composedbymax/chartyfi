@@ -32,7 +32,7 @@ export class Tools{
     this.chartWrap.appendChild(this.canvas);
     this.tools=[
       {id:'cursor',name:'Cursor',tip:'Default cursor',icon:cursorIcon,group:'cursor',mode:true,action:()=>this._setMode('cursor')},
-      {id:'crosshair',name:'Crosshair',tip:'Crosshair cursor',icon:crosshairIcon,group:'cursor',mode:true,action:()=>this._setMode('crosshair')},
+      {id:'crosshair',name:'Crosshair',tip:'Crosshair cursor',icon:crosshairIcon,group:'cursor',mobileGroup:'single',mobileGroupTool:'crosshair',mode:true,action:()=>this._setMode('crosshair')},
       {id:'select',name:'Select',tip:'Select & move',icon:moveIcon,mode:true,action:()=>this._setMode('select')},
       {id:'brush',name:'Brush',tip:'Brush tool',icon:penIcon,mode:true,action:()=>this._setMode('brush')},
       {id:'trend',name:'Trend',tip:'Trend line tool',icon:trendlineIcon,mode:true,action:()=>this._setMode('trend')},
@@ -49,6 +49,16 @@ export class Tools{
     this._setMode(visible?this.mode:'cursor',true);
     this.setVisible(visible);
   }
+  _groupMeta(groupId){
+    const tools=this.tools.filter(t=>t.group===groupId);
+    let mobileGroup='group';
+    let mobileTool=null;
+    for(const t of tools){
+      if(t.mobileGroup!=null)mobileGroup=t.mobileGroup;
+      if(t.mobileGroupTool)mobileTool=t.mobileGroupTool;
+    }
+    return {tools,mobileGroup,mobileTool};
+  }
   _render(){
     if(this._groupPopouts){
       Object.values(this._groupPopouts).forEach(g=>g.popout.remove());
@@ -64,12 +74,15 @@ export class Tools{
       if(tool.group){
         if(seen.has(tool.group))return;
         seen.add(tool.group);
-        if(!isMobile){
-          list.appendChild(this._groupBtn(tool.group,this.tools.filter(t=>t.group===tool.group)));
-        }
-      }else{
-        list.appendChild(this._btn(tool));
-      }
+        const meta=this._groupMeta(tool.group);
+        const {tools,mobileGroup,mobileTool}=meta;
+        if(isMobile){
+          if(mobileGroup==='single'){
+            const active=tools.find(t=>t.id===mobileTool)||tools[0];
+            if(active)list.appendChild(this._btn(active));}
+          else{list.appendChild(this._groupBtn(tool.group,tools));}}
+        else{list.appendChild(this._groupBtn(tool.group,tools));}}
+      else{list.appendChild(this._btn(tool));}
     });
     panel.append(list);
     this.inner.appendChild(panel);
@@ -265,7 +278,11 @@ export class Tools{
     const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/lenSq));
     return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
   }
+  _handleMetrics(){
+    return isMobile?{r:9,hit:14}:{r:5,hit:8};
+  }
   _hitTestDrawing(d,x,y){
+    const m=this._handleMetrics();
     if(d.type==='brush'){
       const xy=d.points.map(p=>this._xy(p)).filter(Boolean);
       for(let i=0;i<xy.length-1;i++){
@@ -276,8 +293,8 @@ export class Tools{
     const p1=this._xy(d.a);
     const p2=this._xy(d.b);
     if(!p1||!p2)return null;
-    if(Math.hypot(x-p1.x,y-p1.y)<8)return 'a';
-    if(Math.hypot(x-p2.x,y-p2.y)<8)return 'b';
+    if(Math.hypot(x-p1.x,y-p1.y)<m.hit)return 'a';
+    if(Math.hypot(x-p2.x,y-p2.y)<m.hit)return 'b';
     if(this._distToSegment(x,y,p1.x,p1.y,p2.x,p2.y)<6)return 'body';
     return null;
   }
@@ -346,7 +363,7 @@ export class Tools{
               const dx=x-this.dragState.startX;
               const dy=y-this.dragState.startY;
               if(d.type==='brush'){d.points=this.dragState.origXY.map(xy=>xy?this._pixelToPoint(xy.x+dx,xy.y+dy):null).filter(Boolean);}
-                else{const oa=this._xy(this.dragState.origA);const ob=this._xy(this.dragState.origB);
+              else{const oa=this._xy(this.dragState.origA);const ob=this._xy(this.dragState.origB);
                 if(oa&&ob){const na=this._pixelToPoint(oa.x+dx,oa.y+dy);const nb=this._pixelToPoint(ob.x+dx,ob.y+dy);
                   if(na&&nb){d.a=na;d.b=nb;}
                 }
@@ -580,13 +597,14 @@ export class Tools{
   }
   _drawSelectionHandles(ctx,s){
     const st=this._styles();
+    const {r}=this._handleMetrics();
     ctx.save();
     ctx.fillStyle=st.bg;
     ctx.strokeStyle=st.accent;
     ctx.lineWidth=1.5;
     const drawHandle=(x,y)=>{
       ctx.beginPath();
-      ctx.arc(x,y,5,0,Math.PI*2);
+      ctx.arc(x,y,r,0,Math.PI*2);
       ctx.fill();
       ctx.stroke();
     };
