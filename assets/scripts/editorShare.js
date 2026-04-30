@@ -1,4 +1,5 @@
 import { deny } from './message.js';
+import { storage } from './storage.js';
 const apiUrl=()=>window.EDS.api;
 const $=(tag,className='',text='')=>{
   const el=document.createElement(tag);
@@ -37,6 +38,12 @@ async function request(action,{method='GET',body=null}={}){
   }
   return apiReq(url,init);
 }
+function isDarkMode(){
+  const theme=storage.getTheme();
+  if(theme==='dark') return true;
+  if(theme==='light') return false;
+  return document.documentElement.classList.contains('dark')||window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
 export async function fetchPublicIndicators(offset=0,limit=4){
   return listPublicIndicators(offset,limit);
 }
@@ -68,8 +75,8 @@ export async function captureScreenshot(source,{maxWidth=1280,quality=0.82}={}){
   });
   return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Screenshot failed')),'image/jpeg',quality));
 }
-export async function saveSharedIndicator({name,description,code,image}){
-  return postForm('save',{name:name||'Untitled',description:description||'',code:code||'',image}).catch(e=>{throw e;});
+export async function saveSharedIndicator({name,description,code,image,isDark}){
+  return postForm('save',{name:name||'Untitled',description:description||'',code:code||'',isDark:isDark?'yes':'no',image}).catch(e=>{throw e;});
 }
 export function createShareModal({getSource}={}){
   const root=$('div','eds-share-modal hidden');
@@ -119,6 +126,7 @@ export function createShareModal({getSource}={}){
   let currentCode='';
   let currentBlob=null;
   let shotUrl='';
+  let shotIsDark=false;
   const setStatus=t=>{status.textContent=t||''};
   const setPreview=blob=>{
     if(shotUrl) URL.revokeObjectURL(shotUrl);
@@ -141,6 +149,7 @@ export function createShareModal({getSource}={}){
     try{
       const source=getSource&&getSource();
       const blob=await captureScreenshot(source||document.querySelector('.tv-lightweight-charts,#chart-wrap'));
+      shotIsDark=isDarkMode();
       setPreview(blob);
     }catch(e){
       setPreview(null);
@@ -149,7 +158,7 @@ export function createShareModal({getSource}={}){
   };
   const publish=async()=>{
     if(!currentBlob) throw new Error('Screenshot not ready');
-    const data=await saveSharedIndicator({name:nameIn.value.trim()||'Untitled',description:descIn.value.trim(),code:currentCode,image:currentBlob});
+    const data=await saveSharedIndicator({name:nameIn.value.trim()||'Untitled',description:descIn.value.trim(),code:currentCode,image:currentBlob,isDark:shotIsDark});
     closeModal();
     return data;
   };
@@ -168,27 +177,28 @@ export function createShareModal({getSource}={}){
   };
   return{root,open,close:closeModal};
 }
-function card(item, onLoad) {
-  const wrap = $('div', 'eds-card');
-  const shot = $('img', 'eds-card-shot');
-  shot.loading = 'lazy';
-  shot.src = item.img || '';
-  shot.alt = item.name || 'Public indicator screenshot';
-  const name = $('div', 'eds-card-name', item.name || 'Untitled');
-  const load = $('button', 'btn-sm eds-card-load', 'Load');
-  load.onclick = async () => {
-    load.disabled = true;
-    load.textContent = 'Loading…';
-    try {
-      const data = await loadPublicIndicator(item.id);
+function card(item,onLoad){
+  const wrap=$('div','eds-card');
+  const shot=$('img','eds-card-shot');
+  shot.loading='lazy';
+  shot.src=item.img||'';
+  shot.alt=item.name||'Public indicator screenshot';
+  if((item.isDark==='yes')!==isDarkMode()) shot.style.filter='invert(1)';
+  const name=$('div','eds-card-name',item.name||'Untitled');
+  const load=$('button','btn-sm eds-card-load','Load');
+  load.onclick=async()=>{
+    load.disabled=true;
+    load.textContent='Loading…';
+    try{
+      const data=await loadPublicIndicator(item.id);
       onLoad(data.item);
-    } catch (e) {
+    }catch(e){
       deny(e.message);
-      load.textContent = 'Error';
-      setTimeout(() => { load.disabled = false; load.textContent = 'Load'; }, 2000);
+      load.textContent='Error';
+      setTimeout(()=>{load.disabled=false;load.textContent='Load';},2000);
     }
   };
-  wrap.append(shot, name, load);
+  wrap.append(shot,name,load);
   return wrap;
 }
 export function createExplorePanel({onLoad}={}){
@@ -244,8 +254,8 @@ export function createExplorePanel({onLoad}={}){
     await loadPage();
   };
   close.onclick=closePanel;
-  back.onclick=()=>{ if(page>0){ page--; loadPage(); } };
-  next.onclick=()=>{ page++; loadPage(); };
-  root.onclick=e=>{ if(e.target===root) closePanel(); };
-  return{root,open,close:closePanel,refresh:async()=>{ page=0; await loadPage(); }};
+  back.onclick=()=>{if(page>0){page--;loadPage();}};
+  next.onclick=()=>{page++;loadPage();};
+  root.onclick=e=>{if(e.target===root) closePanel();};
+  return{root,open,close:closePanel,refresh:async()=>{page=0;await loadPage();}};
 }

@@ -5,13 +5,14 @@ export function initMessage() {
   toastWrap.id='toast-container';
   document.body.appendChild(toastWrap);
 }
-export function toast(msg,type='info',ms=3200) {
+export function toast(msg, type='info', ms=3200, persistent=false) {
   if(!storage.getToasts()) return;
   const el=document.createElement('div');
   el.className=`toast ${type}`;
   el.textContent=msg;
   toastWrap.appendChild(el);
-  setTimeout(()=>el.remove(),ms);
+  if(!persistent) {setTimeout(()=>el.remove(),ms);}
+  return el;
 }
 export function confirm(msg) {
   return new Promise(resolve=>{

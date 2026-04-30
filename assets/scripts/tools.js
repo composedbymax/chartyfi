@@ -186,12 +186,21 @@ export class Tools{
     const r=btn.getBoundingClientRect();
     return clientX>=r.left&&clientX<=r.right&&clientY>=r.top&&clientY<=r.bottom;
   }
+  _setChartLocked(locked){
+    if(!isMobile)return;
+    this.chart._chart?.applyOptions?.({
+      handleScroll: locked ? false : true,
+      handleScale: locked ? false : true
+    });
+  }
   _setMode(mode,silent=false){
     this.mode=mode;
     this.selected=null;
     this.dragState=null;
     this._setTrashActive(false);
     this._cancelDraft();
+    const drawMode = mode==='trend'||mode==='brush'||mode==='fib'||mode==='measure';
+    this._setChartLocked(drawMode);
     this._applyMode();
     this._syncModeUI();
     if(!silent)this._scheduleDraw();

@@ -1,24 +1,18 @@
 import {toast} from './message.js';
-export function initUrlState(chart){
-  const q = location.search.slice(1);
-  if(q){
-    const [symRaw,intRaw] = q.split('&');
-    const sym = decodeURIComponent(symRaw || '');
-    const int = decodeURIComponent(intRaw || '');
-    chart._chartOn('load',({sym,int})=>{
-      const u = new URL(location.href);
-      u.search = `?${encodeURIComponent(sym)}&${encodeURIComponent(int)}`;
-      history.replaceState(null,'',u);
-    });
-    chart.load(sym, int || chart._currentInterval);
-    return true;
-  }
-  chart._chartOn('load',({sym,int})=>{
+export function initUrlState(chart) {
+  const syncUrl = ({ sym, int }) => {
     const u = new URL(location.href);
     u.search = `?${encodeURIComponent(sym)}&${encodeURIComponent(int)}`;
-    history.replaceState(null,'',u);
-  });
-  return false;
+    history.replaceState(null, '', u);
+  };
+  chart._chartOn('load', syncUrl);
+  const q = location.search.slice(1);
+  if (!q) return false;
+  const [symRaw = '', intRaw = ''] = q.split('&');
+  const sym = decodeURIComponent(symRaw);
+  const int = decodeURIComponent(intRaw) || chart._currentInterval;
+  chart.load(sym, int);
+  return true;
 }
 export class Search{
   constructor(input,results,chart,api){

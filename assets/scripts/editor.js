@@ -3,6 +3,7 @@ import { createExplorePanel, createShareModal } from './editorShare.js';
 import { codeIcon } from './svg.js';
 import { tooltip } from './tooltip.js';
 import { runBacktest } from './backtester.js';
+import { openFullscreen } from './editorFullscreen.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
@@ -65,8 +66,9 @@ async function fetchHelpContent(){
   const res=await fetch(HELP_JSON_URL);
   if(!res.ok) throw new Error(`Failed to load help (${res.status})`);
   const json=await res.json();
-  sessionStorage.setItem(HELP_CACHE_KEY,json.html);
-  return json.html;
+  const html=String(json.html??'');
+  sessionStorage.setItem(HELP_CACHE_KEY,html);
+  return html;
 }
 function rawPaneOf(pf) {
   if (pf.type === 'hist' || pf.type === 'dot') {
@@ -111,6 +113,7 @@ export class Editor{
     this._snippetName='Untitled';
     this._showHelp=false;
     this._helpLoaded=false;
+    this._helpHtml='';
     this._indicatorGroups=[];
     this._indicatorListCollapsed=false;
     this._groupCounter=0;
@@ -145,11 +148,15 @@ export class Editor{
     }
   }
   _ensureHelpContent(helpArea){
-    if(this._helpLoaded) return;
+    if(this._helpHtml){
+      helpArea.innerHTML=this._helpHtml;
+      return;
+    }
     helpArea.innerHTML='<p class="ed-help-loading">Loading…</p>';
     fetchHelpContent()
       .then(html=>{
         this._helpLoaded=true;
+        this._helpHtml=html;
         helpArea.innerHTML=html;
         helpArea.querySelectorAll('pre').forEach(pre=>{
           const w=document.createElement('div');
@@ -212,13 +219,21 @@ export class Editor{
     this.el.appendChild(helpArea);
     const codeArea=document.createElement('div');
     codeArea.className='ed-code-area';
+    const taWrap=document.createElement('div');
+    taWrap.className='ed-code-wrap';
     const ta=document.createElement('textarea');
     ta.className='ed-textarea';
     ta.id='ed-code';
     ta.spellcheck=false;
     ta.value=this._code;
     ta.placeholder='// Write indicator logic here\n// Access: bars, plot(), plotHist(), plotBand(), plotLabel()\n// Async supported: await backtest({ strategy, params })';
-    codeArea.appendChild(ta);
+    const fsBtn=document.createElement('button');
+    fsBtn.className='icon-btn ed-fs-btn';
+    fsBtn.title='Fullscreen editor';
+    fsBtn.innerHTML='⛶';
+    fsBtn.onclick=()=>openFullscreen({code:this._code,name:this._snippetName,onChange:v=>{this._code=v;ta.value=v;},onClose:v=>{this._code=v;ta.value=v;}});
+    taWrap.append(ta,fsBtn);
+    codeArea.appendChild(taWrap);
     this.el.appendChild(codeArea);
     const runRow=document.createElement('div');
     runRow.className='ed-run-row';

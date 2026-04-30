@@ -1,7 +1,24 @@
+import {toast} from './message.js';
+import {isOnline, onNetworkChange} from './network.js';
 import {storage} from './storage.js'
 import {getCachedChart,setCachedChart,getCachedSearch,setCachedSearch} from './cache.js'
 export class ApiClient{
-  constructor(endpoint){this.ep=endpoint??storage.getLink()??'';if(endpoint)storage.setLink(endpoint)}
+  constructor(endpoint){
+    this.ep=endpoint??storage.getLink()??'';
+    if(endpoint)storage.setLink(endpoint);
+    this._wasOffline = false;
+    this._offlineToast = null;
+    onNetworkChange((online) => {
+      if(!online){this._wasOffline = true;
+        if(this._offlineToast) return;this._offlineToast = toast("You are offline","error",1e9,true);
+      } else {
+        if(this._wasOffline){toast("Back online", "success", 4000);
+          if(this._offlineToast){this._offlineToast.remove();this._offlineToast = null;}
+        }
+        this._wasOffline = false;
+      }
+    });
+  }
   async _get(params){const url=`${this.ep}?${new URLSearchParams(params)}`;const r=await fetch(url);return r.json()}
   async _post(action,data){const body=new URLSearchParams({action,...data});const r=await fetch(this.ep,{method:'POST',body});return r.json()}
   _userConfig(){return this._get({action:'user_config'})}
