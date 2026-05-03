@@ -416,3 +416,51 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 .ef-cm{color:#6b7280;font-style:italic}
 .ef-nm{color:#fb923c}
 .ef-fn{color:#60a5fa}
+
+/* ── Sidebar dynamic width override ── */
+#sidebar{width:var(--sb-w-override,var(--sb-w));}
+@media(max-width:600px){#sidebar{width:var(--sb-w-mobile-override,var(--sb-w-override,var(--sb-w)));}}
+
+/* ── Mini Apps list ── */
+.ma-list{display:flex;flex-direction:column;gap:6px;padding:4px 12px 12px;}
+.ma-card{background:var(--bg3);border:1px solid var(--bg5);border-radius:var(--radius);padding:12px;cursor:pointer;transition:border-color .15s,background .15s;}
+.ma-card:hover{border-color:var(--accent);background:var(--accent-hl);}
+.ma-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.ma-card-desc{font-size:11px;color:var(--text3);line-height:1.5;}
+
+/* ── Data Integrity app ── */
+.da-wrap{display:flex;flex-direction:column;gap:0;padding:0 0 12px;}
+.da-section{display:flex;flex-direction:column;gap:4px;padding:8px 12px;}
+.da-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;}
+.da-key{color:var(--text3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.da-val{color:var(--text);display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end;}
+.da-badge{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:600;}
+.da-badge--ok{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.da-badge--warn{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.3);}
+.da-badge--crypto{background:rgba(59,130,246,.15);color:var(--accent);border:1px solid rgba(59,130,246,.3);}
+.da-badge--equity{background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);}
+.da-divider{height:1px;background:var(--bg5);margin:4px 0;}
+.da-integrity-label{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;}
+.da-bar-track{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.da-bar-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.da-missed-summary{font-size:11px;color:var(--text3);margin-top:5px;}
+.da-gaps-section{gap:0;}
+.da-gaps-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.da-gap-row{background:var(--bg3);border:1px solid var(--bg5);border-radius:var(--radius);padding:7px 9px;margin-bottom:4px;}
+.da-gap-range{font-size:11px;color:var(--text2);font-family:'JetBrains Mono','Fira Code',monospace;}
+.da-gap-missed{font-size:11px;color:var(--red);margin-top:2px;font-weight:600;}
+.da-gap-more{font-size:11px;color:var(--text3);padding:4px 0;}
+.da-no-gaps{font-size:12px;color:var(--green);padding:4px 0;}
+.da-note{font-size:11px;color:var(--text3);padding:6px 12px;font-style:italic;}
+.da-empty{font-size:12px;color:var(--text3);padding:12px;}
+
+/* ── News mini app ── */
+.nws-loading{font-size:12px;color:var(--text3);padding:12px;}
+.nws-list{display:flex;flex-direction:column;}
+.nws-item{padding:10px 12px;border-bottom:1px solid var(--bg5);}
+.nws-item:last-of-type{border-bottom:none;}
+.nws-title{display:block;font-size:12px;font-weight:600;color:var(--accent);text-decoration:none;line-height:1.45;margin-bottom:3px;}
+.nws-title:hover{text-decoration:underline;}
+.nws-meta{font-size:10px;color:var(--text3);margin-bottom:4px;}
+.nws-desc{font-size:11px;color:var(--text2);line-height:1.5;}
+.nws-more-btn{display:block;width:calc(100% - 24px);margin:8px 12px 12px;text-align:center;}

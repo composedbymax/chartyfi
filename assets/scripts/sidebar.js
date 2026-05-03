@@ -1,15 +1,16 @@
 import {toast,confirm,deny} from './message.js';
-import {settingsIcon,codeIcon} from './svg.js';
+import {settingsIcon,codeIcon,miniAppsIcon} from './svg.js';
 import {Chart,INTERVALS} from './chart.js';
 import {Exporter} from './export.js';
 import {Editor} from './editor.js';
 import {tooltip} from './tooltip.js';
 import {Settings} from './settings.js';
 import {storage} from './storage.js';
+import {MiniApps} from './miniApps.js';
 export class Sidebar {
   constructor(container,chart,api,config,localTimezone){
     this.el=container;this.chart=chart;this.api=api;this.config=config;
-    this.open=false;this.showSettings=false;this.showEditor=false;
+    this.open=false;this.showSettings=false;this.showEditor=false;this.showMiniApps=false;this._activeApp=null;
     this._config=config;
     this._localTz=localTimezone||'UTC';
     this._chartTz='UTC';
@@ -19,6 +20,7 @@ export class Sidebar {
       onTzChange:tz=>{this._chartTz=tz;this._applyChartTz();},
       onRerender:()=>this._renderSidebar(),
     });
+    this._miniApps=new MiniApps(chart,api);
     this.api._getChartTz().then(tz=>{
       if(tz&&tz!==this._chartTz){this._chartTz=tz;this._applyChartTz();}
     }).catch(()=>{});
@@ -67,6 +69,24 @@ export class Sidebar {
     this.open=!this.open;
     document.getElementById('sidebar').classList.toggle('open',this.open);
   }
+  _setSidebarWidth(w,mobileW){
+    const el=document.getElementById('sidebar');
+    if(w) el.style.setProperty('--sb-w-override',typeof w==='number'?w+'px':w);
+    else el.style.removeProperty('--sb-w-override');
+    if(mobileW) el.style.setProperty('--sb-w-mobile-override',typeof mobileW==='number'?mobileW+'px':mobileW);
+    else el.style.removeProperty('--sb-w-mobile-override');
+  }
+  _clearSidebarWidth(){
+    const el=document.getElementById('sidebar');
+    el.style.removeProperty('--sb-w-override');
+    el.style.removeProperty('--sb-w-mobile-override');
+  }
+  _openMiniApp(appInstance){
+    this._activeApp=appInstance;
+    const cfg=appInstance.constructor.config||{};
+    this._setSidebarWidth(cfg.width||null,cfg.mobileWidth||null);
+    this._renderSidebar();
+  }
   _renderSidebar(){
     this.el.classList.toggle('ed-mode',this.showEditor);
     this.el.innerHTML='';
@@ -75,6 +95,10 @@ export class Sidebar {
       this._renderEditor();
     }else if(this.showSettings){
       this._renderSettings();
+    }else if(this._activeApp){
+      this._renderApp();
+    }else if(this.showMiniApps){
+      this._renderMiniAppList();
     }else{
       this._renderMain();
     }
@@ -83,39 +107,52 @@ export class Sidebar {
     let title='Menu';
     if(this.showSettings) title='Settings';
     if(this.showEditor) title='Indicators';
+    if(this.showMiniApps) title='Mini Apps';
+    if(this._activeApp) title=this._activeApp.constructor.config?.title||'App';
+    const inSub=this.showSettings||this.showEditor||this.showMiniApps||this._activeApp;
     const row=Object.assign(document.createElement('div'),{
       className:'sb-section sb-top-row',
       innerHTML:`<span class="sb-menu-title">${title}</span>
         <div class="sb-top-btns">
-          ${(this.showSettings||this.showEditor)
+          ${inSub
             ?`<button class="icon-btn" id="sb-back">←</button>`
-            :`<button class="icon-btn" id="sb-editor-toggle"></button>
+            :`<button class="icon-btn" id="sb-miniapps-toggle"></button>
+              <button class="icon-btn" id="sb-editor-toggle"></button>
               <button class="icon-btn" id="sb-settings-toggle"></button>`
           }
         </div>`
     });
     this.el.append(row,Object.assign(document.createElement('div'),{className:'sb-divider'}));
-    if(this.showSettings||this.showEditor){
+    if(inSub){
       const back=row.querySelector('#sb-back');
       back.title='Back';
       tooltip(back,'Back');
       back.onclick=()=>{
+        if(this._activeApp){
+          this._miniApps.close();
+          this._activeApp=null;
+          this._clearSidebarWidth();
+          this._renderSidebar();
+          return;
+        }
         this.showSettings=false;
         this.showEditor=false;
+        this.showMiniApps=false;
         this._editor._setHelpVisible(false);
         this._renderSidebar();
       };
     }else{
+      const ma=row.querySelector('#sb-miniapps-toggle');
       const ed=row.querySelector('#sb-editor-toggle');
       const st=row.querySelector('#sb-settings-toggle');
+      ma.appendChild(miniAppsIcon({className:'icon'}));
       ed.appendChild(codeIcon({className:'icon'}));
       st.appendChild(settingsIcon({className:'icon'}));
-      ed.title='Indicators';
-      st.title='Settings';
-      tooltip(ed,'Indicators');
-      tooltip(st,'Settings');
-      ed.onclick=()=>{this.showEditor=true;this.showSettings=false;this._renderSidebar();};
-      st.onclick=()=>{this.showSettings=true;this.showEditor=false;this._renderSidebar();};
+      ma.title='Mini Apps';st.title='Settings';ed.title='Indicators';
+      tooltip(ma,'Mini Apps');tooltip(ed,'Indicators');tooltip(st,'Settings');
+      ma.onclick=()=>{this.showMiniApps=true;this.showEditor=false;this.showSettings=false;this._renderSidebar();};
+      ed.onclick=()=>{this.showEditor=true;this.showSettings=false;this.showMiniApps=false;this._renderSidebar();};
+      st.onclick=()=>{this.showSettings=true;this.showEditor=false;this.showMiniApps=false;this._renderSidebar();};
     }
   }
   _renderEditor(){
@@ -131,6 +168,26 @@ export class Sidebar {
   }
   _renderSettings(){
     this._settings._renderSettingsUI(this.el,this._chartTz);
+  }
+  _renderMiniAppList(){
+    const apps=this._miniApps.getApps();
+    const wrap=document.createElement('div');
+    wrap.className='ma-list';
+    apps.forEach(AppClass=>{
+      const cfg=AppClass.config||{};
+      const card=document.createElement('div');
+      card.className='ma-card';
+      card.innerHTML=`<div class="ma-card-title">${cfg.title||AppClass.name}</div>
+        <div class="ma-card-desc">${cfg.description||''}</div>`;
+      card.onclick=()=>this._miniApps.open(AppClass,this);
+      wrap.appendChild(card);
+    });
+    this.el.appendChild(wrap);
+  }
+  _renderApp(){
+    if(!this._activeApp) return;
+    this._activeApp.el.className='da-wrap';
+    this.el.appendChild(this._activeApp.el);
   }
   _renderTimeframes(){
     const lbl=document.createElement('div');lbl.className='sb-label';lbl.textContent='Timeframe';
