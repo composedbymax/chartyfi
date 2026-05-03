@@ -105,24 +105,32 @@ function buildPaneResolver(plotFns, indicatorGroups) {
   return { _resolvePane, _paneBase, _panesUsed };
 }
 export class Editor{
-  constructor(container,chart){
-    this.el=container;
-    this.chart=chart;
-    this._code='';
-    this._snippetId=null;
-    this._snippetName='Untitled';
-    this._showHelp=false;
-    this._helpLoaded=false;
-    this._helpHtml='';
-    this._indicatorGroups=[];
-    this._indicatorListCollapsed=false;
-    this._groupCounter=0;
-    this._editingGroupId=null;
-    this._rendered=false;
-    this._shareUi=null;
-    this._exploreUi=null;
-    this._running=false;
+  constructor(container, chart) {
+    this.el = container;
+    this.chart = chart;
+    this._code = '';
+    this._snippetId = null;
+    this._snippetName = 'Untitled';
+    this._showHelp = false;
+    this._helpLoaded = false;
+    this._helpHtml = '';
+    this._indicatorGroups = [];
+    this._indicatorListCollapsed = false;
+    this._groupCounter = 0;
+    this._editingGroupId = null;
+    this._rendered = false;
+    this._shareUi = null;
+    this._exploreUi = null;
+    this._activeCtrl = null;
+    this._refreshSnapshot = null;
+    this._refreshTimer = null;
     this.chart._chartOn('dataChanged', () => this._refreshIndicators());
+  }
+  _cancelActive() {
+    if (this._activeCtrl) {
+      this._activeCtrl.abort();
+      this._activeCtrl = null;
+    }
   }
   _setHelpVisible(v){
     this._showHelp=v;
@@ -189,12 +197,12 @@ export class Editor{
     const bar = this.el.querySelector('#ed-bt-bar');
     if (bar) bar.style.width = '0%';
   }
-  _render(){
-    this._rendered=true;
-    this.el.innerHTML='';
-    const toolbar=document.createElement('div');
-    toolbar.className='ed-toolbar';
-    toolbar.innerHTML=`
+  _render() {
+    this._rendered = true;
+    this.el.innerHTML = '';
+    const toolbar = document.createElement('div');
+    toolbar.className = 'ed-toolbar';
+    toolbar.innerHTML = `
       <div class="ed-top-row">
         <input class="ed-name-in" id="ed-name" value="${this._snippetName}" placeholder="Snippet name">
         <button class="icon-btn ed-help-btn" id="ed-help-toggle" title="Help / Docs">?</button>
@@ -214,30 +222,30 @@ export class Editor{
     tooltip(toolbar.querySelector('#ed-save'), 'Save indicator locally');
     tooltip(toolbar.querySelector('#ed-delete'), 'Delete local indicator');
     this.el.appendChild(toolbar);
-    const helpArea=document.createElement('div');
-    helpArea.className='ed-help-area hidden';
+    const helpArea = document.createElement('div');
+    helpArea.className = 'ed-help-area hidden';
     this.el.appendChild(helpArea);
-    const codeArea=document.createElement('div');
-    codeArea.className='ed-code-area';
-    const taWrap=document.createElement('div');
-    taWrap.className='ed-code-wrap';
-    const ta=document.createElement('textarea');
-    ta.className='ed-textarea';
-    ta.id='ed-code';
-    ta.spellcheck=false;
-    ta.value=this._code;
-    ta.placeholder='// Write indicator logic here\n// Access: bars, plot(), plotHist(), plotBand(), plotLabel()\n// Async supported: await backtest({ strategy, params })';
-    const fsBtn=document.createElement('button');
-    fsBtn.className='icon-btn ed-fs-btn';
-    fsBtn.title='Fullscreen editor';
-    fsBtn.innerHTML='⛶';
-    fsBtn.onclick=()=>openFullscreen({code:this._code,name:this._snippetName,onChange:v=>{this._code=v;ta.value=v;},onClose:v=>{this._code=v;ta.value=v;}});
-    taWrap.append(ta,fsBtn);
+    const codeArea = document.createElement('div');
+    codeArea.className = 'ed-code-area';
+    const taWrap = document.createElement('div');
+    taWrap.className = 'ed-code-wrap';
+    const ta = document.createElement('textarea');
+    ta.className = 'ed-textarea';
+    ta.id = 'ed-code';
+    ta.spellcheck = false;
+    ta.value = this._code;
+    ta.placeholder = '// Write indicator logic here\n// Access: bars, plot(), plotHist(), plotBand(), plotLabel()\n// Async supported: await backtest({ strategy, params })';
+    const fsBtn = document.createElement('button');
+    fsBtn.className = 'icon-btn ed-fs-btn';
+    fsBtn.title = 'Fullscreen editor';
+    fsBtn.innerHTML = '⛶';
+    fsBtn.onclick = () => openFullscreen({ code: this._code, name: this._snippetName, onChange: v => { this._code = v; ta.value = v; }, onClose: v => { this._code = v; ta.value = v; } });
+    taWrap.append(ta, fsBtn);
     codeArea.appendChild(taWrap);
     this.el.appendChild(codeArea);
-    const runRow=document.createElement('div');
-    runRow.className='ed-run-row';
-    runRow.innerHTML=`
+    const runRow = document.createElement('div');
+    runRow.className = 'ed-run-row';
+    runRow.innerHTML = `
       <button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button>
       <button class="btn-sm" id="ed-update">↺ Update</button>
       <button class="btn-sm" id="ed-clear">Clear All</button>`;
@@ -245,19 +253,20 @@ export class Editor{
     tooltip(runRow.querySelector('#ed-update'), 'Update chart');
     tooltip(runRow.querySelector('#ed-clear'), 'Clear all indicators');
     this.el.appendChild(runRow);
-    const btProgress=document.createElement('div');
-    btProgress.id='ed-bt-progress';
-    btProgress.className='ed-bt-progress hidden';
-    btProgress.innerHTML=`
+    const btProgress = document.createElement('div');
+    btProgress.id = 'ed-bt-progress';
+    btProgress.className = 'ed-bt-progress hidden';
+    btProgress.innerHTML = `
       <div class="ed-bt-track"><div class="ed-bt-bar" id="ed-bt-bar"></div></div>
-      <span class="ed-bt-label" id="ed-bt-label">Backtesting...</span>`;
+      <span class="ed-bt-label" id="ed-bt-label">Backtesting...</span>
+      <button class="ed-bt-cancel" id="ed-bt-cancel" title="Cancel backtest">&times;</button>`;
     this.el.appendChild(btProgress);
-    const indicatorList=document.createElement('div');
-    indicatorList.className='ed-indicator-list';
-    indicatorList.id='ed-indicator-list';
+    const indicatorList = document.createElement('div');
+    indicatorList.className = 'ed-indicator-list';
+    indicatorList.id = 'ed-indicator-list';
     this.el.appendChild(indicatorList);
-    this._shareUi=createShareModal({getSource:()=>document.querySelector('.tv-lightweight-charts,#chart-wrap')});
-    this._exploreUi=createExplorePanel({onLoad:item=>this._loadSharedItem(item)});
+    this._shareUi = createShareModal({ getSource: () => document.querySelector('.tv-lightweight-charts,#chart-wrap') });
+    this._exploreUi = createExplorePanel({ onLoad: item => this._loadSharedItem(item) });
     this.el.appendChild(this._shareUi.root);
     this.el.appendChild(this._exploreUi.root);
     this._populateSnippets();
@@ -294,84 +303,85 @@ export class Editor{
       sel.appendChild(o);
     });
   }
-  _bindEvents(ta){
-    ta.oninput=()=>{this._code=ta.value};
-    ta.onkeydown=e=>{
-      if(e.key==='Tab'){
+  _bindEvents(ta) {
+    ta.oninput = () => { this._code = ta.value };
+    ta.onkeydown = e => {
+      if (e.key === 'Tab') {
         e.preventDefault();
-        const s=ta.selectionStart,end=ta.selectionEnd;
-        ta.value=ta.value.substring(0,s)+'  '+ta.value.substring(end);
-        ta.selectionStart=ta.selectionEnd=s+2;
-        this._code=ta.value;
+        const s = ta.selectionStart, end = ta.selectionEnd;
+        ta.value = ta.value.substring(0, s) + '  ' + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = s + 2;
+        this._code = ta.value;
       }
     };
-    this.el.querySelector('#ed-name').oninput=e=>{this._snippetName=e.target.value};
-    this.el.querySelector('#ed-help-toggle').onclick=()=>{this._showHelp=!this._showHelp;this._updateHelpToggle()};
-    this.el.querySelector('#ed-share').onclick=()=>{this._shareUi.open({name:this._snippetName,code:this._code})};
-    this.el.querySelector('#ed-explore').onclick=()=>{this._exploreUi.open()};
-    this.el.querySelector('#ed-new').onclick=()=>{
-      this._code='';this._snippetId=null;this._snippetName='Untitled';
-      this._editingGroupId=null;
-      ta.value='';
-      this.el.querySelector('#ed-name').value='Untitled';
-      this.el.querySelector('#ed-snippets').value='';
+    this.el.querySelector('#ed-name').oninput = e => { this._snippetName = e.target.value };
+    this.el.querySelector('#ed-help-toggle').onclick = () => { this._showHelp = !this._showHelp; this._updateHelpToggle() };
+    this.el.querySelector('#ed-share').onclick = () => { this._shareUi.open({ name: this._snippetName, code: this._code }) };
+    this.el.querySelector('#ed-explore').onclick = () => { this._exploreUi.open() };
+    this.el.querySelector('#ed-new').onclick = () => {
+      this._code = ''; this._snippetId = null; this._snippetName = 'Untitled';
+      this._editingGroupId = null;
+      ta.value = '';
+      this.el.querySelector('#ed-name').value = 'Untitled';
+      this.el.querySelector('#ed-snippets').value = '';
       this._renderIndicatorList();
     };
-    this.el.querySelector('#ed-save').onclick=async()=>{
-      const name=this._snippetName.trim()||'Untitled';
-      try{
-        if(this._snippetId){
-          await updateSnippet(this._snippetId,name,this._code);
-          toast('Snippet updated','success');
-        }else{
-          this._snippetId=await saveSnippet(name,this._code);
-          toast('Snippet saved','success');
+    this.el.querySelector('#ed-save').onclick = async () => {
+      const name = this._snippetName.trim() || 'Untitled';
+      try {
+        if (this._snippetId) {
+          await updateSnippet(this._snippetId, name, this._code);
+          toast('Snippet updated', 'success');
+        } else {
+          this._snippetId = await saveSnippet(name, this._code);
+          toast('Snippet saved', 'success');
         }
         await this._populateSnippets();
-      }catch(e){
-        deny('Failed to save snippet: '+e.message);
+      } catch (e) {
+        deny('Failed to save snippet: ' + e.message);
       }
     };
-    this.el.querySelector('#ed-delete').onclick=async()=>{
-      if(!this._snippetId) return;
-      const ok=await confirm(`Delete "${this._snippetName}"?`);
-      if(!ok) return;
-      try{
+    this.el.querySelector('#ed-delete').onclick = async () => {
+      if (!this._snippetId) return;
+      const ok = await confirm(`Delete "${this._snippetName}"?`);
+      if (!ok) return;
+      try {
         await deleteSnippet(this._snippetId);
-        this._snippetId=null;this._code='';this._snippetName='Untitled';
-        ta.value='';
-        this.el.querySelector('#ed-name').value='Untitled';
+        this._snippetId = null; this._code = ''; this._snippetName = 'Untitled';
+        ta.value = '';
+        this.el.querySelector('#ed-name').value = 'Untitled';
         await this._populateSnippets();
-        toast('Snippet deleted','info');
-      }catch(e){
-        deny('Failed to delete snippet: '+e.message);
+        toast('Snippet deleted', 'info');
+      } catch (e) {
+        deny('Failed to delete snippet: ' + e.message);
       }
     };
-    this.el.querySelector('#ed-snippets').onchange=async e=>{
-      const id=parseInt(e.target.value);
-      if(!id) return;
-      try{
-        const db=await openDB();
-        const tx=db.transaction(STORE,'readonly');
-        const req=tx.objectStore(STORE).get(id);
-        req.onsuccess=ev=>{
-          const s=ev.target.result;
-          if(!s) return;
-          this._snippetId=s.id;
-          this._snippetName=s.name;
-          this._code=s.code;
-          ta.value=s.code;
-          this.el.querySelector('#ed-name').value=s.name;
-          toast(`Loaded "${s.name}"`,'info');
+    this.el.querySelector('#ed-snippets').onchange = async e => {
+      const id = parseInt(e.target.value);
+      if (!id) return;
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(id);
+        req.onsuccess = ev => {
+          const s = ev.target.result;
+          if (!s) return;
+          this._snippetId = s.id;
+          this._snippetName = s.name;
+          this._code = s.code;
+          ta.value = s.code;
+          this.el.querySelector('#ed-name').value = s.name;
+          toast(`Loaded "${s.name}"`, 'info');
         };
-        req.onerror=()=>deny('Failed to load snippet');
-      }catch(e){
-        deny('Failed to load snippet: '+e.message);
+        req.onerror = () => deny('Failed to load snippet');
+      } catch (e) {
+        deny('Failed to load snippet: ' + e.message);
       }
     };
-    this.el.querySelector('#ed-run').onclick=()=>this._run();
-    this.el.querySelector('#ed-update').onclick=()=>this._update();
-    this.el.querySelector('#ed-clear').onclick=()=>this._clearOverlays();
+    this.el.querySelector('#ed-run').onclick = () => this._run();
+    this.el.querySelector('#ed-update').onclick = () => this._update();
+    this.el.querySelector('#ed-clear').onclick = () => this._clearOverlays();
+    this.el.querySelector('#ed-bt-cancel').onclick = () => this._cancelActive();
   }
   _clearOverlays(silent=false){
     this._indicatorGroups.forEach(g=>{
@@ -486,26 +496,34 @@ export class Editor{
       this._renderIndicatorList();
     }
   }
-  async _refreshIndicators() {
-    if (!this._indicatorGroups.length) return;
-    const groups = [...this._indicatorGroups];
+  async _doRefresh() {
+    const groups = this._refreshSnapshot;
+    if (!groups?.length) return;
+    this._cancelActive();
+    const ctrl = new AbortController();
+    this._activeCtrl = ctrl;
+    const signal = ctrl.signal;
     const selectedIndex = groups.findIndex(g => g.id === this._editingGroupId);
     const savedCode = this._code;
     const savedName = this._snippetName;
     const savedSnippetId = this._snippetId;
     groups.forEach(g => {
-      g.series.forEach(s => {
-        try { this.chart._chart.removeSeries(s); } catch (e) {}
-      });
+      g.series.forEach(s => { try { this.chart._chart.removeSeries(s); } catch (e) {} });
     });
     this.chart._clearIndicators();
     this._indicatorGroups = [];
     this._editingGroupId = null;
     for (const g of groups) {
+      if (signal.aborted) break;
       this._snippetName = g.name;
       this._code = g.code || '';
-      await this._run(true);
+      await this._run(true, signal);
     }
+    if (signal.aborted) {
+      if (this._activeCtrl === ctrl) this._activeCtrl = null;
+      return;
+    }
+    this._refreshSnapshot = null;
     this._code = savedCode;
     this._snippetName = savedName;
     this._snippetId = savedSnippetId;
@@ -515,24 +533,37 @@ export class Editor{
       this._editingGroupId = this._indicatorGroups.at(-1)?.id ?? null;
     }
     this._renderIndicatorList();
+    if (this._activeCtrl === ctrl) this._activeCtrl = null;
   }
-  async _run(silent = false) {
-    if (this._running) {
-      if (!silent) toast('Already running…', 'warn');
-      return;
+  _refreshIndicators() {
+    if (this._indicatorGroups.length) {
+      this._refreshSnapshot = [...this._indicatorGroups];
     }
-    this._running = true;
+    clearTimeout(this._refreshTimer);
+    this._refreshTimer = setTimeout(() => this._doRefresh(), 200);
+  }
+  async _run(silent = false, signal = null) {
+    const isOwned = !signal;
+    if (isOwned) {
+      this._cancelActive();
+      const ctrl = new AbortController();
+      this._activeCtrl = ctrl;
+      signal = ctrl.signal;
+    }
+    if (signal.aborted) return;
     const runBtn = this.el.querySelector('#ed-run');
-    if (runBtn) { runBtn.disabled = true; runBtn.textContent = 'Running'; }
+    if (isOwned && runBtn) { runBtn.disabled = true; runBtn.textContent = 'Running'; }
     try {
-      await this._runInner(silent);
+      await this._runInner(silent, signal);
+    } catch (e) {
+      if (e?.name !== 'AbortError' && !silent) deny('Error: ' + e.message);
     } finally {
-      this._running = false;
       this._hideBtProgress();
-      if (runBtn) { runBtn.disabled = false; runBtn.textContent = '▶ Run'; }
+      if (isOwned && runBtn) { runBtn.disabled = false; runBtn.textContent = '▶ Run'; }
+      if (isOwned && this._activeCtrl?.signal === signal) this._activeCtrl = null;
     }
   }
-  async _runInner(silent = false) {
+  async _runInner(silent = false, signal = null) {
     const bars = this.chart._getCurrentData();
     if (!bars.length) {
       if (!silent) deny('No chart data available');
@@ -560,6 +591,7 @@ export class Editor{
       return runBacktest({
         ...opts,
         bars,
+        signal,
         onProgress: (pct, done, total) => {
           this._showBtProgress(pct, `Backtesting... ${done}/${total} (${pct.toFixed(0)}%)`);
           if (opts.onProgress) opts.onProgress(pct, done, total);
@@ -569,15 +601,16 @@ export class Editor{
     try {
       const fn = new AsyncFunction(
         'bars', 'plot', 'plotHist', 'plotBand', 'plotDot', 'plotArea', 'plotCandle',
-        'plotLabel',
-        'buy', 'sell', 'backtest',
+        'plotLabel', 'buy', 'sell', 'backtest',
         this._code
       );
       await fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, buy, sell, backtest);
     } catch (err) {
+      if (err?.name === 'AbortError') throw err;
       if (!silent) deny('Error: ' + err.message);
       return;
     }
+    if (signal?.aborted) return;
     if (!plotFns.length && !trades.length) {
       if (!silent) toast('No series produced', 'warn');
       return;
@@ -622,33 +655,33 @@ export class Editor{
           groupSeries.push(su, sl);
         } else if (pf.type === 'dot') {
           s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
-            color:                   pf.opts.color || '#f59e0b',
-            lineVisible:             false,
-            pointMarkersVisible:     true,
-            lastValueVisible:        false,
-            priceLineVisible:        false,
-            crosshairMarkerVisible:  false,
-            title:                   pf.label
+            color:                  pf.opts.color || '#f59e0b',
+            lineVisible:            false,
+            pointMarkersVisible:    true,
+            lastValueVisible:       false,
+            priceLineVisible:       false,
+            crosshairMarkerVisible: false,
+            title:                  pf.label
           }, pane);
           s.setData(pf.data);
         } else if (pf.type === 'area') {
           s = this.chart._chart.addSeries(LightweightCharts.AreaSeries, {
-            lineColor:   pf.opts.color      || '#a78bfa',
-            topColor:    pf.opts.topColor   || 'rgba(167,139,250,0.35)',
-            bottomColor: pf.opts.bottomColor|| 'rgba(167,139,250,0.02)',
-            lineWidth:   pf.opts.lineWidth  || 2,
+            lineColor:   pf.opts.color       || '#a78bfa',
+            topColor:    pf.opts.topColor    || 'rgba(167,139,250,0.35)',
+            bottomColor: pf.opts.bottomColor || 'rgba(167,139,250,0.02)',
+            lineWidth:   pf.opts.lineWidth   || 2,
             title:       pf.label
           }, pane);
           s.setData(pf.data);
         } else if (pf.type === 'candle') {
           s = this.chart._chart.addSeries(LightweightCharts.CandlestickSeries, {
-            upColor:        pf.opts.upColor   || '#22c55e',
-            downColor:      pf.opts.downColor || '#ef4444',
-            borderUpColor:  pf.opts.upColor   || '#22c55e',
-            borderDownColor:pf.opts.downColor || '#ef4444',
-            wickUpColor:    pf.opts.upColor   || '#22c55e',
-            wickDownColor:  pf.opts.downColor || '#ef4444',
-            title:          pf.label
+            upColor:         pf.opts.upColor   || '#22c55e',
+            downColor:       pf.opts.downColor || '#ef4444',
+            borderUpColor:   pf.opts.upColor   || '#22c55e',
+            borderDownColor: pf.opts.downColor || '#ef4444',
+            wickUpColor:     pf.opts.upColor   || '#22c55e',
+            wickDownColor:   pf.opts.downColor || '#ef4444',
+            title:           pf.label
           }, pane);
           s.setData(pf.data);
         } else if (pf.type === 'label') {

@@ -17,7 +17,7 @@ export class Tools{
     this.chart=chart;
     this.api=api;
     this.visible=toolsVisibility.get();
-    this.mode='cursor';
+    this.mode = isMobile ? 'crosshair' : 'cursor';
     this.drawings=[];
     this.draft=null;
     this.down=false;
@@ -169,7 +169,7 @@ export class Tools{
     this._onKey=e=>{if(e.key==='Escape')this._cancelDraft()};
     window.addEventListener('keydown',this._onKey);
     this._offToolsVisibility=toolsVisibility.on(v=>{
-      if(!v){this.clear();this._setMode('cursor');}
+      if(!v){this.clear();this._setMode(isMobile ? 'crosshair' : 'cursor');}
       this.setVisible(v);
     });
   }

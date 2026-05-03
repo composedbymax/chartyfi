@@ -127,7 +127,6 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 .data-action-grid button{height:28px;font-size:12px;background:var(--bg4);border:1px solid var(--bg6);border-radius:var(--radius);color:var(--text2);transition:all .15s}
 .data-action-grid button:hover{border-color:var(--accent);color:var(--accent)}
 
-
 /* ── Tracked assets ── */
 .asset-card{background:var(--bg3);border:1px solid var(--bg5);border-radius:var(--radius);padding:10px;margin:0 12px 6px;display:flex;flex-direction:column;gap:6px}
 .asset-card-top{display:flex;align-items:center;gap:8px}
@@ -247,7 +246,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 
 /* ── Export table overlay ── */
 #export-table-overlay{position:fixed;inset:0;background:var(--shadow);z-index:9500;display:flex;align-items:center;justify-content:center;padding:20px}
-#export-table-wrap{background:var(--bg2);border:1px solid var(--bg6);border-radius:var(--radius);display:flex;flex-direction:column;width:min(960px,100%);max-height:90vh;overflow:hidden}
+#export-table-wrap{background:var(--bg2);border:1px solid var(--bg6);border-radius:var(--radius);display:flex;flex-direction:column;width:min(960px,100%);margin-top: var(--safe-top);max-height: calc(90vh - var(--safe-top));overflow:hidden}
 #export-table-toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--bg5);flex-shrink:0}
 #export-table-title{font-size:13px;font-weight:600;color:var(--text)}
 #export-table-actions{display:flex;gap:8px}
@@ -367,6 +366,8 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
 .ed-bt-track{flex: 1;height: 4px;background: var(--bg);border-radius: 2px;overflow: hidden;}
 .ed-bt-bar{height: 100%;width: 0%;background: var(--accent);border-radius: 2px;transition: width 0.15s ease;}
 .ed-bt-label{font-size: 11px;color: var(--text2);white-space: nowrap;min-width: 160px;}
+.ed-bt-cancel{background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:0 2px;line-height:1;flex-shrink:0;}
+.ed-bt-cancel:hover{color:var(--text);}
 
 /* tools */
 .tools-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:12;pointer-events:none;}

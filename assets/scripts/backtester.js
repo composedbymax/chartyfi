@@ -155,41 +155,35 @@ self.onmessage = function (evt) {
   }
 };
 `;
-export function runBacktest({ bars, params, strategy, workers = 4, onProgress }) {
+export function runBacktest({ bars, params, strategy, workers = 4, onProgress, signal }) {
   return new Promise((resolve, reject) => {
-    if (!bars?.length) {
-      reject(new Error('backtester: bars array is empty'));
-      return;
-    }
-    if (typeof strategy !== 'string' || !strategy.trim()) {
-      reject(new Error('backtester: strategy must be a non-empty code string'));
-      return;
-    }
+    if (signal?.aborted) { reject(new DOMException('Aborted', 'AbortError')); return; }
+    if (!bars?.length) { reject(new Error('backtester: bars array is empty')); return; }
+    if (typeof strategy !== 'string' || !strategy.trim()) { reject(new Error('backtester: strategy must be a non-empty code string')); return; }
     const total = countCombinations(params);
-    if (total < 1) {
-      reject(new Error('backtester: no combinations generated — check params spec'));
-      return;
-    }
+    if (total < 1) { reject(new Error('backtester: no combinations generated — check params spec')); return; }
     const barsTemplate = serializeBars(bars);
     const barCount     = bars.length;
-    const blob       = new Blob([WORKER_SRC], { type: 'application/javascript' });
-    const workerUrl  = URL.createObjectURL(blob);
-    const numWorkers = Math.min(Math.max(1, workers), 8, total);
+    const blob         = new Blob([WORKER_SRC], { type: 'application/javascript' });
+    const workerUrl    = URL.createObjectURL(blob);
+    const numWorkers   = Math.min(Math.max(1, workers), 8, total);
     let cursor           = 0;
     let completedWorkers = 0;
     const workerDone     = new Array(numWorkers).fill(0);
     const workerBests    = [];
     const workerList     = [];
     function cleanup() {
+      signal?.removeEventListener('abort', onAbort);
       workerList.forEach(w => { try { w.terminate(); } catch (_) {} });
       URL.revokeObjectURL(workerUrl);
     }
-    function dispatchNext(worker, workerId) {
-      if (cursor >= total) {
-        // No combinations left – tell the worker to flush its local best
-        worker.postMessage({ type: 'finish' });
-        return;
-      }
+    function onAbort() {
+      cleanup();
+      reject(new DOMException('Aborted', 'AbortError'));
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+    function dispatchNext(worker) {
+      if (cursor >= total) { worker.postMessage({ type: 'finish' }); return; }
       const start = cursor;
       const end   = Math.min(cursor + BATCH_SIZE, total);
       cursor      = end;
@@ -207,7 +201,7 @@ export function runBacktest({ bars, params, strategy, workers = 4, onProgress })
             const totalDone = workerDone.reduce((a, b) => a + b, 0);
             onProgress(Math.min(99, (totalDone / total) * 100), totalDone, total);
           }
-          dispatchNext(worker, workerId);
+          dispatchNext(worker);
           return;
         }
         if (msg.type === 'done') {
@@ -230,15 +224,9 @@ export function runBacktest({ bars, params, strategy, workers = 4, onProgress })
           }
           return;
         }
-        if (msg.type === 'error') {
-          cleanup();
-          reject(new Error(msg.message));
-        }
+        if (msg.type === 'error') { cleanup(); reject(new Error(msg.message)); }
       };
-      worker.onerror = (e) => {
-        cleanup();
-        reject(new Error('Worker error: ' + (e.message || 'unknown')));
-      };
+      worker.onerror = (e) => { cleanup(); reject(new Error('Worker error: ' + (e.message || 'unknown'))); };
       const barsBufCopy = barsTemplate.buffer.slice(0);
       worker.postMessage(
         { type: 'init', barsBuf: barsBufCopy, barCount, params, strategyCode: strategy },
