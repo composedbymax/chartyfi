@@ -1,3 +1,4 @@
+import { attachSpinner } from "./spinner.js";
 export class News {
   static config={
     title:'News',
@@ -10,19 +11,32 @@ export class News {
     this.api=api;
     this.el=document.createElement('div');
     this.el.className='da-wrap';
+    this.content=document.createElement('div');
+    this.el.appendChild(this.content);
+    const loaderLayer=document.createElement('div');
+    loaderLayer.className='nws-loader-layer';
+    this.el.appendChild(loaderLayer);
+    this.spinner=attachSpinner(loaderLayer, {size:40,color:"var(--accent)"});
+    this.spinner.hide();
+    this.spinner.hide();
     this._offset=0;
     this._total=0;
     this._controller=null;
     this._render();
   }
-  _apiBase(){return window.NWS?.api}
+  _apiBase(){
+    return window.NWS?.api;
+  }
   async _fetch(offset){
     if(this._controller) this._controller.abort();
     this._controller=new AbortController();
     const sym=this.chart._currentSymbol;
     if(!sym) return null;
-    try{
-      const r=await fetch(`${this._apiBase()}?symbol=${encodeURIComponent(sym)}&offset=${offset}`,{signal:this._controller.signal});
+    try {
+      const r=await fetch(
+        `${this._apiBase()}?symbol=${encodeURIComponent(sym)}&offset=${offset}`,
+        { signal:this._controller.signal }
+      );
       return await r.json();
     }catch(e){
       if(e.name==='AbortError') return null;
@@ -32,20 +46,24 @@ export class News {
   async _render(){
     const sym=this.chart._currentSymbol;
     if(!sym){
-      this.el.innerHTML=`<div class="da-empty">No symbol loaded.</div>`;
+      this.content.innerHTML=`<div class="da-empty">No symbol loaded.</div>`;
       return;
     }
-    this.el.innerHTML=`<div class="nws-loading">Loading…</div>`;
+    this.spinner.show();
+    this.content.innerHTML='';
     this._offset=0;
     const d=await this._fetch(0);
-    if(!d){this.el.innerHTML=`<div class="da-empty">Failed to load news.</div>`;return;}
+    this.spinner.hide();
+    if(!d){
+      this.content.innerHTML=`<div class="da-empty">Failed to load news.</div>`;
+      return;
+    }
     this._total=d.total||0;
-    this._offset=d.items?.length||0;
-    this.el.innerHTML='';
+    this._offset=d.items?.length || 0;
     const list=document.createElement('div');
     list.className='nws-list';
-    this.el.appendChild(list);
-    this._appendItems(list,d.items||[]);
+    this.content.appendChild(list);
+    this._appendItems(list, d.items || []);
     this._appendMoreBtn(list);
   }
   _appendItems(list,items){
@@ -67,7 +85,7 @@ export class News {
       a.textContent=n.title;
       const meta=document.createElement('div');
       meta.className='nws-meta';
-      meta.textContent=`${n.source?n.source+' • ':''}${n.pubDate}`;
+      meta.textContent=`${n.source?n.source +'•':''}${n.pubDate}`;
       const desc=document.createElement('div');
       desc.className='nws-desc';
       desc.textContent=n.description||'';
@@ -80,16 +98,22 @@ export class News {
   _appendMoreBtn(list){
     const existing=list.querySelector('.nws-more-btn');
     if(existing) existing.remove();
-    if(this._offset>=this._total) return;
+    if(this._offset>=this._total)return;
     const remaining=this._total-this._offset;
     const btn=document.createElement('button');
     btn.className='nws-more-btn btn-sm';
     btn.textContent=`Load more (${remaining} remaining)`;
-    btn.onclick=async()=>{
-      btn.textContent='Loading…';
+    btn.onclick=async ()=>{
       btn.disabled=true;
+      btn.textContent='Loading…';
+      this.spinner.show();
       const d=await this._fetch(this._offset);
-      if(!d){btn.textContent='Error – try again';btn.disabled=false;return;}
+      this.spinner.hide();
+      if(!d){
+        btn.textContent='Error – try again';
+        btn.disabled=false;
+        return;
+      }
       this._offset+=d.items?.length||0;
       btn.remove();
       this._appendItems(list,d.items||[]);
@@ -99,5 +123,6 @@ export class News {
   }
   destroy(){
     if(this._controller) this._controller.abort();
+    this.spinner.destroy();
   }
 }

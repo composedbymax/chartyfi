@@ -1,7 +1,6 @@
 import {INTERVALS_S} from './chart.js';
 const MARKET_SUFFIX_RE=/\.[A-Z]{2,}$/;
 const PAIR_RE=/^[A-Z0-9]{2,12}([:/\-])[A-Z0-9]{2,12}$/;
-
 function detectAssetType(symbol, intervalSec){
   if(!symbol) return {type:'unknown', confidence:'low'};
   const upper = symbol.toUpperCase();
@@ -42,16 +41,23 @@ function findGaps(data, intervalSec, assetType){
     if(assetType === 'equity'){
       if(isDaily){
         const expectedTradingDays = countWeekdaysBetween(prev, curr);
-        if(expectedTradingDays === 0) continue; // pure weekend gap
+        if(expectedTradingDays === 0) continue;
         if(missed <= (Math.round(diff / 86400) - expectedTradingDays)) continue;
         gaps.push({from:prev, to:curr, missed: expectedTradingDays,
           fromDate: new Date(prev*1000), toDate: new Date(curr*1000)});
         continue;
       } else {
-        const d = new Date((prev + intervalSec) * 1000);
-        const dow = d.getUTCDay();
-        const hour = d.getUTCHours();
-        if(dow === 0 || dow === 6 || hour >= 16 || hour < 9) continue;
+        let marketBarsMissed = 0;
+        for(let t = prev + intervalSec; t < curr; t += intervalSec){
+          const d = new Date(t * 1000);
+          const dow = d.getUTCDay();
+          const hour = d.getUTCHours();
+          if(dow !== 0 && dow !== 6 && hour >= 9 && hour < 16) marketBarsMissed++;
+        }
+        if(marketBarsMissed === 0) continue;
+        gaps.push({from:prev, to:curr, missed: marketBarsMissed,
+          fromDate: new Date(prev*1000), toDate: new Date(curr*1000)});
+        continue;
       }
     }
     gaps.push({from:prev, to:curr, missed,
