@@ -41,6 +41,7 @@ async function main() {
   const chart = new Chart(document.getElementById('chart-wrap'), api, chartTz);
   const tools = new Tools(document.getElementById('tools-wrap'), chart, api, { visible: storage.getTools() });
   const af = new AutoFetch(chart); autofetchEnabled._inst = af;
+  api.onBackfill=(sym,int,candles)=>{if(chart._currentSymbol===sym&&chart._currentInterval===int)chart._appendCandles(candles)}
   window.addEventListener('toolsVisibility', e => { tools.setVisible(e.detail); chart._forceResize(); });
   const urlLoaded = initUrlState(chart);
   const sidebar = new Sidebar(document.getElementById('sb-inner'), chart, api, config, localTimezone);

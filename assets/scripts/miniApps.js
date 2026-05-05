@@ -1,8 +1,10 @@
 import {DataIntegrity} from './dataintegrity.js';
 import {News} from './news.js';
+import {URLLoader} from './urlLoader.js';
 const APPS=[
   DataIntegrity,
   News,
+  URLLoader,
 ];
 export class MiniApps {
   constructor(chart,api){

@@ -34,5 +34,11 @@ export function setCachedChart(sym,int,newCandles){
   const key=`${sym}_${int}`
   return _enqueue(key,async()=>{const entry=await _get(CHART_STORE,key);const existing=entry&&Date.now()-entry.cachedAt<=EXPIRY&&Array.isArray(entry.candles)?entry.candles:[];const map=new Map();for(const c of existing)map.set(Number(c.time),c);for(const c of _normalizeCandles(newCandles))map.set(Number(c.time),c);await _put(CHART_STORE,key,{candles:[...map.values()].sort((a,b)=>a.time-b.time),cachedAt:Date.now()})})
 }
+export async function getLastCachedTime(sym,int){
+  const key=`${sym}_${int}`
+  const entry=await _get(CHART_STORE,key)
+  if(!entry||!Array.isArray(entry.candles)||!entry.candles.length)return null
+  return entry.candles[entry.candles.length-1].time
+}
 export async function getCachedSearch(q){const entry=await _get(SEARCH_STORE,q);if(!entry||Date.now()-entry.cachedAt>EXPIRY)return null;return entry.results}
 export function setCachedSearch(q,results){if(!results?.length)return;_enqueue(`search_${q}`,()=>_put(SEARCH_STORE,q,{results,cachedAt:Date.now()}))}

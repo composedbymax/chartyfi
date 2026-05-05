@@ -1,13 +1,15 @@
 import {toast} from './message.js';
 import {isOnline, onNetworkChange} from './network.js';
 import {storage} from './storage.js'
-import {getCachedChart,setCachedChart,getCachedSearch,setCachedSearch} from './cache.js'
+import {getCachedChart,setCachedChart,getCachedSearch,setCachedSearch,getLastCachedTime} from './cache.js'
+import {INTERVALS_S} from './chart.js'
 export class ApiClient{
   constructor(endpoint){
     this.ep=endpoint??storage.getLink()??'';
     if(endpoint)storage.setLink(endpoint);
     this._wasOffline = false;
     this._offlineToast = null;
+    this.onBackfill=null;
     onNetworkChange((online) => {
       if(!online){this._wasOffline = true;
         if(this._offlineToast) return;this._offlineToast = toast("You are offline","error",1e9,true);
@@ -26,7 +28,10 @@ export class ApiClient{
     const opts=typeof p1==='object'&&p1!==null?{...p1}:{p1,p2,limit,initial}
     if(opts.initial==null)opts.initial=initial
     const cached=await getCachedChart(sym,int,opts)
-    if(cached)return cached
+    if(cached){
+      if(opts.initial)this._backfillToNow(sym,int).catch(()=>{})
+      return cached
+    }
     const params={action:'chart_data',symbol:sym,interval:int}
     if(opts.p1!=null)params.p1=opts.p1
     if(opts.p2!=null)params.p2=opts.p2
@@ -38,6 +43,17 @@ export class ApiClient{
     if(opts.initial&&!r.candles?.length){await new Promise(res=>setTimeout(res,1500));r=await this._get(params)}
     if(r.candles?.length)try{await setCachedChart(sym,int,r.candles)}catch(e){}
     return r
+  }
+  async _backfillToNow(sym,int){
+    const last=await getLastCachedTime(sym,int)
+    if(!last)return
+    const now=Math.floor(Date.now()/1000)
+    const step=INTERVALS_S[int]??0
+    if(step&&now-last<step*1.5)return
+    const r=await this._get({action:'chart_data',symbol:sym,interval:int,p1:last,p2:now})
+    if(!r.candles?.length)return
+    try{await setCachedChart(sym,int,r.candles)}catch(e){}
+    this.onBackfill?.(sym,int,r.candles)
   }
   async _searchAPI(q){const cached=await getCachedSearch(q);if(cached)return{results:cached};const r=await this._get({action:'search',q});if(r.results?.length)try{setCachedSearch(q,r.results)}catch(e){}return r}
   _checkUpdatesAPI(sym,int,since){return this._get({action:'check_updates',symbol:sym,interval:int,since})}
