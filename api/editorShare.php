@@ -1,8 +1,11 @@
 <?php
+if (!ini_get('zlib.output_compression')) {
+    ob_start('ob_gzhandler');
+}
 header('Content-Type: application/json; charset=utf-8');
 $session = dirname(__DIR__) . '/../session.php';
 if (file_exists($session)) require $session;
-$user = $_SESSION['user'] ?? null;
+$username = $_SESSION['user'] ?? null;
 $dataDir = __DIR__ . '/data';
 if (!is_dir($dataDir)) mkdir($dataDir, 0775, true);
 function out($ok, $data = [], $code = 200) {
@@ -57,10 +60,11 @@ if ($action === 'item') {
   out(true, ['item' => $item]);
 }
 if ($action === 'save') {
-  if (!$user) out(false, ['error' => 'Login required'], 401);
+  if (!$username) out(false, ['error' => 'Login required'], 401);
   $name = clean($_POST['name'] ?? 'Untitled', 120);
   $description = clean($_POST['description'] ?? '', 1000);
   $code = clean($_POST['code'] ?? '', 500000);
+  $isDark = (($_POST['isDark'] ?? '') === 'yes') ? 'yes' : 'no';
   if ($code === '') out(false, ['error' => 'Missing code'], 400);
   if (empty($_FILES['image']['tmp_name'])) out(false, ['error' => 'Missing screenshot'], 400);
   $nameLower = mb_strtolower($name);
@@ -77,11 +81,13 @@ if ($action === 'save') {
   if (!is_uploaded_file($tmp)) out(false, ['error' => 'Invalid upload'], 400);
   if (!move_uploaded_file($tmp, $imgFile)) out(false, ['error' => 'Failed to save image'], 500);
   $item = [
-    'id' => $id,
-    'name' => $name,
+    'id'          => $id,
+    'name'        => $name,
     'description' => $description,
-    'code' => $code,
-    'img' => 'api/data/' . $id . '.jpg'
+    'code'        => $code,
+    'isDark'      => $isDark,
+    'img'         => 'api/data/' . $id . '.jpg',
+    'author'      => $username ?? 'unknown'
   ];
   if (file_put_contents($jsonFile, json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
     out(false, ['error' => 'Failed to save entry'], 500);

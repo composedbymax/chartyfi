@@ -1,26 +1,3 @@
-/**
- * USAGE - attachSpinner
- *
- * IMPORT
- * import { attachSpinner } from "./spinner.js"
- *
- * CREATE
- * const spinner = attachSpinner(parent, { size: 40, color: "purple" })
- *
- * SHOW / HIDE
- * spinner.show()
- * spinner.hide()
- *
- * UPDATE
- * spinner.set({ size: 60, color: "red" })
- *
- * DESTROY
- * spinner.destroy()
- *
- * EXAMPLE
- * const spinner = attachSpinner(box).show()
- * setTimeout(() => spinner.hide(), 2000)
- */
 export function attachSpinner(parent, options = {}) {
   const spinner = document.createElement("div");
   spinner.classList.add("spinner");

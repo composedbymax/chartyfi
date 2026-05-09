@@ -4,6 +4,9 @@ if (!ini_get('zlib.output_compression')) {
 }
 header('Content-Type: application/json');
 header('Cache-Control: no-cache');
+header("Cross-Origin-Opener-Policy: same-origin");
+header("X-Frame-Options: DENY");
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none';");
 $session=dirname(__DIR__).'/../session.php';
 if(file_exists($session)) require $session;
 require __DIR__.'/data.php';

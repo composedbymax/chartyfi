@@ -49,7 +49,7 @@ export class Search{
   }
   async _search(q){
     this._idx=-1;
-    this.res.innerHTML='<div class="search-item" style="color:var(--text3)">Searching…</div>';
+    this.res.innerHTML='<div class="search-item">Searching…</div>';
     this.res.classList.add('open');
     const d=await this.api._searchAPI(q);
     if(d.error) return this._showMessage('Search failed','var(--red)');

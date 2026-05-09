@@ -302,7 +302,7 @@ export class Sidebar {
       if(r.error){deny(r.error);e.target.checked=!en;return}
       t.auto_update_enabled=en?1:0;
     };
-    const sd=document.createElement('div');sd.className='stream-row';
+    const sd=document.createElement('div');
     if(stream){
       const stId=`stream-toggle-${uid}`;
       const tzLabel=stream.stream_timezone&&stream.stream_timezone!=='UTC'?stream.stream_timezone:'UTC';

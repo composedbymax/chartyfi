@@ -1,7 +1,5 @@
 import {toast} from './message.js';
 import {INTERVALS,INTERVALS_S} from './chart.js';
-
-/* ── endpoint definitions ─────────────────────────────────────────────── */
 const ENDPOINTS = {
   coingecko: {
     label: 'CoinGecko',
@@ -20,7 +18,6 @@ const ENDPOINTS = {
         `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(id)}/market_chart?vs_currency=usd&days=${d}`
       );
       if (raw.error || !raw.prices) throw new Error(raw.error || 'No price data');
-      /* CoinGecko returns [timestamp_ms, price] pairs – synthesise OHLC */
       const intSec = INTERVALS_S[interval] || 86400;
       const buckets = new Map();
       for (const [ms, price] of raw.prices) {
@@ -41,7 +38,6 @@ const ENDPOINTS = {
       }));
     }
   },
-
   coinbase: {
     label: 'Coinbase Exchange',
     needsKey: false,
@@ -58,7 +54,6 @@ const ENDPOINTS = {
       const gran = granMap[interval] || 86400;
       const end = Math.floor(Date.now()/1000);
       const start = end - days * 86400;
-      /* Coinbase max 300 candles per call – paginate */
       const candles = [];
       let cursor = end;
       while (cursor > start) {
@@ -70,13 +65,11 @@ const ENDPOINTS = {
         cursor = segStart;
         if (candles.length > 5000) break;
       }
-      /* [time, low, high, open, close, volume] */
       return candles
         .map(c => ({time: c[0], open: c[3], high: c[2], low: c[1], close: c[4], volume: c[5]}))
         .sort((a,b) => a.time - b.time);
     }
   },
-
   kucoin: {
     label: 'KuCoin',
     needsKey: false,
@@ -96,13 +89,11 @@ const ENDPOINTS = {
       const url = `https://api.kucoin.com/api/v1/market/candles?type=${type}&symbol=${encodeURIComponent(id)}&startAt=${start}&endAt=${end}`;
       const res = await proxy(url);
       if (res.code !== '200000') throw new Error(res.msg || 'KuCoin error');
-      /* [time, open, close, high, low, volume, turnover] */
       return (res.data || [])
         .map(c => ({time: Number(c[0]), open: Number(c[1]), high: Number(c[3]), low: Number(c[4]), close: Number(c[2]), volume: Number(c[5])}))
         .sort((a,b) => a.time - b.time);
     }
   },
-
   fred: {
     label: 'FRED',
     needsKey: true,
@@ -125,7 +116,6 @@ const ENDPOINTS = {
         });
     }
   },
-
   twelvedata: {
     label: 'Twelve Data',
     needsKey: true,
@@ -155,7 +145,6 @@ const ENDPOINTS = {
         .sort((a,b) => a.time - b.time);
     }
   },
-
   custom: {
     label: 'Custom',
     needsKey: false,
@@ -163,8 +152,6 @@ const ENDPOINTS = {
     load: null
   }
 };
-
-/* ── helpers ──────────────────────────────────────────────────────────── */
 function makeProxy() {
   const base = (window.PXY?.api) || 'api/proxy.php';
   return async (url) => {
@@ -173,7 +160,6 @@ function makeProxy() {
     return r.json();
   };
 }
-
 const DAYS_OPTS = [
   {label:'7 days',  val: 7},
   {label:'30 days', val: 30},
@@ -183,8 +169,6 @@ const DAYS_OPTS = [
   {label:'2 years', val:730},
   {label:'5 years', val:1825},
 ];
-
-/* ── URLLoader mini app ────────────────────────────────────────────────── */
 export class URLLoader {
   static config = {
     title: 'URL Loader',
@@ -192,7 +176,6 @@ export class URLLoader {
     width: '420px',
     mobileWidth: '90vw'
   };
-
   constructor(chart, api) {
     this.chart = chart;
     this.api = api;
@@ -201,7 +184,7 @@ export class URLLoader {
     this._proxy = makeProxy();
     this._source = 'coingecko';
     this._results = [];
-    this._selected = null;   // {id, label, symbol}
+    this._selected = null;
     this._interval = chart._currentInterval || '1d';
     this._days = 365;
     this._apiKey = '';
@@ -210,12 +193,10 @@ export class URLLoader {
     this._destroyed = false;
     this._render();
   }
-
   _render() {
     const src = this._source;
     const ep = ENDPOINTS[src];
     const intervals = INTERVALS;
-
     this.el.innerHTML = `
       <div class="ul-section">
         <label class="ul-label">Source</label>
@@ -225,13 +206,11 @@ export class URLLoader {
           ).join('')}
         </select>
       </div>
-
       ${ep?.needsKey ? `
       <div class="ul-section">
         <label class="ul-label">API Key</label>
         <input class="ul-input" id="ul-apikey" type="password" placeholder="Enter API key…" value="${this._apiKey}">
       </div>` : ''}
-
       ${src === 'custom' ? `
       <div class="ul-section">
         <label class="ul-label">Search URL <span class="ul-hint">(use {QUERY})</span></label>
@@ -240,7 +219,6 @@ export class URLLoader {
         <input class="ul-input" id="ul-custom-hist" placeholder="https://…?symbol={SYMBOL}&start={START}&end={END}" value="${this._customHistUrl}">
         <div class="ul-hint-block">Response must be JSON with a <code>candles</code> array of <code>{time,open,high,low,close,volume}</code>.</div>
       </div>` : ''}
-
       <div class="ul-section">
         <label class="ul-label">Search</label>
         <div class="ul-search-row">
@@ -249,7 +227,6 @@ export class URLLoader {
         </div>
         <div class="ul-results" id="ul-results"></div>
       </div>
-
       ${this._selected ? `
       <div class="ul-section ul-selected-section">
         <div class="ul-selected-badge">
@@ -257,7 +234,6 @@ export class URLLoader {
           <button class="ul-clear-btn" id="ul-clear">×</button>
         </div>
       </div>` : ''}
-
       <div class="ul-section ul-row">
         <div class="ul-col">
           <label class="ul-label">Interval</label>
@@ -272,65 +248,49 @@ export class URLLoader {
           </select>
         </div>
       </div>
-
       <div class="ul-section">
         <button class="ul-btn ul-btn--load${this._selected||src==='custom'?'':' ul-btn--disabled'}" id="ul-load-btn"
           ${this._selected||src==='custom'?'':'disabled'}>
           Load onto Chart
         </button>
       </div>
-
       <div class="ul-status" id="ul-status"></div>
     `;
-
     this._bind();
   }
-
   _bind() {
     const $ = id => this.el.querySelector(`#${id}`);
-
     $('ul-source').onchange = e => {
       this._source = e.target.value;
       this._selected = null;
       this._results = [];
       this._render();
     };
-
     const apiKeyEl = $('ul-apikey');
     if (apiKeyEl) apiKeyEl.oninput = e => { this._apiKey = e.target.value.trim(); };
-
     const csEl = $('ul-custom-search');
     if (csEl) csEl.oninput = e => { this._customSearchUrl = e.target.value.trim(); };
-
     const chEl = $('ul-custom-hist');
     if (chEl) chEl.oninput = e => { this._customHistUrl = e.target.value.trim(); };
-
     const searchIn = $('ul-search-in');
     const searchBtn = $('ul-search-btn');
-
     const doSearch = () => {
       const q = searchIn?.value.trim();
       if (this._source === 'custom') {
-        /* for custom, treat input as the symbol directly */
         if (q) { this._selected = {id: q, label: q, symbol: q}; this._render(); }
         return;
       }
       if (q) this._doSearch(q);
     };
-
     if (searchBtn) searchBtn.onclick = doSearch;
     if (searchIn) searchIn.onkeydown = e => { if (e.key === 'Enter') doSearch(); };
-
     $('ul-interval').onchange = e => { this._interval = e.target.value; };
     $('ul-days').onchange = e => { this._days = Number(e.target.value); };
-
     const clearBtn = $('ul-clear');
     if (clearBtn) clearBtn.onclick = () => { this._selected = null; this._render(); };
-
     const loadBtn = $('ul-load-btn');
     if (loadBtn && !loadBtn.disabled) loadBtn.onclick = () => this._load();
   }
-
   async _doSearch(q) {
     const ep = ENDPOINTS[this._source];
     if (!ep || !ep.search) return;
@@ -360,7 +320,6 @@ export class URLLoader {
       resultsEl.innerHTML = `<div class="ul-res-item ul-res-error">Error: ${e.message}</div>`;
     }
   }
-
   async _load() {
     const statusEl = this.el.querySelector('#ul-status');
     const loadBtn  = this.el.querySelector('#ul-load-btn');
@@ -369,13 +328,11 @@ export class URLLoader {
     };
     if (loadBtn) { loadBtn.disabled = true; loadBtn.textContent = 'Loading…'; }
     setStatus('Fetching data…');
-
     try {
       let candles;
       const src = this._source;
       const ep = ENDPOINTS[src];
       const sym = this._selected?.symbol || this._selected?.id || '';
-
       if (src === 'custom') {
         candles = await this._loadCustom();
       } else if (ep && ep.load) {
@@ -383,10 +340,7 @@ export class URLLoader {
       } else {
         throw new Error('No loader for this source');
       }
-
       if (!candles || !candles.length) throw new Error('No candles returned');
-
-      /* push directly onto chart */
       this.chart._data = candles;
       this.chart.sym = sym;
       this.chart.int = this._interval;
@@ -394,7 +348,6 @@ export class URLLoader {
       this.chart._emit('load', {sym, int: this._interval, count: candles.length});
       this.chart._emit('barsChanged', {count: candles.length});
       document.dispatchEvent(new CustomEvent('symbol-changed', {detail: {sym, name: this._selected?.label || sym}}));
-
       toast(`${candles.length} bars loaded from ${ep?.label || 'custom'}`, 'success');
       setStatus(`✓ ${candles.length} bars loaded`, 'ok');
     } catch(e) {
@@ -404,7 +357,6 @@ export class URLLoader {
       if (loadBtn) { loadBtn.disabled = false; loadBtn.textContent = 'Load onto Chart'; }
     }
   }
-
   async _loadCustom() {
     if (!this._customHistUrl) throw new Error('No history URL configured');
     const sym = this._selected?.symbol || '';
@@ -427,6 +379,5 @@ export class URLLoader {
       volume:Number(c.volume||c.v||0)
     })).filter(c => c.time && c.close);
   }
-
   destroy() { this._destroyed = true; }
 }

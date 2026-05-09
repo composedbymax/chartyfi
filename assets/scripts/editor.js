@@ -477,24 +477,19 @@ export class Editor{
     });
   }
   async _update(){
-    if(!this._editingGroupId){
-      toast('No indicator selected','warn');
-      return;
-    }
+    if(!this._editingGroupId){toast('No indicator selected','warn'); return;}
     const idx=this._indicatorGroups.findIndex(g=>g.id===this._editingGroupId);
     if(idx===-1){
       toast('Selected indicator no longer exists','warn');
       this._editingGroupId=null;
       return;
     }
-    const old=this._indicatorGroups[idx];
-    old.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
-    this._indicatorGroups.splice(idx,1);
-    await this._run();
-    if(this._indicatorGroups.length){
-      this._editingGroupId=this._indicatorGroups[this._indicatorGroups.length-1].id;
-      this._renderIndicatorList();
-    }
+    this._refreshSnapshot = this._indicatorGroups.map(g =>
+      g.id === this._editingGroupId
+        ? { ...g, code: this._code, name: this._snippetName.trim() || g.name }
+        : g
+    );
+    await this._doRefresh();
   }
   async _doRefresh() {
     const groups = this._refreshSnapshot;

@@ -1,3 +1,5 @@
+import {aiIcon} from './svg.js';
+import {openAiChat} from './editorAi.js';
 function highlight(raw) {
   const TOKEN = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|class|import|export|default|await|async|try|catch|finally|typeof|instanceof|in|of|this|null|undefined|true|false)\b|\b(\d+(?:\.\d+)?(?:e[+-]?\d+)?)\b|([A-Za-z_$][\w$]*)(?=\s*\()/g;
   const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -35,11 +37,15 @@ export function openFullscreen({ code, name, onChange, onClose }) {
   const title = document.createElement('span');
   title.className = 'ef-title';
   title.textContent = name || 'Editor';
+  const aiBtn = document.createElement('button');
+  aiBtn.className = 'icon-btn ef-ai-btn';
+  aiBtn.title = 'AI Indicator Assistant';
+  aiBtn.appendChild(aiIcon());
   const closeBtn = document.createElement('button');
   closeBtn.className = 'icon-btn ef-close';
   closeBtn.innerHTML = '&times;';
   closeBtn.title = 'Exit fullscreen (Esc)';
-  header.append(title, closeBtn);
+  header.append(title, aiBtn, closeBtn);
   const body = document.createElement('div');
   body.className = 'ef-body';
   const linesEl = document.createElement('div');
@@ -131,6 +137,14 @@ export function openFullscreen({ code, name, onChange, onClose }) {
         ta.selectionStart = ta.selectionEnd = s - 1;
         sync();
       }
+    }
+  });
+  aiBtn.onclick = () => openAiChat({
+    getCode: () => ta.value,
+    onInsert: inserted => {
+      ta.value = inserted;
+      sync();
+      ta.focus();
     }
   });
   let close;

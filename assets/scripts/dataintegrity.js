@@ -77,23 +77,77 @@ export class DataIntegrity{
     this._render();
   }
   _render(){
-    const sym=this.chart._currentSymbol;
-    const int=this.chart._currentInterval;
-    const data=this.chart._getCurrentData();
-    if(!sym||!int||!data||!data.length){this.el.innerHTML=`<div class="da-empty">No chart data loaded.</div>`;return}
-    const intervalSec=INTERVALS_S[int]||0;
-    const detected=detectAssetType(sym,intervalSec);
-    const gaps=findGaps(data,intervalSec,detected.type);
-    const totalBars=data.length;
-    const span=data[data.length-1].time-data[0].time;
-    const spanDays=Math.round(span/86400);
-    const totalMissed=gaps.reduce((s,g)=>s+g.missed,0);
-    const confidenceBadge=detected.confidence==='high'?`<span class="da-badge da-badge--ok">high confidence</span>`:`<span class="da-badge da-badge--warn">low confidence</span>`;
-    const typeBadge=detected.type==='crypto'?`<span class="da-badge da-badge--crypto">⟳ 24/7</span>`:detected.type==='equity'?`<span class="da-badge da-badge--equity">Market Hours</span>`:`<span class="da-badge da-badge--warn">? Unknown</span>`;
-    const integrityPct=totalBars>0?Math.max(0,Math.min(100,100-((totalMissed/(totalBars+totalMissed))*100))).toFixed(1):100;
-    const healthColor=integrityPct>=99?'var(--green)':integrityPct>=95?'var(--yellow)':'var(--red)';
-    const gapHtml=!gaps.length?`<div class="da-no-gaps">✓ No gaps detected</div>`:`${gaps.slice(0,30).map(g=>`<div class="da-gap-row"><div class="da-gap-range">${fmtDate(g.fromDate)} → ${fmtDate(g.toDate)}</div><div class="da-gap-missed">${g.missed} bar${g.missed>1?'s':''} missing</div></div>`).join('')}${gaps.length>30?`<div class="da-gap-more">…and ${gaps.length-30} more gaps</div>`:''}`;
-    this.el.innerHTML=`<div class="da-section"><div class="da-row"><span class="da-key">Symbol</span><span class="da-val">${sym}</span></div><div class="da-row"><span class="da-key">Interval</span><span class="da-val">${int}</span></div><div class="da-row"><span class="da-key">Session Type</span><span class="da-val">${typeBadge} ${confidenceBadge}</span></div><div class="da-row"><span class="da-key">Bars Loaded</span><span class="da-val">${totalBars.toLocaleString()}</span></div><div class="da-row"><span class="da-key">Span</span><span class="da-val">~${spanDays} days</span></div></div><div class="da-divider"></div><div class="da-section"><div class="da-integrity-label"><span>Data Integrity</span><span style="color:${healthColor}">${integrityPct}%</span></div><div class="da-bar-track"><div class="da-bar-fill" style="width:${integrityPct}%;background:${healthColor}"></div></div>${totalMissed>0?`<div class="da-missed-summary">${totalMissed} missing bar${totalMissed>1?'s':''} across ${gaps.length} gap${gaps.length>1?'s':''}</div>`:''}</div>${gaps.length?`<div class="da-divider"></div><div class="da-section da-gaps-section"><div class="da-gaps-title">Detected Gaps</div>${gapHtml}</div>`:''}${detected.note?`<div class="da-note">${detected.note}</div>`:''}`;
+    const sym=this.chart._currentSymbol,int=this.chart._currentInterval,data=this.chart._getCurrentData();
+    this.el.replaceChildren();
+    if(!sym||!int||!data||!data.length){
+      const e=document.createElement('div');e.className='da-empty';e.textContent='No chart data loaded.';this.el.appendChild(e);return;
+    }
+    const s=INTERVALS_S[int]||0,d=detectAssetType(sym,s),g=findGaps(data,s,d.type),b=data.length,
+    span=Math.round((data[data.length-1].time-data[0].time)/86400),
+    miss=g.reduce((a,b)=>a+b.missed,0),
+    pct=b>0?Math.max(0,Math.min(100,100-((miss/(b+miss))*100))).toFixed(1):'100',
+    col=+pct>=99?'var(--green)':+pct>=95?'var(--yellow)':'var(--red)',
+    badge=(c,t)=>{const s=document.createElement('span');s.className=`da-badge ${c}`;s.textContent=t;return s};
+    const root=document.createElement('div'),sec=document.createElement('div');sec.className='da-section';
+    [['Symbol',sym],['Interval',int],['Bars Loaded',b.toLocaleString()],['Span',`~${span} days`]].forEach(([k,v])=>{
+      const r=document.createElement('div');r.className='da-row';
+      const k1=document.createElement('span');k1.className='da-key';k1.textContent=k;
+      const v1=document.createElement('span');v1.className='da-val';v1.textContent=v;
+      r.append(k1,v1);sec.appendChild(r);
+    });
+    const sr=document.createElement('div'),sk=document.createElement('span'),sv=document.createElement('span');
+    sr.className='da-row';sk.className='da-key';sk.textContent='Session Type';sv.className='da-val';
+    sv.append(
+      d.type==='crypto'?badge('da-badge--crypto','⟳ 24/7'):d.type==='equity'?badge('da-badge--equity','Market Hours'):badge('da-badge--warn','? Unknown'),
+      d.confidence==='high'?badge('da-badge--ok','high confidence'):badge('da-badge--warn','low confidence')
+    );
+    sr.append(sk,sv);sec.appendChild(sr);
+    const sec2=document.createElement('div');sec2.className='da-section';
+    const l=document.createElement('div');l.className='da-integrity-label';
+    const lt=document.createElement('span');lt.textContent='Data Integrity';
+    const rt=document.createElement('span');rt.textContent=`${pct}%`;rt.style.color=col;
+    l.append(lt,rt);
+    const tr=document.createElement('div');tr.className='da-bar-track';
+    const f=document.createElement('div');f.className='da-bar-fill';
+    f.style.width=`${pct}%`;f.style.background=col;
+    tr.appendChild(f);sec2.append(l,tr);
+    if(miss){
+      const m=document.createElement('div');
+      m.className='da-missed-summary';
+      m.textContent=`${miss} missing bar${miss>1?'s':''} across ${g.length} gap${g.length>1?'s':''}`;
+      sec2.appendChild(m);
+    }
+    root.appendChild(sec);
+    const d1=document.createElement('div');d1.className='da-divider';
+    root.appendChild(d1);
+    root.appendChild(sec2);
+    if(g.length){
+      const d2=document.createElement('div');d2.className='da-divider';
+      const sec3=document.createElement('div');sec3.className='da-section da-gaps-section';
+      const t=document.createElement('div');t.className='da-gaps-title';t.textContent='Detected Gaps';
+      const w=document.createElement('div');
+    g.slice(0,30).forEach(x=>{
+      const r=document.createElement('div');r.className='da-gap-row';
+      const a=document.createElement('div');a.className='da-gap-range';a.textContent=`${fmtDate(x.fromDate)} → ${fmtDate(x.toDate)}`;
+      const b=document.createElement('div');b.className='da-gap-missed';b.textContent=`${x.missed} bar${x.missed>1?'s':''} missing`;
+      r.append(a,b);w.appendChild(r);
+    });
+    if(g.length>30){
+      const m=document.createElement('div');
+      m.className='da-gap-more';
+      m.textContent=`…and ${g.length-30} more gaps`;
+      w.appendChild(m);
+    }
+    sec3.append(t,w);
+    root.append(d2,sec3);
+    }
+    if(d.note){
+      const n=document.createElement('div');
+      n.className='da-note';
+      n.textContent=d.note;
+      root.appendChild(n);
+    }
+    this.el.appendChild(root);
   }
   destroy(){this._destroyed=true}
 }

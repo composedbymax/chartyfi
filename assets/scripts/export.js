@@ -158,7 +158,7 @@ export class Exporter {
     overlay.innerHTML = `
       <div id="export-table-wrap">
         <div id="export-table-toolbar">
-          <span id="export-table-title">${this._chart._currentSymbol} ${this._chart._currentInterval} — ${rows.length} bars</span>
+          <span id="export-table-title">${this._chart._currentSymbol ?? 'No data'} ${this._chart._currentInterval} — ${rows.length} bars</span>
           <div id="export-table-actions">
             <button id="export-copy-btn">Copy</button>
             <button id="export-close-btn">✕</button>
