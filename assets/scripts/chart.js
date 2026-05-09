@@ -10,7 +10,7 @@ function _chartOpts(){
 }
 export class Chart{
   constructor(container,api,timezone='UTC'){
-    this.container=container;this.api=api;this.sym=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._init();
+    this.container=container;this.api=api;this.sym=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._isDataset=false;this._datasetFull=[];this._init();
   }
   _tzOffset(iana){if(iana==='UTC')return 0;try{return offsetMinutesForZone(iana)}catch(e){return 0}}
   _setTimezone(tz){this._timezone=tz;this._tzOffsetMin=this._tzOffset(tz);if(this._data.length)this._apply()}
@@ -54,6 +54,8 @@ export class Chart{
     this._emit('dataChanged',{sym:this.sym,int:this.int,count:clean.length});
   }
   async load(sym,int,p1,p2){
+    this._isDataset=false;
+    this._datasetFull=[];
     this.sym=sym;
     this.int=int||this.int;
     this._tzOffsetMin=this._tzOffset(this._timezone);
@@ -67,8 +69,23 @@ export class Chart{
     this._emit('load',{sym,int:this.int,count:this._data.length});
     if(res.end_of_data&&res.loadedBars<INITIAL_LIMIT)toast(`${res.loadedBars} bars loaded. End of avaliable data`,'info',3000);
   }
+  _loadDataset(candles,interval){
+    this.sym=null;
+    this.int=interval||this.int;
+    this._isDataset=true;
+    this._datasetFull=[...candles];
+    this._data=[...candles];
+    this._buildSeries();
+    this._emit('dataset-loaded',{int:this.int,count:candles.length});
+  }
   async _extendBefore(bars,silent=false){
     const requested=Math.max(1,Math.floor(Number(bars)||0));
+    if(this._isDataset){
+      const p1=this._data[0]?.time;
+      const toAdd=p1?this._datasetFull.filter(c=>c.time<p1).slice(-requested):[];
+      if(!toAdd.length){if(!silent)toast('No more data available','warn');return 0;}
+      this._data=[...toAdd,...this._data];this._apply();return toAdd.length;
+    }
     if(!this.sym||!requested)return 0;
     const anchor=this._data[0]?.time??Math.floor(Date.now()/1000);
     const beforeCount=this._data.length;
@@ -84,6 +101,12 @@ export class Chart{
   }
   async _extendAfter(bars){
     const requested=Math.max(1,Math.floor(Number(bars)||0));
+    if(this._isDataset){
+      const p2=this._data[this._data.length-1]?.time;
+      const toAdd=p2?this._datasetFull.filter(c=>c.time>p2).slice(0,requested):[];
+      if(!toAdd.length){toast('No more data available','warn');return 0;}
+      this._data=[...this._data,...toAdd];this._apply();return toAdd.length;
+    }
     if(!this.sym||!requested)return 0;
     const anchor=this._data[this._data.length-1]?.time??0;
     if(!anchor){toast('Load a chart first','warn');return 0}

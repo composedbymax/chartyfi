@@ -7,6 +7,7 @@ import {tooltip} from './tooltip.js';
 import {Settings} from './settings.js';
 import {storage} from './storage.js';
 import {MiniApps} from './miniApps.js';
+import {Importer} from './import.js';
 export class Sidebar {
   constructor(container,chart,api,config,localTimezone){
     this.el=container;this.chart=chart;this.api=api;this.config=config;
@@ -14,6 +15,7 @@ export class Sidebar {
     this._config=config;
     this._localTz=localTimezone||'UTC';
     this._chartTz='UTC';
+    this._datasetMode=false;
     this.onTimezoneChange=null;
     this._editor=new Editor(document.createElement('div'),chart);
     this._settings=new Settings(chart,api,config,this._localTz,{
@@ -21,6 +23,7 @@ export class Sidebar {
       onRerender:()=>this._renderSidebar(),
     });
     this._miniApps=new MiniApps(chart,api);
+    this._importer=new Importer(chart);
     this.api._getChartTz().then(tz=>{
       if(tz&&tz!==this._chartTz){this._chartTz=tz;this._applyChartTz();}
     }).catch(()=>{});
@@ -29,7 +32,11 @@ export class Sidebar {
     this._exporter=new Exporter(chart);
     this._exporter.timezone=this._chartTz;
     this.chart._chartOn('barsChanged',({count})=>this._updateBarCount(count));
-    this.chart._chartOn('load',({int})=>this._updateActiveTf(int));
+    this.chart._chartOn('load',({int})=>{
+      if(this._datasetMode){this._datasetMode=false;this._renderSidebar();}
+      else this._updateActiveTf(int);
+    });
+    this.chart._chartOn('dataset-loaded',()=>{this._datasetMode=true;this._renderSidebar();});
     document.addEventListener('symbol-changed',e=>this._onSymbolChange(e.detail));
     this._handleOutsideClick=this._handleOutsideClick.bind(this);
     this._handleKeydown=this._handleKeydown.bind(this);
@@ -203,6 +210,7 @@ export class Sidebar {
         else {this.chart.int = b.dataset.int;}
       };
     });
+    if(this.chart._isDataset) grid.querySelectorAll('.tf-btn').forEach(b=>b.disabled=true);
     this.el.appendChild(grid);
     const d=document.createElement('div');d.className='sb-divider';this.el.appendChild(d);
   }
@@ -239,6 +247,9 @@ export class Sidebar {
         <button class="btn-sm" id="exp-json">JSON</button>
         <button class="btn-sm" id="exp-txt">TXT</button>
         <button class="btn-sm" id="exp-table">Table</button>
+      </div>
+      <div class="ctrl-row export-row">
+        <span class="export-label">Import</span>
       </div>`;
     const getBars=()=>+wrap.querySelector('#bars-count').value||200;
     wrap.querySelector('#btn-extend-before').onclick=()=>this.chart._extendBefore(getBars());
@@ -250,6 +261,7 @@ export class Sidebar {
     wrap.querySelector('#exp-json').onclick=()=>this._exporter._exportJSON();
     wrap.querySelector('#exp-txt').onclick=()=>this._exporter._exportTXT();
     wrap.querySelector('#exp-table').onclick=()=>this._exporter._showTable();
+    wrap.appendChild(this._importer.buildEl());
     this.el.appendChild(wrap);
     const d=document.createElement('div');d.className='sb-divider';this.el.appendChild(d);
   }

@@ -43,7 +43,8 @@ async function main() {
   const af = new AutoFetch(chart); autofetchEnabled._inst = af;
   api.onBackfill=(sym,int,candles)=>{if(chart._currentSymbol===sym&&chart._currentInterval===int)chart._appendCandles(candles)}
   window.addEventListener('toolsVisibility', e => { tools.setVisible(e.detail); chart._forceResize(); });
-  const urlLoaded = initUrlState(chart);
+  const isDatasetUrl = location.search === '?dataset';
+  const urlLoaded = isDatasetUrl ? false : initUrlState(chart);
   const sidebar = new Sidebar(document.getElementById('sb-inner'), chart, api, config, localTimezone);
   sidebar.onTimezoneChange = tz => { chartTz = tz; chart._setTimezone(tz); };
   new Search(document.getElementById('search-in'), document.getElementById('search-res'), chart, api);
@@ -74,6 +75,11 @@ async function main() {
     } catch {
       toast(`${sym} loaded`, 'success');
     }
+  });
+  chart._chartOn('dataset-loaded',({int}) => {
+    currentAssetName = null;
+    updateHeader('Dataset', int || '', 'Dataset');
+    history.replaceState(null, '', '?dataset');
   });
   const first = config?.tracked?.[0];
   if (first && !urlLoaded) { currentAssetName = null; chart.load(first.symbol, first.interval); }
