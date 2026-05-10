@@ -29,6 +29,20 @@ function syncLines(linesEl, code) {
     while (linesEl.children.length > n) linesEl.lastChild.remove();
   }
 }
+function writeClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).catch(() => {});
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  ta.style.top = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch {}
+  ta.remove();
+  return Promise.resolve();
+}
 export function openFullscreen({ code, name, onChange, onClose }) {
   const overlay = document.createElement('div');
   overlay.className = 'ef-overlay';
@@ -67,9 +81,26 @@ export function openFullscreen({ code, name, onChange, onClose }) {
   body.append(linesEl, edWrap);
   overlay.append(header, body);
   document.body.appendChild(overlay);
+  const syncLineHeights = () => {
+    const lineEls = linesEl.children;
+    const hlLines = hlDiv.children;
+    for (let i = 0; i < hlLines.length; i++) {
+      if (lineEls[i]) lineEls[i].style.height = hlLines[i].offsetHeight + 'px';
+    }
+  };
   const sync = () => {
-    hlDiv.innerHTML = highlight(ta.value) + '\n';
+    const lines = ta.value.split('\n');
     syncLines(linesEl, ta.value);
+    hlDiv.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    lines.forEach(line => {
+      const d = document.createElement('div');
+      d.className = 'ef-line';
+      d.innerHTML = highlight(line) || '\u200b';
+      frag.appendChild(d);
+    });
+    hlDiv.appendChild(frag);
+    syncLineHeights();
     hlDiv.scrollTop = ta.scrollTop;
     hlDiv.scrollLeft = ta.scrollLeft;
     linesEl.scrollTop = ta.scrollTop;
@@ -77,6 +108,8 @@ export function openFullscreen({ code, name, onChange, onClose }) {
   };
   sync();
   ta.focus();
+  const ro = new ResizeObserver(syncLineHeights);
+  ro.observe(edWrap);
   const PAIRS = { '(':')', '{':'}', '[':']', '"':'"', "'":"'", '`':'`' };
   const CLOSING = new Set([')', '}', ']', '"', "'", '`']);
   ta.addEventListener('input', sync);
@@ -87,15 +120,37 @@ export function openFullscreen({ code, name, onChange, onClose }) {
   });
   ta.addEventListener('keydown', e => {
     const s = ta.selectionStart, end = ta.selectionEnd;
-    if (e.key === 'Tab') {
+    if ((e.metaKey || e.altKey) && e.key.toLowerCase() === 'x') {
+      e.preventDefault();
+      let cutText = '';
+      if (s !== end) {
+        cutText = ta.value.slice(s, end);
+        ta.value = ta.value.slice(0, s) + ta.value.slice(end);
+        ta.selectionStart = ta.selectionEnd = s;
+      } else {
+        let ls = ta.value.lastIndexOf('\n', s - 1) + 1;
+        let le = ta.value.indexOf('\n', s);
+        if (le === -1) le = ta.value.length;
+        else le += 1;
+        cutText = ta.value.slice(ls, le);
+        ta.value = ta.value.slice(0, ls) + ta.value.slice(le);
+        ta.selectionStart = ta.selectionEnd = ls;
+      }
+      writeClipboard(cutText);
+      sync();
+    } else if (e.key === 'Tab') {
       e.preventDefault();
       if (e.shiftKey) {
-        const ls = ta.value.lastIndexOf('\n', s - 1) + 1;
-        if (ta.value.slice(ls, ls + 2) === '  ') {
-          ta.value = ta.value.slice(0, ls) + ta.value.slice(ls + 2);
-          ta.selectionStart = ta.selectionEnd = Math.max(ls, s - 2);
-          sync();
-        }
+        const startLine = ta.value.lastIndexOf('\n', s - 1) + 1;
+        let endLine = ta.value.indexOf('\n', end);
+        if (endLine === -1) endLine = ta.value.length;
+        const block = ta.value.slice(startLine, endLine);
+        const outdented = block.replace(/^ {1,2}/gm, '');
+        ta.value = ta.value.slice(0, startLine) + outdented + ta.value.slice(endLine);
+        const diff = block.length - outdented.length;
+        ta.selectionStart = Math.max(startLine, s - 2);
+        ta.selectionEnd = end - diff;
+        sync();
       } else if (s === end) {
         ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(end);
         ta.selectionStart = ta.selectionEnd = s + 2;
@@ -141,16 +196,13 @@ export function openFullscreen({ code, name, onChange, onClose }) {
   });
   aiBtn.onclick = () => openAiChat({
     getCode: () => ta.value,
-    onInsert: inserted => {
-      ta.value = inserted;
-      sync();
-      ta.focus();
-    }
+    onInsert: inserted => {ta.value = inserted;sync();ta.focus();}
   });
   let close;
   const onEsc = e => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', onEsc);
   close = () => {
+    ro.disconnect();
     document.removeEventListener('keydown', onEsc);
     overlay.remove();
     if (onClose) onClose(ta.value);

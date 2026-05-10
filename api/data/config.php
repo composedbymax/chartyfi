@@ -4,5 +4,5 @@ return [
   'dbname' => '...',
   'dbuser' => '...',
   'dbpass' => '...',
-  'crypt_key' => '...'
+  'crypt_key' => '...',
 ];

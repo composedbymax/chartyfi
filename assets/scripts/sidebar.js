@@ -234,22 +234,22 @@ export class Sidebar {
       <div class="ctrl-row bar-count-row">
         <span id="sb-bar-count">Bars loaded: ${this.chart._getBarCount().toLocaleString()}</span>
       </div>
-      <div class="ctrl-row export-row">
-        <span class="export-label">Export</span>
+      <div class="ctrl-row data-row">
+        <span class="data-label">Export</span>
         <select id="exp-timefmt" class="export-timefmt-select">
           <option value="unix">Unix</option>
           <option value="iso">ISO</option>
           <option value="datetime">Datetime</option>
         </select>
       </div>
-      <div class="ctrl-row export-row">
+      <div class="ctrl-row data-row">
         <button class="btn-sm" id="exp-csv">CSV</button>
         <button class="btn-sm" id="exp-json">JSON</button>
         <button class="btn-sm" id="exp-txt">TXT</button>
         <button class="btn-sm" id="exp-table">Table</button>
       </div>
-      <div class="ctrl-row export-row">
-        <span class="export-label">Import</span>
+      <div class="ctrl-row data-row">
+        <span class="data-label">Import</span>
       </div>`;
     const getBars=()=>+wrap.querySelector('#bars-count').value||200;
     wrap.querySelector('#btn-extend-before').onclick=()=>this.chart._extendBefore(getBars());
@@ -391,7 +391,7 @@ export class Sidebar {
     div.onclick=()=>{
       div.classList.toggle('collapsed');
       const body=div.nextElementSibling;
-      body.style.maxHeight=div.classList.contains('collapsed')?'0':body.scrollHeight+'px';
+      body.style.maxHeight = div.classList.contains('collapsed') ? '0' : '2000px';
     };
     return div;
   }

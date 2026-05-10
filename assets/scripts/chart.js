@@ -2,7 +2,7 @@ import {toast} from './message.js';
 import {offsetMinutesForZone,shiftTimestamp} from './timezone.js';
 export const INTERVALS_S={'1m':60,'2m':120,'5m':300,'15m':900,'30m':1800,'1h':3600,'4h':14400,'1d':86400,'1wk':604800,'1mo':2592000,'3mo':7776000};
 export const INTERVALS=Object.keys(INTERVALS_S);
-const INITIAL_LIMIT=1500;
+const INITIAL_LIMIT=750;
 function _chartOpts(){
   const s=getComputedStyle(document.documentElement);
   const v=n=>s.getPropertyValue(n).trim();

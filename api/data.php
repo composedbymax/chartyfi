@@ -1,5 +1,5 @@
 <?php
-$config = require __DIR__ . '/config.php';
+$config = require __DIR__ . '/data/config.php';
 $host   = $config['host'];
 $dbname = $config['dbname'];
 $dbuser = $config['dbuser'];
@@ -73,7 +73,14 @@ function storeCandles($pdo,$symbol,$interval,$candles){
   $s=$pdo->prepare("INSERT INTO asset_prices(symbol,`interval`,`timestamp`,open,high,low,close,volume)VALUES(?,?,?,?,?,?,?,?)ON DUPLICATE KEY UPDATE open=VALUES(open),high=VALUES(high),low=VALUES(low),close=VALUES(close),volume=VALUES(volume)");
   try{
     $pdo->beginTransaction();
-    foreach($candles as $c)$s->execute([$symbol,$interval,$c['time'],$c['open'],$c['high'],$c['low'],$c['close'],$c['volume']]);
+    foreach($candles as $c)$s->execute([
+      $symbol,$interval,$c['time'],
+      round($c['open'],  2),
+      round($c['high'],  2),
+      round($c['low'],   2),
+      round($c['close'], 2),
+      round($c['volume'], 4),
+    ]);
     $pdo->commit();
   }catch(Throwable $e){
     if($pdo->inTransaction())$pdo->rollBack();

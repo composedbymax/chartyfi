@@ -7,11 +7,30 @@ export function initMessage() {
 }
 export function toast(msg, type='info', ms=3200, persistent=false) {
   if(!storage.getToasts()) return;
+
   const el=document.createElement('div');
   el.className=`toast ${type}`;
-  el.textContent=msg;
+
+  const text=document.createElement('span');
+  text.textContent=msg;
+
+  el.appendChild(text);
+
+  // add close button only if NOT persistent
+  if(!persistent){
+    const close=document.createElement('div');
+    close.className='toast-close';
+    close.textContent='×';
+    close.onclick=(e)=>{
+      e.stopPropagation();
+      el.remove();
+    };
+    el.appendChild(close);
+
+    setTimeout(()=>el.remove(), ms);
+  }
+
   toastWrap.appendChild(el);
-  if(!persistent) {setTimeout(()=>el.remove(),ms);}
   return el;
 }
 export function confirm(msg) {

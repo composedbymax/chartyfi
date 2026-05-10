@@ -199,7 +199,7 @@ export class Tools{
     this.dragState=null;
     this._setTrashActive(false);
     this._cancelDraft();
-    const drawMode = mode==='trend'||mode==='brush'||mode==='fib'||mode==='measure';
+    const drawMode = mode==='trend'||mode==='brush'||mode==='fib'||mode==='measure'||mode==='select';
     this._setChartLocked(drawMode);
     this._applyMode();
     this._syncModeUI();

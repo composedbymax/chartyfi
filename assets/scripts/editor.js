@@ -4,11 +4,12 @@ import { codeIcon } from './svg.js';
 import { tooltip } from './tooltip.js';
 import { runBacktest } from './backtester.js';
 import { openFullscreen } from './editorFullscreen.js';
+import { attachSpinner } from './spinner.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
 const HELP_CACHE_KEY='editor-help-content';
-const HELP_JSON_URL='././api/editorHelp.json';
+const HELP_JSON_URL='././api/data/editorHelp.json';
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 function openDB(){
   return new Promise((res,rej)=>{
@@ -124,6 +125,7 @@ export class Editor{
     this._activeCtrl = null;
     this._refreshSnapshot = null;
     this._refreshTimer = null;
+    this._helpSpinner = null;
     this.chart._chartOn('dataChanged', () => this._refreshIndicators());
   }
   _cancelActive() {
@@ -157,30 +159,37 @@ export class Editor{
   }
   _ensureHelpContent(helpArea){
     if(this._helpHtml){
+      if(this._helpSpinner){ this._helpSpinner.destroy(); this._helpSpinner = null; }
       helpArea.innerHTML=this._helpHtml;
       return;
     }
-    helpArea.innerHTML='<p class="ed-help-loading">Loading…</p>';
-    fetchHelpContent()
-      .then(html=>{
-        this._helpLoaded=true;
-        this._helpHtml=html;
-        helpArea.innerHTML=html;
-        helpArea.querySelectorAll('pre').forEach(pre=>{
-          const w=document.createElement('div');
-          w.className='pre-wrap';
-          pre.replaceWith(w);
-          w.appendChild(pre);
-          const b=document.createElement('button');
-          b.className='pre-copy-btn';
-          b.textContent='Copy';
-          b.onclick=()=>navigator.clipboard.writeText(pre.textContent).then(()=>{b.textContent='✓';setTimeout(()=>{b.textContent='Copy'},1500)});
-          w.appendChild(b);
+    helpArea.innerHTML='';
+    if(!this._helpSpinner){this._helpSpinner = attachSpinner(helpArea,{ size: 40, color: 'var(--accent)' });}
+    this._helpSpinner.show();
+    requestAnimationFrame(() => {
+      fetchHelpContent()
+        .then(html=>{
+          this._helpLoaded=true;
+          this._helpHtml=html;
+          if(this._helpSpinner){ this._helpSpinner.destroy(); this._helpSpinner = null; }
+          helpArea.innerHTML=html;
+          helpArea.querySelectorAll('pre').forEach(pre=>{
+            const w=document.createElement('div');
+            w.className='pre-wrap';
+            pre.replaceWith(w);
+            w.appendChild(pre);
+            const b=document.createElement('button');
+            b.className='pre-copy-btn';
+            b.textContent='Copy';
+            b.onclick=()=>navigator.clipboard.writeText(pre.textContent).then(()=>{b.textContent='✓';setTimeout(()=>{b.textContent='Copy'},1500)});
+            w.appendChild(b);
+          });
+        })
+        .catch(err=>{
+          if(this._helpSpinner){ this._helpSpinner.destroy(); this._helpSpinner = null; }
+          helpArea.innerHTML=`<p class="ed-help-error">Failed to load help content. ${err.message}</p>`;
         });
-      })
-      .catch(err=>{
-        helpArea.innerHTML=`<p class="ed-help-error">Failed to load help content. ${err.message}</p>`;
-      });
+    });
   }
   _showBtProgress(pct, label) {
     const wrap  = this.el.querySelector('#ed-bt-progress');

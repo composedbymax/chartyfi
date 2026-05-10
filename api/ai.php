@@ -7,7 +7,7 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
-$key = include __DIR__ . '/key.php';
+$key = include __DIR__ . '/data/key.php';
 $apiKey = $key['openrouter_api_key'] ?? null;
 if (!$apiKey) { echo json_encode(['error' => 'API key not keyured']); exit; }
 $raw = file_get_contents('php://input');
@@ -27,7 +27,7 @@ function handleChat($apiKey, $input) {
     $msgs = $input['messages'] ?? [];
     if (!$model) { echo json_encode(['error' => 'No model selected']); exit; }
     if (!$msgs) { echo json_encode(['error' => 'No messages provided']); exit; }
-    $instructFile = __DIR__ . '/instruct.txt';
+    $instructFile = __DIR__ . '/data/instruct.txt';
     $sys = file_exists($instructFile) ? trim(file_get_contents($instructFile)) : '';
     if (!empty($input['customInstructions'])) {
         $sys .= "\n\nUser custom instructions:\n" . trim($input['customInstructions']);
@@ -71,7 +71,7 @@ function handleChat($apiKey, $input) {
     echo json_encode(['reply' => $reply]);
 }
 function getModels() {
-    $cache = __DIR__ . '/models_cache.json';
+    $cache = __DIR__ . '/data/models_cache.json';
     $ttl = 48 * 3600;
     $raw = null;
     if (file_exists($cache) && (time() - filemtime($cache)) < $ttl) {

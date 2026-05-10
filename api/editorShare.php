@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 $session = dirname(__DIR__) . '/../session.php';
 if (file_exists($session)) require $session;
 $username = $_SESSION['user'] ?? null;
-$dataDir = __DIR__ . '/data';
+$dataDir = __DIR__ . '/data/indicators';
 if (!is_dir($dataDir)) mkdir($dataDir, 0775, true);
 function out($ok, $data = [], $code = 200) {
   http_response_code($code);
@@ -31,7 +31,7 @@ if ($action === 'list') {
     if (!is_array($item)) continue;
     $id = basename($file, '.json');
     $item['id'] = $id;
-    $item['img'] = 'api/data/' . $id . '.jpg';
+    $item['img'] = 'api/data/indicators/' . $id . '.jpg';
     unset($item['createdAt'], $item['updatedAt'], $item['code']);
     $items[] = $item;
   }
@@ -52,7 +52,7 @@ if ($action === 'item') {
   $includeImg = filter_var($_GET['includeImg'] ?? '1', FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
   if ($includeImg === null) $includeImg = true;
   if ($includeImg) {
-    $item['img'] = 'api/data/' . $id . '.jpg';
+    $item['img'] = 'api/data/indicators/' . $id . '.jpg';
   } else {
     unset($item['img']);
   }
@@ -86,7 +86,7 @@ if ($action === 'save') {
     'description' => $description,
     'code'        => $code,
     'isDark'      => $isDark,
-    'img'         => 'api/data/' . $id . '.jpg',
+    'img'         => 'api/data/indicators/' . $id . '.jpg',
     'author'      => $username ?? 'unknown'
   ];
   if (file_put_contents($jsonFile, json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
