@@ -45,28 +45,51 @@ function snapTimestamp($ts,$interval){
   if($sec<=0)return (int)$ts;
   return (int)($ts-($ts%$sec));
 }
-function fetchYahoo($symbol,$interval,$p1,$p2){
-  $url=YAHOO_BASE."/v8/finance/chart/".urlencode($symbol)."?interval=".urlencode($interval)."&period1=$p1&period2=$p2";
-  $raw=yahooGet($url);
-  if(!$raw)return [];
-  $d=json_decode($raw,true);
-  $r=$d['chart']['result'][0]??null;
-  if(!$r||empty($r['timestamp']))return [];
-  $ts=$r['timestamp'];$q=$r['indicators']['quote'][0]??[];
-  $sec=intervalSeconds($interval);
-  $currentPeriodStart=$sec>0?(int)(time()-(time()%$sec)):PHP_INT_MAX;
-  $buckets=[];
-  foreach($ts as $i=>$t){
-    $o=$q['open'][$i]??null;$c=$q['close'][$i]??null;
-    if($o===null||$c===null)continue;
-    $snapped=snapTimestamp((int)$t,$interval);
-    if($sec>0&&$snapped>=$currentPeriodStart)continue;
-    $h=(float)($q['high'][$i]??$o);$l=(float)($q['low'][$i]??$o);$v=(int)($q['volume'][$i]??0);
-    if(!isset($buckets[$snapped]))$buckets[$snapped]=['time'=>$snapped,'open'=>(float)$o,'high'=>$h,'low'=>$l,'close'=>(float)$c,'volume'=>$v];
-    else{$buckets[$snapped]['high']=max($buckets[$snapped]['high'],$h);$buckets[$snapped]['low']=min($buckets[$snapped]['low'],$l);$buckets[$snapped]['close']=(float)$c;$buckets[$snapped]['volume']+=$v;}
-  }
-  ksort($buckets);
-  return array_values($buckets);
+function fetchYahoo($symbol, $interval, $p1, $p2, $isRetry = false) {
+    $url = YAHOO_BASE . "/v8/finance/chart/" . urlencode($symbol)
+         . "?interval=" . urlencode($interval) . "&period1=$p1&period2=$p2";
+    $raw = yahooGet($url);
+    if (!$raw) return [];
+    $d = json_decode($raw, true);
+    if (!$isRetry && isset($d['chart']['error']['code'])) {
+        $errCode = $d['chart']['error']['code'];
+        $errDesc = $d['chart']['error']['description'] ?? '';
+        if ($errCode === 'Unprocessable Entity' && str_contains($errDesc, 'within the last')) {
+            preg_match('/last (\d+) days?/', $errDesc, $m);
+            $maxDays = isset($m[1]) ? (int)$m[1] : 60;
+            $clampedP1 = max($p1, time() - ($maxDays - 1) * 86400);
+            if ($clampedP1 >= $p2) return []; // nothing to fetch
+            return fetchYahoo($symbol, $interval, $clampedP1, $p2, true);
+        }
+        return [];
+    }
+    $r = $d['chart']['result'][0] ?? null;
+    if (!$r || empty($r['timestamp'])) return [];
+    $ts = $r['timestamp'];
+    $q  = $r['indicators']['quote'][0] ?? [];
+    $sec = intervalSeconds($interval);
+    $currentPeriodStart = $sec > 0 ? (int)(time() - (time() % $sec)) : PHP_INT_MAX;
+    $buckets = [];
+    foreach ($ts as $i => $t) {
+        $o = $q['open'][$i]  ?? null;
+        $c = $q['close'][$i] ?? null;
+        if ($o === null || $c === null) continue;
+        $snapped = snapTimestamp((int)$t, $interval);
+        if ($sec > 0 && $snapped >= $currentPeriodStart) continue;
+        $h = (float)($q['high'][$i]   ?? $o);
+        $l = (float)($q['low'][$i]    ?? $o);
+        $v = (int)($q['volume'][$i]   ?? 0);
+        if (!isset($buckets[$snapped]))
+            $buckets[$snapped] = ['time'=>$snapped,'open'=>(float)$o,'high'=>$h,'low'=>$l,'close'=>(float)$c,'volume'=>$v];
+        else {
+            $buckets[$snapped]['high']   = max($buckets[$snapped]['high'], $h);
+            $buckets[$snapped]['low']    = min($buckets[$snapped]['low'],  $l);
+            $buckets[$snapped]['close']  = (float)$c;
+            $buckets[$snapped]['volume'] += $v;
+        }
+    }
+    ksort($buckets);
+    return array_values($buckets);
 }
 function storeCandles($pdo,$symbol,$interval,$candles){
   if(!$candles)return 0;

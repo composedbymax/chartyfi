@@ -1,5 +1,6 @@
 import {aiIcon} from './svg.js';
 import {openAiChat} from './editorAi.js';
+import {authModal} from './authPage.js';
 function highlight(raw) {
   const TOKEN = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|\b(const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|class|import|export|default|await|async|try|catch|finally|typeof|instanceof|in|of|this|null|undefined|true|false)\b|\b(\d+(?:\.\d+)?(?:e[+-]?\d+)?)\b|([A-Za-z_$][\w$]*)(?=\s*\()/g;
   const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -81,6 +82,28 @@ export function openFullscreen({ code, name, onChange, onClose }) {
   body.append(linesEl, edWrap);
   overlay.append(header, body);
   document.body.appendChild(overlay);
+  const measurer = document.createElement('pre');
+  measurer.style.position = 'absolute';
+  measurer.style.visibility = 'hidden';
+  measurer.style.fontFamily = "'JetBrains Mono','Fira Code','Cascadia Code',monospace";
+  measurer.style.fontSize = '12px';
+  measurer.style.lineHeight = '1.6';
+  measurer.style.padding = '0';
+  measurer.style.margin = '0';
+  measurer.style.whiteSpace = 'pre';
+  document.body.appendChild(measurer);
+  const suggestOverlay = document.createElement('div');
+  suggestOverlay.className = 'ef-autocomplete-overlay';
+  suggestOverlay.style.display = 'none';
+  suggestOverlay.innerHTML = '<span class="ef-autocomplete-ghost"></span><span class="ef-autocomplete-tab-indicator">Tab</span><span class="ef-autocomplete-down-indicator">▼</span>';
+  edWrap.appendChild(suggestOverlay);
+  const suggestList = document.createElement('div');
+  suggestList.className = 'ef-autocomplete-list';
+  suggestList.style.display = 'none';
+  edWrap.appendChild(suggestList);
+  let currentSuggestions = [];
+  let currentWordRange = null;
+  let activeSuggestionIndex = -1;
   const syncLineHeights = () => {
     const lineEls = linesEl.children;
     const hlLines = hlDiv.children;
@@ -112,13 +135,132 @@ export function openFullscreen({ code, name, onChange, onClose }) {
   ro.observe(edWrap);
   const PAIRS = { '(':')', '{':'}', '[':']', '"':'"', "'":"'", '`':'`' };
   const CLOSING = new Set([')', '}', ']', '"', "'", '`']);
+  const hideSuggestions = () => {
+    suggestOverlay.style.display = 'none';
+    suggestList.style.display = 'none';
+    currentSuggestions = [];
+    activeSuggestionIndex = -1;
+    currentWordRange = null;
+  };
+  const getWordAtCursor = (pos) => {
+    const text = ta.value;
+    const before = text.slice(0, pos);
+    const after = text.slice(pos);
+    const leftMatch = before.match(/[\w$]+$/);
+    if (!leftMatch) return null;
+    const rightMatch = after.match(/^[\w$]+/);
+    const word = leftMatch[0] + (rightMatch ? rightMatch[0] : '');
+    const start = pos - leftMatch[0].length;
+    const end = pos + (rightMatch ? rightMatch[0].length : 0);
+    return { text: word, start, end };
+  };
+  const measureCaretPos = (pos) => {
+    const text = ta.value;
+    const beforeText = text.slice(0, pos);
+    const lines = beforeText.split('\n');
+    const lineIdx = lines.length - 1;
+    const lastLineContent = lines[lineIdx];
+    measurer.textContent = lastLineContent;
+    const width = measurer.offsetWidth;
+    const compStyle = getComputedStyle(ta);
+    const lineHeight = parseFloat(compStyle.lineHeight);
+    const paddingTop = parseFloat(compStyle.paddingTop);
+    const paddingLeft = parseFloat(compStyle.paddingLeft);
+    const top = paddingTop + lineIdx * lineHeight;
+    const left = paddingLeft + width;
+    return { top, left };
+  };
+  const showGhostSuggestion = (completion, cursorPos) => {
+    const pos = measureCaretPos(cursorPos);
+    suggestOverlay.style.left = (pos.left - ta.scrollLeft) + 'px';
+    suggestOverlay.style.top = (pos.top - ta.scrollTop) + 'px';
+    suggestOverlay.style.display = 'flex';
+    const partialLen = currentWordRange ? (cursorPos - currentWordRange.start) : 0;
+    suggestOverlay.querySelector('.ef-autocomplete-ghost').textContent = completion.slice(partialLen);
+    if (currentSuggestions.length > 1) {
+      suggestOverlay.querySelector('.ef-autocomplete-down-indicator').style.display = '';
+    } else {
+      suggestOverlay.querySelector('.ef-autocomplete-down-indicator').style.display = 'none';
+    }
+  };
+  const updateAutocomplete = () => {
+    const cursor = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (cursor !== end) { hideSuggestions(); return; }
+    const word = getWordAtCursor(cursor);
+    if (!word || word.text.length === 0) { hideSuggestions(); return; }
+    const prefix = word.text;
+    const allWords = ta.value.match(/\b\w+\b/g) || [];
+    const unique = [...new Set(allWords)];
+    const matches = unique.filter(w => w.startsWith(prefix) && w !== prefix);
+    if (matches.length === 0) { hideSuggestions(); return; }
+    currentSuggestions = matches.sort();
+    currentWordRange = { start: word.start, end: word.end };
+    showGhostSuggestion(matches[0], word.end);
+  };
+  const highlightListItem = () => {
+    const items = suggestList.querySelectorAll('.ef-autocomplete-item');
+    items.forEach((item, i) => {
+      item.classList.toggle('active', i === activeSuggestionIndex);
+    });
+  };
+  const insertCompletion = (fullWord) => {
+    if (!currentWordRange) return;
+    ta.value = ta.value.slice(0, currentWordRange.start) + fullWord + ta.value.slice(currentWordRange.end);
+    ta.selectionStart = ta.selectionEnd = currentWordRange.start + fullWord.length;
+    sync();
+  };
+  const showMoreSuggestions = () => {
+    suggestList.innerHTML = '';
+    currentSuggestions.forEach((w, i) => {
+      const item = document.createElement('div');
+      item.className = 'ef-autocomplete-item';
+      item.textContent = w;
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        insertCompletion(w);
+        hideSuggestions();
+      });
+      suggestList.appendChild(item);
+    });
+    activeSuggestionIndex = 0;
+    highlightListItem();
+    const overlayRect = suggestOverlay.getBoundingClientRect();
+    const wrapRect = edWrap.getBoundingClientRect();
+    suggestList.style.left = (overlayRect.left - wrapRect.left) + 'px';
+    suggestList.style.top = (overlayRect.bottom - wrapRect.top) + 'px';
+    suggestList.style.display = 'block';
+  };
+
   ta.addEventListener('input', sync);
+  ta.addEventListener('input', updateAutocomplete);
   ta.addEventListener('scroll', () => {
     hlDiv.scrollTop = ta.scrollTop;
     hlDiv.scrollLeft = ta.scrollLeft;
     linesEl.scrollTop = ta.scrollTop;
   });
   ta.addEventListener('keydown', e => {
+    if (suggestOverlay.style.display !== 'none') {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const word = activeSuggestionIndex >= 0 ? currentSuggestions[activeSuggestionIndex] : currentSuggestions[0];insertCompletion(word);hideSuggestions();
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (suggestList.style.display === 'none') {showMoreSuggestions();} 
+        else {activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, currentSuggestions.length - 1);highlightListItem();}
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (suggestList.style.display !== 'none') {activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);highlightListItem();}
+        return;
+      }
+      if (e.key === 'Escape') {e.preventDefault();hideSuggestions();
+        return;
+      }
+    }
     const s = ta.selectionStart, end = ta.selectionEnd;
     if ((e.metaKey || e.altKey) && e.key.toLowerCase() === 'x') {
       e.preventDefault();
@@ -194,16 +336,20 @@ export function openFullscreen({ code, name, onChange, onClose }) {
       }
     }
   });
-  aiBtn.onclick = () => openAiChat({
-    getCode: () => ta.value,
-    onInsert: inserted => {ta.value = inserted;sync();ta.focus();}
-  });
+  aiBtn.onclick = () => {
+    if (!window.userLoggedIn) {authModal.open(); return;}
+    openAiChat({
+      getCode: () => ta.value,
+      onInsert: inserted => {ta.value = inserted;sync();ta.focus();}
+    });
+  };
   let close;
   const onEsc = e => { if (e.key === 'Escape') close(); };
   document.addEventListener('keydown', onEsc);
   close = () => {
     ro.disconnect();
     document.removeEventListener('keydown', onEsc);
+    measurer.remove();
     overlay.remove();
     if (onClose) onClose(ta.value);
   };

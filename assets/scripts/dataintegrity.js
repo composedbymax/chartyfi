@@ -67,7 +67,7 @@ function findGaps(data, intervalSec, assetType){
 }
 function fmtDate(d){return d.toISOString().replace('T',' ').slice(0,16)+'Z'}
 export class DataIntegrity{
-  static config={title:'Data Integrity',description:'Detects gaps and session anomalies in loaded chart data',width:'45vw',mobileWidth:'50vw'};
+  static config={title:'Data Integrity',description:'Detects gaps and session anomalies in loaded chart data',width:'45vw',mobileWidth:'50vw',suspendIndicators:false};
   constructor(chart,api){
     this.chart=chart;
     this.api=api;

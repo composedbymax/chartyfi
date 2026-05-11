@@ -1,10 +1,11 @@
-import { toast, confirm, deny } from './message.js';
-import { createExplorePanel, createShareModal } from './editorShare.js';
-import { codeIcon } from './svg.js';
-import { tooltip } from './tooltip.js';
-import { runBacktest } from './backtester.js';
-import { openFullscreen } from './editorFullscreen.js';
-import { attachSpinner } from './spinner.js';
+import {toast,confirm,deny} from './message.js';
+import {createExplorePanel,createShareModal} from './editorShare.js';
+import {codeIcon} from './svg.js';
+import {tooltip} from './tooltip.js';
+import {runBacktest} from './backtester.js';
+import {openFullscreen} from './editorFullscreen.js';
+import {attachSpinner} from './spinner.js';
+import {PaneOverlayManager} from './paneOverlayManager.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
@@ -71,40 +72,6 @@ async function fetchHelpContent(){
   sessionStorage.setItem(HELP_CACHE_KEY,html);
   return html;
 }
-function rawPaneOf(pf) {
-  if (pf.type === 'hist' || pf.type === 'dot') {
-    return pf.opts.pane != null ? pf.opts.pane : 1;
-  }
-  return pf.opts.pane != null ? pf.opts.pane : 0;
-}
-function nextFreePaneBase(indicatorGroups) {
-  let next = 1;
-  for (const g of indicatorGroups) {
-    if (g._paneBase != null) {
-      next = Math.max(next, g._paneBase + g._panesUsed);
-    }
-  }
-  return next;
-}
-function buildPaneResolver(plotFns, indicatorGroups) {
-  const rawPanes = plotFns.map(rawPaneOf);
-  const subPanes = rawPanes.filter(p => p > 0);
-  if (!subPanes.length) {
-    return {
-      _resolvePane: pf => rawPaneOf(pf),
-      _paneBase: null,
-      _panesUsed: 0,
-    };
-  }
-  const _paneBase = nextFreePaneBase(indicatorGroups);
-  const _panesUsed = Math.max(...subPanes);
-  const _resolvePane = pf => {
-    const raw = rawPaneOf(pf);
-    if (raw === 0) return 0;
-    return _paneBase + (raw - 1);
-  };
-  return { _resolvePane, _paneBase, _panesUsed };
-}
 export class Editor{
   constructor(container, chart) {
     this.el = container;
@@ -115,9 +82,8 @@ export class Editor{
     this._showHelp = false;
     this._helpLoaded = false;
     this._helpHtml = '';
-    this._indicatorGroups = [];
+    this._pom = new PaneOverlayManager(chart);
     this._indicatorListCollapsed = false;
-    this._groupCounter = 0;
     this._editingGroupId = null;
     this._rendered = false;
     this._shareUi = null;
@@ -295,7 +261,8 @@ export class Editor{
     if(sel) sel.value='';
     toast(item.description||item.name||'Untitled','info',6000);
     this._run().then(()=>{
-      const last=this._indicatorGroups[this._indicatorGroups.length-1];
+      const groups=this._pom.getGroups();
+      const last=groups[groups.length-1];
       if(last){ this._editingGroupId=last.id; this._renderIndicatorList(); }
     });
   }
@@ -393,34 +360,24 @@ export class Editor{
     this.el.querySelector('#ed-bt-cancel').onclick = () => this._cancelActive();
   }
   _clearOverlays(silent=false){
-    this._indicatorGroups.forEach(g=>{
-      g.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
-    });
-    this._indicatorGroups=[];
+    this._pom.clearAll();
     this._editingGroupId=null;
-    this.chart._clearIndicators();
     if(typeof this.chart.clearTrades==='function') this.chart.clearTrades();
     this._renderIndicatorList();
-    this.chart._forceResize();
     if(!silent) toast('All overlays cleared','info');
   }
   _removeGroup(id){
-    const idx=this._indicatorGroups.findIndex(g=>g.id===id);
-    if(idx===-1) return;
-    const g=this._indicatorGroups[idx];
-    g.series.forEach(s=>{try{this.chart._chart.removeSeries(s)}catch(e){}});
-    this._indicatorGroups.splice(idx,1);
+    const g=this._pom.removeGroup(id);
+    if(!g) return;
     if(this._editingGroupId===id) this._editingGroupId=null;
-    const remaining=this._indicatorGroups.flatMap(grp=>grp.plotFns||[]);
-    this.chart._setIndicators(remaining);
     this._renderIndicatorList();
-    this.chart._forceResize();
     toast(`Removed "${g.name}"`,'info');
   }
   _renderIndicatorList(){
     const el=this.el.querySelector('#ed-indicator-list');
     if(!el) return;
-    if(!this._indicatorGroups.length){
+    const groups=this._pom.getGroups();
+    if(!groups.length){
       el.innerHTML='';
       el.classList.remove('has-items');
       return;
@@ -444,7 +401,7 @@ export class Editor{
     };
     el.appendChild(hdr);
     const rows=[];
-    this._indicatorGroups.forEach(g=>{
+    groups.forEach(g=>{
       const row=document.createElement('div');
       row.className='ed-indicator-row';
       if(g.id===this._editingGroupId) row.classList.add('ed-indicator-row--selected');
@@ -487,16 +444,17 @@ export class Editor{
   }
   async _update(){
     if(!this._editingGroupId){toast('No indicator selected','warn'); return;}
-    const idx=this._indicatorGroups.findIndex(g=>g.id===this._editingGroupId);
+    const groups=this._pom.getGroups();
+    const idx=groups.findIndex(g=>g.id===this._editingGroupId);
     if(idx===-1){
       toast('Selected indicator no longer exists','warn');
       this._editingGroupId=null;
       return;
     }
-    this._refreshSnapshot = this._indicatorGroups.map(g =>
-      g.id === this._editingGroupId
-        ? { ...g, code: this._code, name: this._snippetName.trim() || g.name }
-        : g
+    this._refreshSnapshot=groups.map(g=>
+      g.id===this._editingGroupId
+        ?{...g,code:this._code,name:this._snippetName.trim()||g.name}
+        :g
     );
     await this._doRefresh();
   }
@@ -511,11 +469,7 @@ export class Editor{
     const savedCode = this._code;
     const savedName = this._snippetName;
     const savedSnippetId = this._snippetId;
-    groups.forEach(g => {
-      g.series.forEach(s => { try { this.chart._chart.removeSeries(s); } catch (e) {} });
-    });
-    this.chart._clearIndicators();
-    this._indicatorGroups = [];
+    this._pom.clearAll();
     this._editingGroupId = null;
     for (const g of groups) {
       if (signal.aborted) break;
@@ -531,17 +485,19 @@ export class Editor{
     this._code = savedCode;
     this._snippetName = savedName;
     this._snippetId = savedSnippetId;
-    if (selectedIndex >= 0 && this._indicatorGroups[selectedIndex]) {
-      this._editingGroupId = this._indicatorGroups[selectedIndex].id;
+    const newGroups = this._pom.getGroups();
+    if (selectedIndex >= 0 && newGroups[selectedIndex]) {
+      this._editingGroupId = newGroups[selectedIndex].id;
     } else {
-      this._editingGroupId = this._indicatorGroups.at(-1)?.id ?? null;
+      this._editingGroupId = newGroups.at(-1)?.id ?? null;
     }
     this._renderIndicatorList();
     if (this._activeCtrl === ctrl) this._activeCtrl = null;
   }
   _refreshIndicators() {
-    if (this._indicatorGroups.length) {
-      this._refreshSnapshot = [...this._indicatorGroups];
+    const groups=this._pom.getGroups();
+    if (groups.length) {
+      this._refreshSnapshot = [...groups];
     }
     clearTimeout(this._refreshTimer);
     this._refreshTimer = setTimeout(() => this._doRefresh(), 200);
@@ -619,117 +575,19 @@ export class Editor{
       if (!silent) toast('No series produced', 'warn');
       return;
     }
-    const allIndicators = [
-      ...this._indicatorGroups.flatMap(g => g.plotFns || []),
-      ...plotFns
-    ];
-    this.chart._setIndicators(allIndicators);
     if (trades.length && typeof this.chart.setTrades === 'function') {
       this.chart.setTrades(trades);
     }
-    const groupColor  = plotFns[0]?.opts?.color || plotFns[0]?.opts?.upColor || '#a78bfa';
-    const groupId     = ++this._groupCounter;
-    const groupName   = this._snippetName.trim() || `Run ${groupId}`;
-    const groupSeries = [];
-    const { _resolvePane, _paneBase, _panesUsed } = buildPaneResolver(plotFns, this._indicatorGroups);
-    plotFns.forEach(pf => {
-      try {
-        const pane = _resolvePane(pf);
-        let s = null;
-        if (pf.type === 'line') {
-          s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
-            color:     pf.opts.color     || '#a78bfa',
-            lineWidth: pf.opts.lineWidth || 2,
-            lineStyle: pf.opts.lineStyle || 0,
-            title:     pf.label
-          }, pane);
-          s.setData(pf.data);
-        } else if (pf.type === 'hist') {
-          s = this.chart._chart.addSeries(LightweightCharts.HistogramSeries, {
-            color: pf.opts.color || '#3b82f6',
-            title: pf.label
-          }, pane);
-          s.setData(pf.data);
-        } else if (pf.type === 'band') {
-          const c  = pf.opts.color || '#a78bfa';
-          const su = this.chart._chart.addSeries(LightweightCharts.LineSeries, { color: c, lineWidth: 1, title: pf.label + ' U' }, pane);
-          const sl = this.chart._chart.addSeries(LightweightCharts.LineSeries, { color: c, lineWidth: 1, title: pf.label + ' L' }, pane);
-          su.setData(pf.upper);
-          sl.setData(pf.lower);
-          groupSeries.push(su, sl);
-        } else if (pf.type === 'dot') {
-          s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
-            color:                  pf.opts.color || '#f59e0b',
-            lineVisible:            false,
-            pointMarkersVisible:    true,
-            lastValueVisible:       false,
-            priceLineVisible:       false,
-            crosshairMarkerVisible: false,
-            title:                  pf.label
-          }, pane);
-          s.setData(pf.data);
-        } else if (pf.type === 'area') {
-          s = this.chart._chart.addSeries(LightweightCharts.AreaSeries, {
-            lineColor:   pf.opts.color       || '#a78bfa',
-            topColor:    pf.opts.topColor    || 'rgba(167,139,250,0.35)',
-            bottomColor: pf.opts.bottomColor || 'rgba(167,139,250,0.02)',
-            lineWidth:   pf.opts.lineWidth   || 2,
-            title:       pf.label
-          }, pane);
-          s.setData(pf.data);
-        } else if (pf.type === 'candle') {
-          s = this.chart._chart.addSeries(LightweightCharts.CandlestickSeries, {
-            upColor:         pf.opts.upColor   || '#22c55e',
-            downColor:       pf.opts.downColor || '#ef4444',
-            borderUpColor:   pf.opts.upColor   || '#22c55e',
-            borderDownColor: pf.opts.downColor || '#ef4444',
-            wickUpColor:     pf.opts.upColor   || '#22c55e',
-            wickDownColor:   pf.opts.downColor || '#ef4444',
-            title:           pf.label
-          }, pane);
-          s.setData(pf.data);
-        } else if (pf.type === 'label') {
-          s = this.chart._chart.addSeries(LightweightCharts.LineSeries, {
-            lineVisible:            false,
-            pointMarkersVisible:    false,
-            lastValueVisible:       false,
-            priceLineVisible:       false,
-            crosshairMarkerVisible: false,
-            title:                  ''
-          }, pane);
-          s.setData(pf.data.map(d => ({ time: d.time, value: d.value })));
-          const markers = pf.data
-            .filter(d => d.text != null)
-            .map(d => ({
-              time:     d.time,
-              position: d.position || pf.opts.position || 'aboveBar',
-              color:    d.color    || pf.opts.color    || '#e2e8f0',
-              shape:    d.shape    || pf.opts.shape    || 'circle',
-              text:     String(d.text),
-              size:     d.size     || pf.opts.size     || 1,
-            }));
-          if (markers.length) LightweightCharts.createSeriesMarkers(s, markers);
+    if (plotFns.length) {
+      const groupColor = plotFns[0]?.opts?.color || plotFns[0]?.opts?.upColor || '#a78bfa';
+      const groupName = this._snippetName.trim() || `Run ${this._pom.getGroups().length + 1}`;
+      const group = this._pom.addGroup(plotFns, groupName, this._code, groupColor, silent);
+      if (group) {
+        this._editingGroupId = group.id;
+        if (!silent) {
+          this._renderIndicatorList();
+          toast(`"${groupName}" added (${group.series.length} series)`, 'success');
         }
-        if (s) groupSeries.push(s);
-      } catch (e) {
-        if (!silent) deny('Plot error (' + pf.label + '): ' + e.message);
-      }
-    });
-    if (groupSeries.length) {
-      this._indicatorGroups.push({
-        id: groupId,
-        name: groupName,
-        color: groupColor,
-        series: groupSeries,
-        plotFns,
-        code: this._code,
-        _paneBase,
-        _panesUsed,
-      });
-      this._editingGroupId = groupId;
-      if (!silent) {
-        this._renderIndicatorList();
-        toast(`"${groupName}" added (${groupSeries.length} series)`, 'success');
       }
     }
     if (trades.length && !silent) toast(`Recorded ${trades.length} trades`, 'success');

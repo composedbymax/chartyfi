@@ -9,6 +9,8 @@ import {initEmptyState} from './emptyState.js';
 import {storage} from './storage.js';
 import {AutoFetch, autofetchEnabled} from './autofetch.js';
 import {tooltip} from './tooltip.js';
+import {initGuard} from './appGuard.js';
+initGuard();
 const _t = storage.getTheme();
 if (_t) document.documentElement.setAttribute('data-theme', _t);
 document.getElementById('app').innerHTML = `

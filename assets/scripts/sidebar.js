@@ -134,19 +134,24 @@ export class Sidebar {
       const back=row.querySelector('#sb-back');
       back.title='Back';
       tooltip(back,'Back');
-      back.onclick=()=>{
-        if(this._activeApp){
+      back.onclick = () => {
+        if (this._activeApp) {
           this._miniApps.close();
-          this._activeApp=null;
+          this._activeApp = null;
           this._clearSidebarWidth();
-          this._renderSidebar();
-          return;
+        } else {
+          this.showSettings = false;
+          this.showEditor = false;
+          this.showMiniApps = false;
+          this._editor._setHelpVisible(false);
         }
-        this.showSettings=false;
-        this.showEditor=false;
-        this.showMiniApps=false;
-        this._editor._setHelpVisible(false);
         this._renderSidebar();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            this.chart._forceResize();
+            this.chart.fitContent();
+          });
+        });
       };
     }else{
       const ma=row.querySelector('#sb-miniapps-toggle');

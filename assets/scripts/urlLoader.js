@@ -174,7 +174,8 @@ export class URLLoader {
     title: 'URL Loader',
     description: 'Search & load data from external APIs onto the chart',
     width: '420px',
-    mobileWidth: '90vw'
+    mobileWidth: '90vw',
+    suspendIndicators:false
   };
   constructor(chart, api) {
     this.chart = chart;

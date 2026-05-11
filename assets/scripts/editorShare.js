@@ -1,5 +1,6 @@
-import { deny } from './message.js';
-import { storage } from './storage.js';
+import {deny} from './message.js';
+import {storage} from './storage.js';
+import {authModal} from './authPage.js';
 const apiUrl=()=>window.EDS.api;
 const $=(tag,className='',text='')=>{
   const el=document.createElement(tag);
@@ -113,14 +114,6 @@ export function createShareModal({getSource}={}){
   body.append(mkField('Name',nameIn,'eds-share-name'),mkField('Description',descIn,'eds-share-description'),mkField('Screenshot',shotPrev),status,actions);
   head.append(title,close);
   panel.append(head,body);
-  if(window.userLoggedIn===false){
-    panel.style.position='relative';
-    const lock=$('div','eds-share-lock');
-    const signIn=$('a','','Sign in');
-    signIn.href='/auth/?redirect='+encodeURIComponent(location.pathname);
-    lock.append(signIn,document.createTextNode('\u00A0to post public indicators'));
-    panel.append(lock);
-  }
   root.append(panel);
   document.body.append(root);
   let currentCode='';
@@ -142,6 +135,10 @@ export function createShareModal({getSource}={}){
     currentBlob=null;
   };
   const open=async({name='Untitled',description='',code=''}={})=>{
+    if(window.userLoggedIn===false){
+      authModal.open();
+      return;
+    }
     currentCode=code;
     nameIn.value=name||'Untitled';
     descIn.value=description||'';

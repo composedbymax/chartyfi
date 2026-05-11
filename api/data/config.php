@@ -5,4 +5,5 @@ return [
   'dbuser' => '...',
   'dbpass' => '...',
   'crypt_key' => '...',
+  'openrouter_api_key' => '...',
 ];

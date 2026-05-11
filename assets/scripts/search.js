@@ -1,4 +1,3 @@
-//search.js
 import {toast} from './message.js';
 export function initUrlState(chart) {
   const syncUrl = ({ sym, int }) => {

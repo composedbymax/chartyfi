@@ -6,7 +6,7 @@ const INITIAL_LIMIT=750;
 function _chartOpts(){
   const s=getComputedStyle(document.documentElement);
   const v=n=>s.getPropertyValue(n).trim();
-  return{layout:{background:{type:'solid',color:v('--bg')},textColor:v('--text2')},grid:{vertLines:{color:v('--bg3')},horzLines:{color:v('--bg3')}},timeScale:{timeVisible:true,secondsVisible:false,borderColor:v('--bg5')},rightPriceScale:{borderColor:v('--bg5')},crosshair:{vertLine:{color:v('--bg5')},horzLine:{color:v('--bg5')}},handleScroll:true,handleScale:true};
+  return{layout:{background:{type:'solid',color:v('--bg2')},textColor:v('--text2')},grid:{vertLines:{color:v('--bg3')},horzLines:{color:v('--bg3')}},timeScale:{timeVisible:true,secondsVisible:false,borderColor:v('--bg5')},rightPriceScale:{borderColor:v('--bg5')},crosshair:{vertLine:{color:v('--bg5')},horzLine:{color:v('--bg5')}},handleScroll:true,handleScale:true};
 }
 export class Chart{
   constructor(container,api,timezone='UTC'){

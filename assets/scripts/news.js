@@ -1,10 +1,11 @@
-import { attachSpinner } from "./spinner.js";
+import {attachSpinner} from "./spinner.js";
 export class News {
   static config={
     title:'News',
     description:'Latest news headlines for the current chart symbol',
     width:'65vw',
     mobileWidth:'70vw',
+    suspendIndicators:false
   };
   constructor(chart,api){
     this.chart=chart;

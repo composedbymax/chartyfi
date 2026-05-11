@@ -159,7 +159,12 @@ export class Tools{
     const ts=this.chart._chart?.timeScale?.();
     ts?.subscribeVisibleLogicalRangeChange?.(this._onRange);
     ts?.subscribeSizeChange?.(this._onSize);
-    this._onLoad=({sym})=>{if(this._lastSym&&this._lastSym!==sym)this.clear();this._lastSym=sym;this._scheduleDraw()};
+    this._onLoad = ({sym}) => {
+      if (this._lastSym && this._lastSym !== sym) {this.clear();}
+      this._lastSym = sym;
+      requestAnimationFrame(() => {this._fitChart();});
+      this._scheduleDraw();
+    };
     this._onData=()=>this._scheduleDraw();
     this.chart._chartOn?.('load',this._onLoad);
     this.chart._chartOn?.('dataChanged',this._onData);

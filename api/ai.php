@@ -7,7 +7,7 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
-$key = include __DIR__ . '/data/key.php';
+$key = include __DIR__ . '/data/config.php';
 $apiKey = $key['openrouter_api_key'] ?? null;
 if (!$apiKey) { echo json_encode(['error' => 'API key not keyured']); exit; }
 $raw = file_get_contents('php://input');
@@ -78,25 +78,44 @@ function getModels() {
         $raw = file_get_contents($cache);
     } else {
         $ch = curl_init('https://openrouter.ai/api/frontend/models/find');
-        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20, CURLOPT_USERAGENT => 'PHP/1.0', CURLOPT_SSL_VERIFYPEER => true]);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_USERAGENT => 'PHP/1.0',
+            CURLOPT_SSL_VERIFYPEER => true
+        ]);
         $resp = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        if ($resp && $code === 200) { file_put_contents($cache, $resp, LOCK_EX); $raw = $resp; }
-        elseif (file_exists($cache)) { $raw = file_get_contents($cache); }
-        else { return ['models' => [], 'cache' => false]; }
+        if ($resp && $code === 200) {
+            $decoded = json_decode($resp, true);
+            $models = [];
+            foreach ($decoded['data']['models'] ?? [] as $m) {
+                if (!modelIsFree($m)) continue;
+                $id = getModelId($m);
+                if (!$id) continue;
+                $name = getModelName($m);
+                if (stripos($id, 'embed') !== false || stripos($name, 'embed') !== false) {
+                    continue;
+                }
+                $provider = $m['endpoint']['provider_display_name']
+                    ?? $m['provider_display_name']
+                    ?? $m['provider']
+                    ?? 'Unknown';
+                $models[] = [
+                    'llm_name' => "$provider — $name (free)",
+                    'provider_id' => $id
+                ];
+            }
+            file_put_contents($cache, json_encode($models, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+            $raw = json_encode($models);
+        } elseif (file_exists($cache)) {
+            $raw = file_get_contents($cache);
+        } else {
+            return ['models' => [], 'cache' => false];
+        }
     }
-    $decoded = json_decode($raw, true);
-    $models = [];
-    foreach ($decoded['data']['models'] ?? [] as $m) {
-        if (!modelIsFree($m)) continue;
-        $id = getModelId($m);
-        if (!$id) continue;
-        $name = getModelName($m);
-        if (stripos($id, 'embed') !== false || stripos($name, 'embed') !== false) continue;
-        $provider = $m['endpoint']['provider_display_name'] ?? $m['provider_display_name'] ?? $m['provider'] ?? 'Unknown';
-        $models[] = ['llm_name' => "$provider — $name (free)", 'provider_id' => $id];
-    }
+    $models = json_decode($raw, true);
     return ['models' => $models, 'cache' => true];
 }
 function modelIsFree($m) {

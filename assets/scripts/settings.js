@@ -1,3 +1,4 @@
+import {authModal} from './authPage.js';
 import {toast,deny} from './message.js';
 import {storage} from './storage.js';
 import {tooltip} from './tooltip.js';
@@ -52,7 +53,7 @@ export class Settings {
     const userDiv=this._el('div');
     userDiv.innerHTML=window.userLoggedIn
       ?`<div class="user-info"><span class="name">${window.userName||'User'}</span><span class="role-badge">${window.userRole||'basic'}</span></div>`
-      :`<div class="setting-row"><a href="/auth?redirect=/chart/">Sign in</a> to enable auto-updates & streams</div>`;
+      :`<div class="setting-row"><a href="/auth?redirect=/chartyfi/">Sign in</a> to enable auto-updates & streams</div>`;
     wrap.append(userDiv,this._el('div','sb-divider'));
     this._renderToggleSection(wrap);
     const localOpt=this._localTz!=='UTC'
@@ -137,20 +138,22 @@ export class Settings {
       if(res.error){deny(res.error);return}
       toast(`Posted ${res.sent} bars`,'success');
     };
-    if(window.userLoggedIn&&this.chart._currentSymbol){
+    if(this.chart._currentSymbol){
       const {_currentSymbol:sym,_currentInterval:int}=this.chart;
       const isTracked=this._config?.tracked?.some(t=>t.symbol===sym&&t.interval===int);
       const btn=this._el('button',`btn-primary btn-track-wide${isTracked?' btn-tracked':''}`);
       btn.textContent=isTracked?'✓ Auto-updating':'Enable Auto-Update';
-      btn.onclick=async()=>{
-        if(isTracked){toast('Already tracking','info');return}
-        const r=await this.api._setTrackAPI(sym,int,true);
-        if(r.error){deny(r.error);return}
-        this._config.tracked.push({symbol:sym,interval:int,auto_update_enabled:1});
-        toast('Auto-update enabled','success');
+      btn.onclick = async (e) => {
+        e?.preventDefault?.();
+        if (!window.userLoggedIn) {authModal.open(); return;}
+        if (isTracked) {toast('Already tracking', 'info'); return;}
+        const r = await this.api._setTrackAPI(sym, int, true);
+        if (r.error) {deny(r.error);return;}
+        this._config.tracked.push({symbol: sym,interval: int,auto_update_enabled: 1});
+        toast('Auto-update enabled', 'success');
         this._onRerender();
       };
-      container.append(this._el('div','sb-divider'),btn);
+      container.append(this._el('div', 'sb-divider'), btn);
     }
   }
 }
