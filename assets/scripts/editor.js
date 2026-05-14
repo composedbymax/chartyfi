@@ -1,11 +1,12 @@
 import {toast,confirm,deny} from './message.js';
 import {createExplorePanel,createShareModal} from './editorShare.js';
-import {codeIcon} from './svg.js';
+import {codeIcon,paramsIcon} from './svg.js';
 import {tooltip} from './tooltip.js';
-import {runBacktest} from './backtester.js';
+import {runBacktest,calcFee} from './backtester.js';
 import {openFullscreen} from './editorFullscreen.js';
 import {attachSpinner} from './spinner.js';
 import {PaneOverlayManager} from './paneOverlayManager.js';
+import {hasBacktestParams,createParamBtn} from './editorParam.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
@@ -437,7 +438,21 @@ export class Editor{
       rmBtn.innerHTML='&times;';
       rmBtn.title=`Remove "${g.name}"`;
       rmBtn.onclick=e=>{e.stopPropagation();this._removeGroup(g.id)};
-      row.append(swatch,lbl,editBtn,badge,rmBtn);
+      if(hasBacktestParams(g.code||'')){
+        const paramsBtn=createParamBtn(g.code||'',newCode=>{
+          this._editingGroupId=g.id;
+          this._snippetName=g.name;
+          this._code=newCode;
+          const ta=this.el.querySelector('#ed-code');
+          const nameIn=this.el.querySelector('#ed-name');
+          if(ta) ta.value=newCode;
+          if(nameIn) nameIn.value=g.name;
+          this._update();
+        });
+        row.append(swatch,lbl,paramsBtn,editBtn,badge,rmBtn);
+      }else{
+        row.append(swatch,lbl,editBtn,badge,rmBtn);
+      }
       el.appendChild(row);
       rows.push(row);
     });
@@ -561,10 +576,10 @@ export class Editor{
     try {
       const fn = new AsyncFunction(
         'bars', 'plot', 'plotHist', 'plotBand', 'plotDot', 'plotArea', 'plotCandle',
-        'plotLabel', 'buy', 'sell', 'backtest',
+        'plotLabel', 'buy', 'sell', 'backtest', 'calcFee',
         this._code
       );
-      await fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, buy, sell, backtest);
+      await fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, buy, sell, backtest, calcFee);
     } catch (err) {
       if (err?.name === 'AbortError') throw err;
       if (!silent) deny('Error: ' + err.message);

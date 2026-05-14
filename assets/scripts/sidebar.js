@@ -149,7 +149,6 @@ export class Sidebar {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             this.chart._forceResize();
-            this.chart.fitContent();
           });
         });
       };
