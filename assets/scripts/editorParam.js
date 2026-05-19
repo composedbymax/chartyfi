@@ -75,19 +75,98 @@ export function hasBacktestParams(code) {
   const r = parseBacktest(code);
   return !!(r && Object.keys(r.params).length);
 }
-export function createParamBtn(code, onSave) {
+const LINE_STYLES = [[0,'Solid'],[1,'Dotted'],[2,'Dashed'],[3,'Lg.Dash'],[4,'Sparse']];
+const HAS_COLOR = new Set(['line','area','dot','band']);
+const HAS_DUAL_COLOR = new Set(['hist','candle']);
+const HAS_WIDTH = new Set(['line','area','dot','hist','band','candle']);
+const HAS_STYLE = new Set(['line','area']);
+function buildPlotRow(def, onChange) {
+  const row = document.createElement('div');
+  row.className = 'ep-plot-row';
+  const opts = def.opts || {};
+  const vis = document.createElement('input');
+  vis.type = 'checkbox';
+  vis.className = 'ep-plot-vis';
+  vis.checked = def.visible !== false;
+  vis.onchange = () => onChange({visible: vis.checked});
+  const nameWrap = document.createElement('div');
+  nameWrap.className = 'ep-plot-name-wrap';
+  const lbl = document.createElement('span');
+  lbl.className = 'ep-plot-lbl';
+  lbl.textContent = def.label || `(${def.type})`;
+  lbl.title = def.label || '';
+  const typeBadge = document.createElement('span');
+  typeBadge.className = 'ep-plot-type-badge';
+  typeBadge.textContent = def.type;
+  nameWrap.append(lbl, typeBadge);
+  const controls = document.createElement('div');
+  controls.className = 'ep-plot-controls';
+  if (HAS_COLOR.has(def.type) || def.type === 'label') {
+    const c = document.createElement('input');
+    c.type = 'color';
+    c.className = 'ep-color-in';
+    c.value = opts.color || '#ffffff';
+    c.oninput = () => onChange({color: c.value});
+    controls.appendChild(c);
+  } else if (HAS_DUAL_COLOR.has(def.type)) {
+    for (const key of ['upColor', 'downColor']) {
+      const c = document.createElement('input');
+      c.type = 'color';
+      c.className = 'ep-color-in';
+      c.value = opts[key] || (key === 'upColor' ? '#22c55e' : '#ef4444');
+      c.dataset.colorKey = key;
+      c.oninput = () => {
+        const up = controls.querySelector('[data-color-key=upColor]').value;
+        const dn = controls.querySelector('[data-color-key=downColor]').value;
+        onChange({upColor: up, downColor: dn});
+      };
+      controls.appendChild(c);
+    }
+  }
+  if (HAS_WIDTH.has(def.type)) {
+    const w = document.createElement('input');
+    w.type = 'number';
+    w.className = 'ep-input ep-width-in';
+    w.min = 1;
+    w.max = 10;
+    w.value = opts.lineWidth ?? 1;
+    w.oninput = () => onChange({lineWidth: Math.max(1, parseInt(w.value) || 1)});
+    controls.appendChild(w);
+  }
+  if (HAS_STYLE.has(def.type)) {
+    const s = document.createElement('select');
+    s.className = 'ep-select ep-style-sel';
+    for (const [val, name] of LINE_STYLES) {
+      const o = document.createElement('option');
+      o.value = val;
+      o.textContent = name;
+      if ((opts.lineStyle ?? 0) === val) o.selected = true;
+      s.appendChild(o);
+    }
+    s.onchange = () => onChange({lineStyle: parseInt(s.value)});
+    controls.appendChild(s);
+  }
+  if (opts.pane !== undefined) {
+    const p = document.createElement('span');
+    p.className = 'ep-plot-pane-badge';
+    p.textContent = `P${opts.pane}`;
+    controls.appendChild(p);
+  }
+  row.append(vis, nameWrap, controls);
+  return row;
+}
+export function createParamBtn(code, plotDefs, onSave, onPlotChange) {
   const btn = document.createElement('button');
   btn.className = 'icon-btn ed-indicator-params';
   btn.name = 'backtest_params_btn';
   btn.appendChild(paramsIcon({width: 14, height: 14}));
-  tooltip(btn, 'Backtest parameters');
-  btn.onclick = e => { e.stopPropagation(); openParamModal(code, onSave); };
+  tooltip(btn, 'Settings');
+  btn.onclick = e => { e.stopPropagation(); openParamModal(code, plotDefs, onSave, onPlotChange); };
   return btn;
 }
-function openParamModal(code, onSave) {
+function openParamModal(code, plotDefs, onSave, onPlotChange) {
   const parsed = parseBacktest(code);
-  if (!parsed) return;
-  const {params, fees, workers} = parsed;
+  const hasBt = !!(parsed && Object.keys(parsed.params).length);
   const overlay = document.createElement('div');
   overlay.className = 'ep-overlay';
   overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
@@ -97,7 +176,7 @@ function openParamModal(code, onSave) {
   head.className = 'ep-head';
   const title = document.createElement('span');
   title.className = 'ep-title';
-  title.textContent = 'Backtest Parameters';
+  title.textContent = 'Indicator Settings';
   const closeBtn = document.createElement('button');
   closeBtn.className = 'icon-btn';
   closeBtn.name = 'close_backtest_params';
@@ -106,134 +185,168 @@ function openParamModal(code, onSave) {
   head.append(title, closeBtn);
   const body = document.createElement('div');
   body.className = 'ep-body';
-  const paramsSec = document.createElement('div');
-  paramsSec.className = 'ep-section';
-  const paramsLbl = document.createElement('div');
-  paramsLbl.className = 'ep-sec-label';
-  paramsLbl.textContent = 'Params';
-  paramsSec.appendChild(paramsLbl);
-  const table = document.createElement('div');
-  table.className = 'ep-table';
-  const hdr = document.createElement('div');
-  hdr.className = 'ep-row ep-row--hdr';
-  hdr.innerHTML = '<span></span><span>Min</span><span>Max</span><span>Step</span>';
-  table.appendChild(hdr);
-  const paramInputs = {};
-  for (const [name, val] of Object.entries(params)) {
-    const row = document.createElement('div');
-    row.className = 'ep-row';
-    const lbl = document.createElement('span');
-    lbl.className = 'ep-param-name';
-    lbl.textContent = name;
-    row.appendChild(lbl);
-    const inputs = {};
-    for (const field of ['min', 'max', 'step']) {
-      const inp = document.createElement('input');
-      inp.type = 'number';
-      inp.className = 'ep-input';
-      inp.value = isNaN(val[field]) ? '' : val[field];
-      inp.step = 'any';
-      inp.id = `bt-${name}-${field}`;
-      inp.name = `bt_${name}_${field}`;
-      inputs[field] = inp;
-      row.appendChild(inp);
-    }
-    paramInputs[name] = inputs;
-    table.appendChild(row);
+  if (plotDefs && plotDefs.length) {
+    const plotsSec = document.createElement('div');
+    plotsSec.className = 'ep-section';
+    const plotsLbl = document.createElement('div');
+    plotsLbl.className = 'ep-sec-label';
+    plotsLbl.textContent = 'Plots';
+    plotsSec.appendChild(plotsLbl);
+    plotDefs.forEach((def, idx) => {
+      const row = buildPlotRow(def, changes => {
+        const {visible, ...opts} = changes;
+        const hasOpts = Object.keys(opts).length > 0;
+        onPlotChange(idx, hasOpts ? opts : null, visible);
+        if (visible !== undefined) def.visible = visible;
+        if (hasOpts) Object.assign(def.opts, opts);
+      });
+      plotsSec.appendChild(row);
+    });
+    body.appendChild(plotsSec);
   }
-  paramsSec.appendChild(table);
-  body.appendChild(paramsSec);
-  let newFeesFn = () => null;
-  if (fees) {
-    const feesSec = document.createElement('div');
-    feesSec.className = 'ep-section';
-    const feesLbl = document.createElement('div');
-    feesLbl.className = 'ep-sec-label';
-    feesLbl.textContent = 'Fees';
-    feesSec.appendChild(feesLbl);
-    const feesGrid = document.createElement('div');
-    feesGrid.className = 'ep-fees-grid';
-    const typeField = document.createElement('label');
-    typeField.className = 'ep-field';
-    const typeSpan = document.createElement('span');
-    typeSpan.textContent = 'Type';
-    const typeSelect = document.createElement('select');
-    typeSelect.className = 'ep-select';
-    typeSelect.id = 'bt-fees-type';
-    typeSelect.name = 'bt_fees_type';
-    for (const t of ['percent', 'fixed']) {
-      const o = document.createElement('option');
-      o.value = t;
-      o.textContent = t;
-      if (fees.type === t) o.selected = true;
-      typeSelect.appendChild(o);
+  let getNewParams = null;
+  let getNewFees = () => null;
+  let workersInp = null;
+  if (hasBt) {
+    const {params, fees, workers} = parsed;
+    const paramsSec = document.createElement('div');
+    paramsSec.className = 'ep-section';
+    const paramsLbl = document.createElement('div');
+    paramsLbl.className = 'ep-sec-label';
+    paramsLbl.textContent = 'Params';
+    paramsSec.appendChild(paramsLbl);
+    const table = document.createElement('div');
+    table.className = 'ep-table';
+    const hdr = document.createElement('div');
+    hdr.className = 'ep-row ep-row--hdr';
+    hdr.innerHTML = '<span></span><span>Min</span><span>Max</span><span>Step</span>';
+    table.appendChild(hdr);
+    const paramInputs = {};
+    for (const [name, val] of Object.entries(params)) {
+      const row = document.createElement('div');
+      row.className = 'ep-row';
+      const nameLbl = document.createElement('span');
+      nameLbl.className = 'ep-param-name';
+      nameLbl.textContent = name;
+      row.appendChild(nameLbl);
+      const inputs = {};
+      for (const field of ['min', 'max', 'step']) {
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.className = 'ep-input';
+        inp.value = isNaN(val[field]) ? '' : val[field];
+        inp.step = 'any';
+        inp.id = `bt-${name}-${field}`;
+        inp.name = `bt_${name}_${field}`;
+        inputs[field] = inp;
+        row.appendChild(inp);
+      }
+      paramInputs[name] = inputs;
+      table.appendChild(row);
     }
-    typeField.append(typeSpan, typeSelect);
-    feesGrid.appendChild(typeField);
-    const feesInputs = {};
-    for (const [key, lbl, ph] of [['value','Value','0.1'],['min','Min ($)','optional'],['max','Max ($)','optional']]) {
-      const wrap = document.createElement('label');
-      wrap.className = 'ep-field';
-      const s = document.createElement('span');
-      s.textContent = lbl;
-      const inp = document.createElement('input');
-      inp.type = 'number';
-      inp.className = 'ep-input';
-      inp.step = 'any';
-      inp.placeholder = ph;
-      inp.id = `bt-fees-${key}`;
-      inp.name = `bt_fees_${key}`;
-      if (fees[key] !== undefined) inp.value = fees[key];
-      feesInputs[key] = inp;
-      wrap.append(s, inp);
-      feesGrid.appendChild(wrap);
-    }
-    feesSec.appendChild(feesGrid);
-    body.appendChild(feesSec);
-    newFeesFn = () => {
-      const f = {type: typeSelect.value, value: parseFloat(feesInputs.value.value) || 0};
-      if (feesInputs.min.value !== '') f.min = parseFloat(feesInputs.min.value);
-      if (feesInputs.max.value !== '') f.max = parseFloat(feesInputs.max.value);
-      return f;
+    paramsSec.appendChild(table);
+    body.appendChild(paramsSec);
+    getNewParams = () => {
+      const r = {};
+      for (const [name, inputs] of Object.entries(paramInputs)) {
+        r[name] = {
+          min: parseFloat(inputs.min.value),
+          max: parseFloat(inputs.max.value),
+          step: parseFloat(inputs.step.value),
+        };
+      }
+      return r;
     };
-  }
-  const workersSec = document.createElement('div');
-  workersSec.className = 'ep-section';
-  const workersField = document.createElement('label');
-  workersField.className = 'ep-field';
-  const workersSpan = document.createElement('span');
-  workersSpan.textContent = 'Workers (1–8)';
-  const workersInp = document.createElement('input');
-  workersInp.type = 'number';
-  workersInp.className = 'ep-input';
-  workersInp.min = 1;
-  workersInp.max = 8;
-  workersInp.value = workers;
-  workersInp.id = 'bt-workers';
-  workersInp.name = 'bt_workers';
-  workersField.append(workersSpan, workersInp);
-  workersSec.appendChild(workersField);
-  body.appendChild(workersSec);
-  const foot = document.createElement('div');
-  foot.className = 'ep-foot';
-  const saveBtn = document.createElement('button');
-  saveBtn.className = 'btn-primary';
-  saveBtn.name = 'save_backtest_params';
-  saveBtn.textContent = 'Save & Update';
-  saveBtn.onclick = () => {
-    const newParams = {};
-    for (const [name, inputs] of Object.entries(paramInputs)) {
-      newParams[name] = {
-        min: parseFloat(inputs.min.value),
-        max: parseFloat(inputs.max.value),
-        step: parseFloat(inputs.step.value),
+    if (fees) {
+      const feesSec = document.createElement('div');
+      feesSec.className = 'ep-section';
+      const feesLbl = document.createElement('div');
+      feesLbl.className = 'ep-sec-label';
+      feesLbl.textContent = 'Fees';
+      feesSec.appendChild(feesLbl);
+      const feesGrid = document.createElement('div');
+      feesGrid.className = 'ep-fees-grid';
+      const typeField = document.createElement('label');
+      typeField.className = 'ep-field';
+      const typeSpan = document.createElement('span');
+      typeSpan.textContent = 'Type';
+      const typeSelect = document.createElement('select');
+      typeSelect.className = 'ep-select';
+      typeSelect.id = 'bt-fees-type';
+      typeSelect.name = 'bt_fees_type';
+      for (const t of ['percent', 'fixed']) {
+        const o = document.createElement('option');
+        o.value = t;
+        o.textContent = t;
+        if (fees.type === t) o.selected = true;
+        typeSelect.appendChild(o);
+      }
+      typeField.append(typeSpan, typeSelect);
+      feesGrid.appendChild(typeField);
+      const feesInputs = {};
+      for (const [key, lbl, ph] of [['value','Value','0.1'],['min','Min ($)','optional'],['max','Max ($)','optional']]) {
+        const wrap = document.createElement('label');
+        wrap.className = 'ep-field';
+        const s = document.createElement('span');
+        s.textContent = lbl;
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.className = 'ep-input';
+        inp.step = 'any';
+        inp.placeholder = ph;
+        inp.id = `bt-fees-${key}`;
+        inp.name = `bt_fees_${key}`;
+        if (fees[key] !== undefined) inp.value = fees[key];
+        feesInputs[key] = inp;
+        wrap.append(s, inp);
+        feesGrid.appendChild(wrap);
+      }
+      feesSec.appendChild(feesGrid);
+      body.appendChild(feesSec);
+      getNewFees = () => {
+        const f = {type: typeSelect.value, value: parseFloat(feesInputs.value.value) || 0};
+        if (feesInputs.min.value !== '') f.min = parseFloat(feesInputs.min.value);
+        if (feesInputs.max.value !== '') f.max = parseFloat(feesInputs.max.value);
+        return f;
       };
     }
-    const newWorkers = Math.min(8, Math.max(1, parseInt(workersInp.value) || 4));
-    overlay.remove();
-    onSave(applyChanges(code, parsed, newParams, newFeesFn(), newWorkers));
-  };
-  foot.appendChild(saveBtn);
+    const workersSec = document.createElement('div');
+    workersSec.className = 'ep-section';
+    const workersField = document.createElement('label');
+    workersField.className = 'ep-field';
+    const workersSpan = document.createElement('span');
+    workersSpan.textContent = 'Workers (1–8)';
+    workersInp = document.createElement('input');
+    workersInp.type = 'number';
+    workersInp.className = 'ep-input';
+    workersInp.min = 1;
+    workersInp.max = 8;
+    workersInp.value = workers;
+    workersInp.id = 'bt-workers';
+    workersInp.name = 'bt_workers';
+    workersField.append(workersSpan, workersInp);
+    workersSec.appendChild(workersField);
+    body.appendChild(workersSec);
+  }
+  const foot = document.createElement('div');
+  foot.className = 'ep-foot';
+  if (hasBt) {
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn-primary';
+    saveBtn.name = 'save_backtest_params';
+    saveBtn.textContent = 'Save & Update';
+    saveBtn.onclick = () => {
+      const newWorkers = Math.min(8, Math.max(1, parseInt(workersInp.value) || 4));
+      overlay.remove();
+      onSave(applyChanges(code, parsed, getNewParams(), getNewFees(), newWorkers));
+    };
+    foot.appendChild(saveBtn);
+  }
+  const doneBtn = document.createElement('button');
+  doneBtn.className = hasBt ? 'btn-sm' : 'btn-primary';
+  doneBtn.textContent = 'Done';
+  doneBtn.onclick = () => overlay.remove();
+  foot.appendChild(doneBtn);
   panel.append(head, body, foot);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);

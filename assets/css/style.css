@@ -658,7 +658,7 @@ td[colspan="3"] > div[style*="z-index: 50"] {background-color: var(--bg6) !impor
 
 /* Param modal */
 .ep-overlay{position:fixed;inset:0;background:var(--shadow);z-index:9100;display:flex;align-items:center;justify-content:center;}
-.ep-panel{background:var(--bg2);border:1px solid var(--bg6);border-radius:var(--radius);display:flex;flex-direction:column;width:min(420px,calc(100vw - 32px));max-height:calc(100vh - 64px);overflow:hidden;}
+.ep-panel{background:var(--bg2);border:1px solid var(--bg6);border-radius:var(--radius);display:flex;flex-direction:column;width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 64px);overflow:hidden;}
 .ep-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--bg5);flex-shrink:0;}
 .ep-title{font-size:13px;font-weight:700;color:var(--text);}
 .ep-body{display:flex;flex-direction:column;overflow-y:auto;flex:1;}
@@ -676,6 +676,17 @@ td[colspan="3"] > div[style*="z-index: 50"] {background-color: var(--bg6) !impor
 .ep-field>span{font-size:11px;color:var(--text3);width:68px;flex-shrink:0;}
 .ep-field .ep-input,.ep-field .ep-select{flex:1;}
 .ep-select{height:28px;font-size:12px;flex:1;}
-.ep-foot{display:flex;justify-content:flex-end;padding:10px 12px;border-top:1px solid var(--bg5);flex-shrink:0;}
+.ep-foot{display:flex;justify-content:flex-end;gap:8px;padding:10px 12px;border-top:1px solid var(--bg5);flex-shrink:0;}
 .ed-indicator-params{opacity:0.6;}
 .ed-indicator-params:hover{opacity:1;}
+.ep-plot-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--bg5);}
+.ep-plot-row:last-child{border-bottom:none;}
+.ep-plot-vis{flex-shrink:0;cursor:pointer;accent-color:var(--accent);}
+.ep-plot-name-wrap{display:flex;align-items:center;gap:5px;flex:1;min-width:0;}
+.ep-plot-lbl{font-size:12px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ep-plot-type-badge{font-size:10px;color:var(--text4);background:var(--bg4);padding:1px 4px;border-radius:3px;flex-shrink:0;}
+.ep-plot-controls{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.ep-color-in{width:28px;height:26px;padding:1px 2px;border:1px solid var(--bg6);border-radius:3px;cursor:pointer;background:none;}
+.ep-width-in{width:42px;padding:4px 4px;font-size:12px;height:26px;}
+.ep-style-sel{width:72px;height:26px;font-size:11px;}
+.ep-plot-pane-badge{font-size:10px;color:var(--text4);background:var(--bg4);padding:1px 5px;border-radius:3px;white-space:nowrap;}

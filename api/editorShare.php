@@ -32,11 +32,11 @@ if ($action === 'list') {
     $id = basename($file, '.json');
     $item['id'] = $id;
     $item['img'] = 'api/data/indicators/' . $id . '.jpg';
-    unset($item['createdAt'], $item['updatedAt'], $item['code']);
+    unset($item['code']);
     $items[] = $item;
   }
   usort($items, function($a, $b) {
-    return strcmp($b['id'], $a['id']);
+    return strtotime($b['updatedAt'] ?? '0') <=> strtotime($a['updatedAt'] ?? '0');
   });
   $items = array_slice($items, $offset, $limit);
   out(true, ['items' => $items]);
@@ -49,17 +49,11 @@ if ($action === 'item') {
   $item = json_decode(file_get_contents($file), true);
   if (!is_array($item)) out(false, ['error' => 'Corrupt item'], 500);
   $item['id'] = $id;
-  $includeImg = filter_var($_GET['includeImg'] ?? '1', FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
-  if ($includeImg === null) $includeImg = true;
-  if ($includeImg) {
-    $item['img'] = 'api/data/indicators/' . $id . '.jpg';
-  } else {
-    unset($item['img']);
-  }
-  unset($item['createdAt'], $item['updatedAt']);
+  unset($item['updatedAt']);
   out(true, ['item' => $item]);
 }
 if ($action === 'save') {
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {out(false,['error'=>'POST required'],405);}
   if (!$username) out(false, ['error' => 'Login required'], 401);
   $name = clean($_POST['name'] ?? 'Untitled', 120);
   $description = clean($_POST['description'] ?? '', 1000);
@@ -79,10 +73,18 @@ if ($action === 'save') {
   $imgFile = $dataDir . '/' . $id . '.jpg';
   $tmp = $_FILES['image']['tmp_name'];
   if (!is_uploaded_file($tmp)) out(false, ['error' => 'Invalid upload'], 400);
+  $finfo = finfo_open(FILEINFO_MIME_TYPE);
+  $mime = finfo_file($finfo, $tmp);
+  finfo_close($finfo);
+  $allowed = ['image/jpeg','image/png','image/webp'];
+  if (!in_array($mime, $allowed, true)) {out(false,['error'=>'Invalid image type'],400);}
+  $imgInfo = @getimagesize($tmp);
+  if (!$imgInfo) {out(false,['error'=>'Invalid image'],400);}
   if (!move_uploaded_file($tmp, $imgFile)) out(false, ['error' => 'Failed to save image'], 500);
   $item = [
     'id'          => $id,
     'name'        => $name,
+    'updatedAt'   => gmdate('c'),
     'description' => $description,
     'code'        => $code,
     'isDark'      => $isDark,

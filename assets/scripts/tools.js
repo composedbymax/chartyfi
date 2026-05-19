@@ -1,7 +1,8 @@
 import {tooltip} from './tooltip.js';
-import {cursorIcon,crosshairIcon,moveIcon,trendlineIcon,penIcon,fibIcon,measureIcon,fitIcon,nowIcon,timeframeIcon,deleteIcon} from './svg.js';
+import {cursorIcon,crosshairIcon,moveIcon,trendlineIcon,penIcon,fibIcon,measureIcon,fitIcon,nowIcon,timeframeIcon,deleteIcon,cameraIcon} from './svg.js';
 import {INTERVALS} from './chart.js';
 import {isMobile} from './detector.js';
+import {captureScreenshot} from './screenshot.js'
 const LW=()=>window.LightweightCharts||{};
 let _toolsVisible=true;
 const _listeners=new Set();
@@ -42,6 +43,7 @@ export class Tools{
       {id:'live',name:'Live',tip:'Scroll to real time',icon:nowIcon,action:()=>{this._liveChart();this._syncModeUI();}},
       {id:'cycle',name:'TF',tip:'Cycle chart timeframe',icon:timeframeIcon,action:()=>this._cycleInterval()},
       {id:'clear',name:'Clear',tip:'Clear all',icon:deleteIcon,action:()=>{this.clear();this._syncModeUI();}},
+      {id:'screenshot',name:'Screenshot',tip:'Take screenshot',icon:cameraIcon,action:async()=>{const blob=await captureScreenshot(this.chartWrap);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='chart.jpg';a.click();URL.revokeObjectURL(url);}},
     ];
     this._render();
     this._bind();

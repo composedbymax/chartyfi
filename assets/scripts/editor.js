@@ -6,7 +6,7 @@ import {runBacktest,calcFee} from './backtester.js';
 import {openFullscreen} from './editorFullscreen.js';
 import {attachSpinner} from './spinner.js';
 import {PaneOverlayManager} from './paneOverlayManager.js';
-import {hasBacktestParams,createParamBtn} from './editorParam.js';
+import {createParamBtn} from './editorParam.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
@@ -438,8 +438,10 @@ export class Editor{
       rmBtn.innerHTML='&times;';
       rmBtn.title=`Remove "${g.name}"`;
       rmBtn.onclick=e=>{e.stopPropagation();this._removeGroup(g.id)};
-      if(hasBacktestParams(g.code||'')){
-        const paramsBtn=createParamBtn(g.code||'',newCode=>{
+      const paramsBtn=createParamBtn(
+        g.code||'',
+        g.plotDefs||[],
+        newCode=>{
           this._editingGroupId=g.id;
           this._snippetName=g.name;
           this._code=newCode;
@@ -448,11 +450,19 @@ export class Editor{
           if(ta) ta.value=newCode;
           if(nameIn) nameIn.value=g.name;
           this._update();
-        });
-        row.append(swatch,lbl,paramsBtn,editBtn,badge,rmBtn);
-      }else{
-        row.append(swatch,lbl,editBtn,badge,rmBtn);
-      }
+        },
+        (idx,opts,visible)=>{
+          const def=g.plotDefs?.[idx];
+          const seriesIdx=def?.seriesIndex??idx;
+          const s=Array.isArray(g.series)?g.series[seriesIdx]:null;
+          if(s?.applyOptions){
+            const o=opts?{...opts}:{};
+            if(visible!==undefined) o.visible=visible;
+            if(Object.keys(o).length) s.applyOptions(o);
+          }
+        }
+      );
+      row.append(swatch,lbl,paramsBtn,editBtn,badge,rmBtn);
       el.appendChild(row);
       rows.push(row);
     });
@@ -598,6 +608,12 @@ export class Editor{
       const groupName = this._snippetName.trim() || `Run ${this._pom.getGroups().length + 1}`;
       const group = this._pom.addGroup(plotFns, groupName, this._code, groupColor, silent);
       if (group) {
+        let si = 0;
+        group.plotDefs = plotFns.map(pf => {
+          const def = {label: pf.label, type: pf.type, opts: {...(pf.opts||{})}, visible: true, seriesIndex: si};
+          si += pf.type === 'band' ? 2 : 1;
+          return def;
+        });
         this._editingGroupId = group.id;
         if (!silent) {
           this._renderIndicatorList();
