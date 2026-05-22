@@ -1,9 +1,9 @@
-export async function captureScreenshot(source,{maxWidth=1280,quality=0.82}={}){
+export async function captureScreenshot(source,{maxWidth=3840,quality=1}={}){
   if(!source) throw new Error('Chart not found');
   const rect=source.getBoundingClientRect();
   if(!rect.width||!rect.height) throw new Error('Chart is empty');
   const dpr=window.devicePixelRatio||1;
-  const scale=Math.min(1,maxWidth/rect.width);
+  const scale = Math.min(1,maxWidth/(rect.width*dpr));
   const canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(rect.width*scale*dpr));
   canvas.height=Math.max(1,Math.round(rect.height*scale*dpr));

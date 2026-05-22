@@ -43,7 +43,7 @@ export class Tools{
       {id:'live',name:'Live',tip:'Scroll to real time',icon:nowIcon,action:()=>{this._liveChart();this._syncModeUI();}},
       {id:'cycle',name:'TF',tip:'Cycle chart timeframe',icon:timeframeIcon,action:()=>this._cycleInterval()},
       {id:'clear',name:'Clear',tip:'Clear all',icon:deleteIcon,action:()=>{this.clear();this._syncModeUI();}},
-      {id:'screenshot',name:'Screenshot',tip:'Take screenshot',icon:cameraIcon,action:async()=>{const blob=await captureScreenshot(this.chartWrap);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='chart.jpg';a.click();URL.revokeObjectURL(url);}},
+      {id:'screenshot',name:'Screenshot',tip:'Take screenshot',icon:cameraIcon,action:()=>this._screenshotAction()},
     ];
     this._render();
     this._bind();
@@ -684,6 +684,15 @@ export class Tools{
     this.selected=null;
     this.dragState=null;
     this._cancelDraft();
+  }
+  async _screenshotAction(){
+    const blob=await captureScreenshot(this.chartWrap,{quality:1,maxWidth:3840});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='chart.jpg';
+    a.click();
+    URL.revokeObjectURL(url);
   }
   setVisible(v){
     this.visible=!!v;
