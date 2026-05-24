@@ -107,7 +107,7 @@ export class Exporter {
       } else {
         (s.data || []).forEach(p => {
           const r = byTime.get(p.time);
-          if (r) r[s.col] = p.value ?? null;
+          if (r) r[s.col] = s.type === 'label' ? (p.text ?? p.value ?? null) : (p.value ?? null);
         });
       }
     });

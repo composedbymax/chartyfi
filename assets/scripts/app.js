@@ -57,6 +57,7 @@ async function main() {
     const label = document.getElementById('asset-label');
     document.getElementById('asset-name').textContent = sym;
     document.getElementById('asset-sym').textContent = int;
+    label.dataset.name = name || sym;
     tooltip(label, name || sym);
   }
   document.addEventListener('symbol-changed',e=>{currentAssetName=e.detail.name || null;});

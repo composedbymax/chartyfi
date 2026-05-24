@@ -41,7 +41,7 @@ export class Chart{
       map.set(time,{time,open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close),volume:Number(c.volume??0)});
     }
     this._data=[...map.values()].sort((a,b)=>a.time-b.time);
-    if(this._data.length){this._p1=this._data[0].time;this._p2=this._data[this._data.length-1].time;}
+    if(this._data.length){this._p1=this._data[0].time;this._p2=this._data[this._data.length-1].time;this.container.dataset.p1=this._p1;this.container.dataset.p2=this._p2;}
   }
   _apply(){
     if(!this._data.length)return;

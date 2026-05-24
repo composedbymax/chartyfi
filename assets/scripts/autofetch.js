@@ -24,12 +24,12 @@ export class AutoFetch {
     const range=this._chart._chart.timeScale().getVisibleRange();
     if(!range) return;
     const count=data.filter(c=>{const t=this._chart._shiftTime(c.time);return t>=range.from&&t<=range.to}).length;
-    if(count<=10) this._fetch();
+    if(count<=30) this._fetch();
   }
   async _fetch(){
     this._fetching=true;
     const prev=this._chart._getCurrentData().length;
-    await this._chart._extendBefore(200,true);
+    await this._chart._extendBefore(300,true);
     const next=this._chart._getCurrentData().length;
     this._fetching=false;
     if(next===prev){this._exhausted=true;toast('No more data','warn')}
