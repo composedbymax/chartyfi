@@ -1,4 +1,3 @@
-//sidebar.js with old setup to fix
 import {toast,confirm,deny} from './message.js';
 import {settingsIcon,codeIcon,miniAppsIcon} from './svg.js';
 import {Chart,INTERVALS} from './chart.js';
@@ -71,7 +70,10 @@ export class Sidebar {
     if(!sidebarEl.contains(e.target)&&!toggleBtn?.contains(e.target)) this.toggle();
   }
   _handleKeydown(e){
-    if(e.key==='Escape'&&this.open&&!storage.getSidebarSticky()) this.toggle();
+    if(e.key==='Escape'&&this.open&&!storage.getSidebarSticky()){
+      if(document.querySelector('[data-sidebar-persist]:not(.hidden)')) return;
+      this.toggle();
+    }
   }
   toggle(){
     this.open=!this.open;

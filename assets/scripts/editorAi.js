@@ -242,6 +242,7 @@ export function openAiChat({ getCode, onInsert }) {
     }
     closeBtn.onclick = close;
     overlay.onclick = e => { if (e.target === overlay) close(); };
+    overlay.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
     inputTa.focus();
     resizeInput();
 }
