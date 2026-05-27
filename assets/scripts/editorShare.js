@@ -124,7 +124,7 @@ export function createShareModal({getSource}={}){
     root.classList.remove('hidden');
     try{
       const source=getSource&&getSource();
-      const blob=await captureScreenshot(source||document.querySelector('.tv-lightweight-charts,#chart-wrap'),{quality:0.7,maxWidth:1280});
+      const blob = await captureScreenshot(source || document.querySelector('.tv-lightweight-charts,#chart-wrap'),{ quality: 0.7, maxWidth: 1280, watermark: false });
       shotIsDark=isDarkMode();
       setPreview(blob);
     }catch(e){

@@ -200,7 +200,7 @@ export class URLLoader {
     const intervals = INTERVALS;
     this.el.innerHTML = `
       <div class="ul-section">
-        <label class="ul-label">Source</label>
+        <label class="ul-label" for="ul-source">Source</label>
         <select class="ul-select" id="ul-source">
           ${Object.entries(ENDPOINTS).map(([k,v])=>
             `<option value="${k}"${k===src?' selected':''}>${v.label}</option>`
@@ -209,22 +209,22 @@ export class URLLoader {
       </div>
       ${ep?.needsKey ? `
       <div class="ul-section">
-        <label class="ul-label">API Key</label>
+        <label class="ul-label" for="ul-apikey">API Key</label>
         <input class="ul-input" id="ul-apikey" type="password" placeholder="Enter API key…" value="${this._apiKey}">
       </div>` : ''}
       ${src === 'custom' ? `
       <div class="ul-section">
-        <label class="ul-label">Search URL <span class="ul-hint">(use {QUERY})</span></label>
+        <label class="ul-label" for="ul-custom-search">Search URL <span class="ul-hint">(use {QUERY})</span></label>
         <input class="ul-input" id="ul-custom-search" placeholder="https://…?q={QUERY}" value="${this._customSearchUrl}">
-        <label class="ul-label" style="margin-top:8px">History URL <span class="ul-hint">(use {SYMBOL},{START},{END})</span></label>
+        <label class="ul-label" for="ul-custom-hist" style="margin-top:8px">History URL <span class="ul-hint">(use {SYMBOL},{START},{END})</span></label>
         <input class="ul-input" id="ul-custom-hist" placeholder="https://…?symbol={SYMBOL}&start={START}&end={END}" value="${this._customHistUrl}">
         <div class="ul-hint-block">Response must be JSON with a <code>candles</code> array of <code>{time,open,high,low,close,volume}</code>.</div>
       </div>` : ''}
       <div class="ul-section">
-        <label class="ul-label">Search</label>
+        <label class="ul-label" for="ul-search-in">Search</label>
         <div class="ul-search-row">
           <input class="ul-input ul-search-in" id="ul-search-in" placeholder="${src==='custom'?'Symbol / ID':'Search symbol or name…'}" autocomplete="off">
-          <button class="ul-btn ul-btn--primary" id="ul-search-btn">Go</button>
+          <button type="button" class="ul-btn ul-btn--primary" id="ul-search-btn">Go</button>
         </div>
         <div class="ul-results" id="ul-results"></div>
       </div>
@@ -232,25 +232,25 @@ export class URLLoader {
       <div class="ul-section ul-selected-section">
         <div class="ul-selected-badge">
           <span class="ul-selected-label">${this._selected.label}</span>
-          <button class="ul-clear-btn" id="ul-clear">×</button>
+          <button type="button" class="ul-clear-btn" id="ul-clear" aria-label="Clear selected symbol">×</button>
         </div>
       </div>` : ''}
       <div class="ul-section ul-row">
         <div class="ul-col">
-          <label class="ul-label">Interval</label>
+          <label class="ul-label" for="ul-interval">Interval</label>
           <select class="ul-select" id="ul-interval">
             ${intervals.map(i=>`<option value="${i}"${i===this._interval?' selected':''}>${i}</option>`).join('')}
           </select>
         </div>
         <div class="ul-col">
-          <label class="ul-label">Range</label>
+          <label class="ul-label" for="ul-days">Range</label>
           <select class="ul-select" id="ul-days">
             ${DAYS_OPTS.map(d=>`<option value="${d.val}"${d.val===this._days?' selected':''}>${d.label}</option>`).join('')}
           </select>
         </div>
       </div>
       <div class="ul-section">
-        <button class="ul-btn ul-btn--load${this._selected||src==='custom'?'':' ul-btn--disabled'}" id="ul-load-btn"
+        <button type="button" class="ul-btn ul-btn--load${this._selected||src==='custom'?'':' ul-btn--disabled'}" id="ul-load-btn"
           ${this._selected||src==='custom'?'':'disabled'}>
           Load onto Chart
         </button>

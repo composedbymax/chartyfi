@@ -47,6 +47,7 @@ function writeClipboard(text) {
 export function openFullscreen({ code, name, onChange, onClose }) {
   const overlay = document.createElement('div');
   overlay.className = 'ef-overlay';
+  overlay.dataset.sidebarPersist = '';
   const header = document.createElement('div');
   header.className = 'ef-header';
   const title = document.createElement('span');

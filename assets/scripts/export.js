@@ -1,3 +1,4 @@
+//export.js with old setup to fix
 export class Exporter {
   constructor(chart) {
     this._chart = chart;
@@ -153,6 +154,7 @@ export class Exporter {
     const rows = this._mergeRows(layout.series);
     const overlay = document.createElement('div');
     overlay.id = 'export-table-overlay';
+    overlay.dataset.sidebarPersist = '';
     const thead = layout.cols.map(c => `<th>${c}</th>`).join('');
     const tbody = rows.map(r => `<tr>${this._row(r, layout.cols).map(v => `<td>${v}</td>`).join('')}</tr>`).join('');
     overlay.innerHTML = `

@@ -3,6 +3,7 @@ import {cursorIcon,crosshairIcon,moveIcon,trendlineIcon,penIcon,fibIcon,measureI
 import {INTERVALS} from './chart.js';
 import {isMobile} from './detector.js';
 import {captureScreenshot} from './screenshot.js'
+import {confirm} from './message.js';
 const LW=()=>window.LightweightCharts||{};
 let _toolsVisible=true;
 const _listeners=new Set();
@@ -686,12 +687,9 @@ export class Tools{
     this._cancelDraft();
   }
   async _screenshotAction(){
-    const blob=await captureScreenshot(this.chartWrap,{quality:1,maxWidth:3840});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;
-    a.download='chart.jpg';
-    a.click();
+    if(!await confirm('Download screenshot?')) return;
+    const url=URL.createObjectURL(await captureScreenshot(this.chartWrap,{quality:1,maxWidth:3840}));
+    Object.assign(document.createElement('a'),{href:url,download:'chart.jpg'}).click();
     URL.revokeObjectURL(url);
   }
   setVisible(v){

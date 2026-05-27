@@ -1,3 +1,4 @@
+//sidebar.js with old setup to fix
 import {toast,confirm,deny} from './message.js';
 import {settingsIcon,codeIcon,miniAppsIcon} from './svg.js';
 import {Chart,INTERVALS} from './chart.js';
@@ -64,7 +65,7 @@ export class Sidebar {
   _handleOutsideClick(e){
     if(!this.open) return;
     if(storage.getSidebarSticky()) return;
-    if(e.target.closest('#export-table-overlay')) return;
+    if(e.target.closest('[data-sidebar-persist]')) return;
     const sidebarEl=document.getElementById('sidebar');
     const toggleBtn=document.getElementById('sb-toggle');
     if(!sidebarEl.contains(e.target)&&!toggleBtn?.contains(e.target)) this.toggle();

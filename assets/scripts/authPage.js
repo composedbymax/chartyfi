@@ -7,6 +7,7 @@ const $=(tag,className='',text='')=>{
 function mount(root){if(!root.isConnected) document.body.append(root);}
 export function createAuthModal(){
   const root=$('div','auth-modal hidden');
+  root.dataset.sidebarPersist = '';
   const panel=$('div','auth-panel');
   const head=$('div','auth-head');
   const title=$('div','auth-title','User required');

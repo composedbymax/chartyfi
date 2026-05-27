@@ -12,6 +12,7 @@ export function openAiChat({ getCode, onInsert }) {
     let sending = false;
     const overlay = document.createElement('div');
     overlay.className = 'eai-overlay';
+    overlay.dataset.sidebarPersist = '';
     overlay.innerHTML = `
         <div class="eai-panel">
             <div class="eai-header">

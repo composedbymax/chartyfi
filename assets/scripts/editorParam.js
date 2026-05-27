@@ -71,6 +71,77 @@ function applyChanges(code, parsed, newParams, newFees, newWorkers) {
   obj = obj.replace(/workers\s*:\s*\d+/, `workers:${newWorkers}`);
   return code.slice(0, span.start) + obj + code.slice(span.end + 1);
 }
+function updateOptsObjStr(objStr, opts) {
+  let s = objStr;
+  for (const [key, val] of Object.entries(opts)) {
+    if (typeof val === 'string') {
+      const rx = new RegExp(`(\\b${key}\\s*:\\s*)(['"][^'"]*['"])`);
+      if (rx.test(s)) {
+        s = s.replace(rx, `$1'${val}'`);
+      } else {
+        s = s.replace(/\}$/, `, ${key}:'${val}'}`);
+      }
+    } else {
+      const rx = new RegExp(`(\\b${key}\\s*:\\s*)(\\w+(?:\\.\\w+)?)`);
+      if (rx.test(s)) {
+        s = s.replace(rx, `$1${val}`);
+      } else {
+        s = s.replace(/\}$/, `, ${key}:${val}}`);
+      }
+    }
+  }
+  return s;
+}
+function applyPlotOptsToCode(code, plotDefs) {
+  if (!plotDefs?.length) return code;
+  const rx = /\b(plot(?:Hist|Band|Dot|Area|Candle|Label)?)\s*\(/g;
+  const positions = [];
+  let m;
+  while ((m = rx.exec(code)) !== null) positions.push(m.index);
+  let result = code;
+  for (let i = Math.min(positions.length, plotDefs.length) - 1; i >= 0; i--) {
+    const def = plotDefs[i];
+    if (!def) continue;
+    const allOpts = {...(def.opts || {})};
+    if (def.visible === false) allOpts.visible = false;
+    if (!Object.keys(allOpts).length) continue;
+    const pos = positions[i];
+    const pi = result.indexOf('(', pos);
+    if (pi === -1) continue;
+    let depth = 0, end = -1;
+    for (let j = pi; j < result.length; j++) {
+      if (result[j] === '(') depth++;
+      else if (result[j] === ')') { depth--; if (depth === 0) { end = j; break; } }
+    }
+    if (end === -1) continue;
+    const argsStr = result.slice(pi + 1, end);
+    let lastObjStart = -1, lastObjEnd = -1, d = 0, inStr = false, strChar = '';
+    for (let j = 0; j < argsStr.length; j++) {
+      const c = argsStr[j];
+      if (inStr) {
+        if (c === strChar && (j === 0 || argsStr[j - 1] !== '\\')) inStr = false;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') { inStr = true; strChar = c; continue; }
+      if (c === '{') { if (d === 0) lastObjStart = j; d++; }
+      else if (c === '}') { d--; if (d === 0) lastObjEnd = j; }
+    }
+    if (lastObjStart === -1) {
+      const newOptsStr = '{' + Object.entries(allOpts)
+        .map(([k, v]) => `${k}:${typeof v === 'string' ? `'${v}'` : v}`)
+        .join(', ') + '}';
+      result = result.slice(0, end) + ', ' + newOptsStr + result.slice(end);
+    } else {
+      const optsStr = argsStr.slice(lastObjStart, lastObjEnd + 1);
+      const newOptsStr = updateOptsObjStr(optsStr, allOpts);
+      const absStart = pi + 1 + lastObjStart;
+      const absEnd   = pi + 1 + lastObjEnd;
+      result = result.slice(0, absStart) + newOptsStr + result.slice(absEnd + 1);
+    }
+  }
+
+  return result;
+}
 export function hasBacktestParams(code) {
   const r = parseBacktest(code);
   return !!(r && Object.keys(r.params).length);
@@ -80,7 +151,7 @@ const HAS_COLOR = new Set(['line','area','dot','band']);
 const HAS_DUAL_COLOR = new Set(['hist','candle']);
 const HAS_WIDTH = new Set(['line','area','dot','hist','band','candle']);
 const HAS_STYLE = new Set(['line','area']);
-function buildPlotRow(def, onChange) {
+function buildPlotRow(def, idx, onChange) {
   const row = document.createElement('div');
   row.className = 'ep-plot-row';
   const opts = def.opts || {};
@@ -88,6 +159,8 @@ function buildPlotRow(def, onChange) {
   vis.type = 'checkbox';
   vis.className = 'ep-plot-vis';
   vis.checked = def.visible !== false;
+  vis.id = `ep-plot-${idx}-visible`;
+  vis.name = `ep_plot_${idx}_visible`;
   vis.onchange = () => onChange({visible: vis.checked});
   const nameWrap = document.createElement('div');
   nameWrap.className = 'ep-plot-name-wrap';
@@ -106,6 +179,8 @@ function buildPlotRow(def, onChange) {
     c.type = 'color';
     c.className = 'ep-color-in';
     c.value = opts.color || '#ffffff';
+    c.id = `ep-plot-${idx}-color`;
+    c.name = `ep_plot_${idx}_color`;
     c.oninput = () => onChange({color: c.value});
     controls.appendChild(c);
   } else if (HAS_DUAL_COLOR.has(def.type)) {
@@ -115,6 +190,8 @@ function buildPlotRow(def, onChange) {
       c.className = 'ep-color-in';
       c.value = opts[key] || (key === 'upColor' ? '#22c55e' : '#ef4444');
       c.dataset.colorKey = key;
+      c.id = `ep-plot-${idx}-${key}`;
+      c.name = `ep_plot_${idx}_${key}`;
       c.oninput = () => {
         const up = controls.querySelector('[data-color-key=upColor]').value;
         const dn = controls.querySelector('[data-color-key=downColor]').value;
@@ -130,12 +207,16 @@ function buildPlotRow(def, onChange) {
     w.min = 1;
     w.max = 10;
     w.value = opts.lineWidth ?? 1;
+    w.id = `ep-plot-${idx}-line-width`;
+    w.name = `ep_plot_${idx}_line_width`;
     w.oninput = () => onChange({lineWidth: Math.max(1, parseInt(w.value) || 1)});
     controls.appendChild(w);
   }
   if (HAS_STYLE.has(def.type)) {
     const s = document.createElement('select');
     s.className = 'ep-select ep-style-sel';
+    s.id = `ep-plot-${idx}-line-style`;
+    s.name = `ep_plot_${idx}_line_style`;
     for (const [val, name] of LINE_STYLES) {
       const o = document.createElement('option');
       o.value = val;
@@ -155,21 +236,21 @@ function buildPlotRow(def, onChange) {
   row.append(vis, nameWrap, controls);
   return row;
 }
-export function createParamBtn(code, plotDefs, onSave, onPlotChange) {
+export function createParamBtn(code, plotDefs, onSave, onPlotChange, onCodeChange) {
   const btn = document.createElement('button');
   btn.className = 'icon-btn ed-indicator-params';
   btn.name = 'backtest_params_btn';
   btn.appendChild(paramsIcon({width: 14, height: 14}));
   tooltip(btn, 'Settings');
-  btn.onclick = e => { e.stopPropagation(); openParamModal(code, plotDefs, onSave, onPlotChange); };
+  btn.onclick = e => { e.stopPropagation(); openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange); };
   return btn;
 }
-function openParamModal(code, plotDefs, onSave, onPlotChange) {
+function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
   const parsed = parseBacktest(code);
   const hasBt = !!(parsed && Object.keys(parsed.params).length);
   const overlay = document.createElement('div');
+  overlay.dataset.sidebarPersist = '';
   overlay.className = 'ep-overlay';
-  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
   const panel = document.createElement('div');
   panel.className = 'ep-panel';
   const head = document.createElement('div');
@@ -181,10 +262,28 @@ function openParamModal(code, plotDefs, onSave, onPlotChange) {
   closeBtn.className = 'icon-btn';
   closeBtn.name = 'close_backtest_params';
   closeBtn.innerHTML = '&times;';
-  closeBtn.onclick = () => overlay.remove();
+  closeBtn.onclick = () => {
+    if (plotsChanged && plotDefs) {
+      plotDefs.forEach((def, idx) => {
+        const orig = originalPlotDefs[idx];
+        // Revert in-memory def
+        def.visible = orig.visible;
+        Object.keys(def.opts).forEach(k => delete def.opts[k]);
+        Object.assign(def.opts, orig.opts);
+        // Revert the live chart via onPlotChange
+        const hasOpts = Object.keys(orig.opts).length > 0;
+        onPlotChange(idx, hasOpts ? orig.opts : null, orig.visible);
+      });
+    }
+    overlay.remove();
+  };
   head.append(title, closeBtn);
   const body = document.createElement('div');
   body.className = 'ep-body';
+  let plotsChanged = false;
+  const originalPlotDefs = plotDefs
+  ? plotDefs.map(d => ({ visible: d.visible, opts: { ...(d.opts || {}) } }))
+  : [];
   if (plotDefs && plotDefs.length) {
     const plotsSec = document.createElement('div');
     plotsSec.className = 'ep-section';
@@ -193,7 +292,8 @@ function openParamModal(code, plotDefs, onSave, onPlotChange) {
     plotsLbl.textContent = 'Plots';
     plotsSec.appendChild(plotsLbl);
     plotDefs.forEach((def, idx) => {
-      const row = buildPlotRow(def, changes => {
+      const row = buildPlotRow(def, idx, changes => {
+        plotsChanged = true;
         const {visible, ...opts} = changes;
         const hasOpts = Object.keys(opts).length > 0;
         onPlotChange(idx, hasOpts ? opts : null, visible);
@@ -338,14 +438,26 @@ function openParamModal(code, plotDefs, onSave, onPlotChange) {
     saveBtn.onclick = () => {
       const newWorkers = Math.min(8, Math.max(1, parseInt(workersInp.value) || 4));
       overlay.remove();
-      onSave(applyChanges(code, parsed, getNewParams(), getNewFees(), newWorkers));
+      let newCode = applyChanges(code, parsed, getNewParams(), getNewFees(), newWorkers);
+      newCode = applyPlotOptsToCode(newCode, plotDefs);
+      onSave(newCode);
     };
     foot.appendChild(saveBtn);
   }
   const doneBtn = document.createElement('button');
   doneBtn.className = hasBt ? 'btn-sm' : 'btn-primary';
   doneBtn.textContent = 'Done';
-  doneBtn.onclick = () => overlay.remove();
+  doneBtn.onclick = () => {
+    if (plotsChanged) {
+      const newCode = applyPlotOptsToCode(code, plotDefs);
+      if (onCodeChange) {
+        onCodeChange(newCode);
+      } else if (onSave) {
+        onSave(newCode);
+      }
+    }
+    overlay.remove();
+  };
   foot.appendChild(doneBtn);
   panel.append(head, body, foot);
   overlay.appendChild(panel);

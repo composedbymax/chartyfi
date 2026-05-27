@@ -445,6 +445,7 @@ export class Editor{
           this._editingGroupId=g.id;
           this._snippetName=g.name;
           this._code=newCode;
+          g.code=newCode;
           const ta=this.el.querySelector('#ed-code');
           const nameIn=this.el.querySelector('#ed-name');
           if(ta) ta.value=newCode;
@@ -460,6 +461,14 @@ export class Editor{
             if(visible!==undefined) o.visible=visible;
             if(Object.keys(o).length) s.applyOptions(o);
           }
+        },
+        newCode=>{
+          g.code=newCode;
+          if(this._editingGroupId===g.id){
+            this._code=newCode;
+          }
+          const ta=this.el.querySelector('#ed-code');
+          if(ta && this._editingGroupId===g.id) ta.value=newCode;
         }
       );
       row.append(swatch,lbl,paramsBtn,editBtn,badge,rmBtn);
