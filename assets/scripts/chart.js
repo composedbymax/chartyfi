@@ -10,7 +10,7 @@ function _chartOpts(){
 }
 export class Chart{
   constructor(container,api,timezone='UTC'){
-    this.container=container;this.api=api;this.sym=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._isDataset=false;this._datasetFull=[];this._init();
+    this.container=container;this.api=api;this.sym=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._isDataset=false;this._datasetFull=[];this._savedPaneLayout=null;this._init();
   }
   _tzOffset(iana){if(iana==='UTC')return 0;try{return offsetMinutesForZone(iana)}catch(e){return 0}}
   _setTimezone(tz){this._timezone=tz;this._tzOffsetMin=this._tzOffset(tz);if(this._data.length)this._apply()}
@@ -43,13 +43,25 @@ export class Chart{
     this._data=[...map.values()].sort((a,b)=>a.time-b.time);
     if(this._data.length){this._p1=this._data[0].time;this._p2=this._data[this._data.length-1].time;this.container.dataset.p1=this._p1;this.container.dataset.p2=this._p2;}
   }
+  _futureWhitespace(data,count=100){
+    if(data.length<2)return[];
+    const n=Math.min(30,data.length-1);
+    const tail=data.slice(-(n+1));
+    const gaps=[];
+    for(let i=1;i<tail.length;i++)gaps.push(tail[i].time-tail[i-1].time);
+    const ws=[];let last=data[data.length-1].time;
+    for(let i=0;i<count;i++){last+=gaps[i%gaps.length];ws.push({time:this._shiftTime(last)});}
+    return ws;
+  }
   _apply(){
     if(!this._data.length)return;
     this._normalizeData();
     const clean=this._data;
     if(!clean.length)return;
-    if(this.mode==='candle'){this._main.setData(clean.map(c=>({time:this._shiftTime(c.time),open:c.open,high:c.high,low:c.low,close:c.close})))}else{this._main.setData(clean.map(c=>({time:this._shiftTime(c.time),value:c[this.field]})))}
-    if(this._vol){this._vol.setData(clean.map(c=>({time:this._shiftTime(c.time),value:c.volume,color:c.close>=c.open?'rgba(34,197,94,0.35)':'rgba(239,68,68,0.35)'})))}
+    const ws=this._futureWhitespace(clean,100);
+    if(this.mode==='candle'){this._main.setData([...clean.map(c=>({time:this._shiftTime(c.time),open:c.open,high:c.high,low:c.low,close:c.close})),...ws])}
+    else{this._main.setData([...clean.map(c=>({time:this._shiftTime(c.time),value:c[this.field]})),...ws])}
+    if(this._vol){this._vol.setData([...clean.map(c=>({time:this._shiftTime(c.time),value:c.volume,color:c.close>=c.open?'rgba(34,197,94,0.35)':'rgba(239,68,68,0.35)'})),...ws])}
     this._emit('barsChanged',{count:clean.length});
     this._emit('dataChanged',{sym:this.sym,int:this.int,count:clean.length});
   }
@@ -64,6 +76,7 @@ export class Chart{
     this._data=res.candles||[];
     this._p1=res.p1??0;
     this._p2=res.p2??0;
+    this._savePaneLayout();
     this._buildSeries();
     this._emit('dataChanged',{sym:this.sym,int:this.int,count:this._data.length});
     this._emit('load',{sym,int:this.int,count:this._data.length});
@@ -145,6 +158,18 @@ export class Chart{
   _getCurrentData(){return this._data}
   _getRange(){return{p1:this._p1,p2:this._p2}}
   _forceResize(){this._chart.resize(this.container.clientWidth,this.container.clientHeight)}
+  _savePaneLayout(){
+    const panes=this._chart?.panes?.()??[];
+    if(!panes.length) return;
+    this._savedPaneLayout=panes.map(p=>{try{return{stretchFactor:p.getStretchFactor()};}catch(e){return{stretchFactor:1};}});
+  }
+  _restorePaneLayout(){
+    if(!this._savedPaneLayout?.length) return;
+    const layout=this._savedPaneLayout;
+    this._savedPaneLayout=null;
+    const panes=this._chart?.panes?.()??[];
+    layout.forEach((saved,i)=>{if(i<panes.length){try{panes[i].setStretchFactor(saved.stretchFactor);}catch(e){}}});
+  }
   _chartOn(evt,fn){this._listeners.push({evt,fn})}
   _emit(evt,data){this._listeners.filter(l=>l.evt===evt).forEach(l=>l.fn(data))}
   buy(time){this._emit('trade',{type:'buy',time})}

@@ -534,7 +534,10 @@ export class Editor{
       this._refreshSnapshot = [...groups];
     }
     clearTimeout(this._refreshTimer);
-    this._refreshTimer = setTimeout(() => this._doRefresh(), 200);
+    this._refreshTimer = setTimeout(async () => {
+      await this._doRefresh();
+      this.chart._restorePaneLayout();
+    }, 200);
   }
   async _run(silent = false, signal = null) {
     const isOwned = !signal;

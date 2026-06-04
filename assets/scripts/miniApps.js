@@ -2,11 +2,13 @@ import {DataIntegrity} from './dataintegrity.js';
 import {News} from './news.js';
 import {URLLoader} from './urlLoader.js';
 import {CycleDetector} from './cycleDetector.js';
+import {CycleConsensus} from './cycleConsensus.js';
 const APPS=[
   DataIntegrity,
   News,
   URLLoader,
   CycleDetector,
+  CycleConsensus
 ];
 export class MiniApps {
   constructor(chart,api){

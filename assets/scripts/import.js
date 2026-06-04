@@ -111,19 +111,20 @@ function _detectInterval(candles) {
 }
 export class Importer {
   constructor(chart) { this._chart=chart; }
-  buildEl() {
+    buildEl() {
     const wrap = document.createElement('div');
-    wrap.className='imp-wrap';
+    wrap.className = 'imp-wrap';
     const zone = document.createElement('label');
-    zone.className='imp-dropzone';
-    zone.htmlFor='imp-file-input';
-    zone.innerHTML=`<span class="imp-icon">↑</span><span class="imp-text">Drop CSV or click to browse</span>`;
-    const fileIn = Object.assign(document.createElement('input'),{type:'file',id:'imp-file-input',name:'imp-file-input',accept:'.csv,.tsv,.txt',className:'hidden'});
-    zone.ondragover=e=>{e.preventDefault();zone.classList.add('drag-over');};
-    zone.ondragleave=()=>zone.classList.remove('drag-over');
-    zone.ondrop=e=>{e.preventDefault();zone.classList.remove('drag-over');if(e.dataTransfer.files[0])this._handleFile(e.dataTransfer.files[0]);};
-    fileIn.onchange=()=>{if(fileIn.files[0])this._handleFile(fileIn.files[0]);};
-    wrap.append(zone,fileIn);
+    zone.className = 'imp-dropzone';
+    zone.htmlFor = 'imp-file-input';
+    zone.innerHTML = `<span class="imp-icon">↑</span><span class="imp-text">Drop CSV or click to browse</span>`;
+    const fileIn = Object.assign(document.createElement('input'), {type: 'file', id: 'imp-file-input', name: 'imp-file-input',accept: '.csv,.tsv,.txt', className: 'hidden'});
+    this._fileInput = fileIn;
+    zone.ondragover = e => { e.preventDefault(); zone.classList.add('drag-over'); };
+    zone.ondragleave = () => zone.classList.remove('drag-over');
+    zone.ondrop = e => { e.preventDefault(); zone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) this._handleFile(e.dataTransfer.files[0]); };
+    fileIn.onchange = () => { if (fileIn.files[0]) this._handleFile(fileIn.files[0]); };
+    wrap.append(zone, fileIn);
     return wrap;
   }
   async _handleFile(file) {
@@ -145,23 +146,27 @@ export class Importer {
   }
   _showModal(parsed, mapping) {
     const overlay = document.createElement('div');
-    overlay.className='imp-modal-overlay';
-    overlay.onclick=e=>{if(e.target===overlay)close();};
-    const m = {...mapping};
-    if (m.open==null && m.price!=null) m.close=m.price;
-    const roles = ['time','open','high','low','close','volume'];
-    const labels = {time:'Time',open:'Open',high:'High',low:'Low',close:'Close',volume:'Volume'};
-    const rows = roles.map(r=>`<div class="imp-map-row"><label class="imp-map-label" for="imp-map-${r}">${labels[r]}</label><select class="imp-map-sel" id="imp-map-${r}" name="imp-map-${r}" data-role="${r}">${['(none)',...parsed.headers].map((h,i)=>`<option value="${i-1}"${i-1===(m[r]??-1)?' selected':''}>${h}</option>`).join('')}</select></div>`).join('');
-    overlay.innerHTML=`<div class="imp-modal"><div class="imp-modal-head"><span class="imp-modal-title">Confirm Column Mapping</span><button class="icon-btn imp-modal-close">✕</button></div><div class="imp-modal-body">${rows}</div><div class="imp-modal-foot"><button class="btn-sm imp-modal-cancel">Cancel</button><button class="btn-primary imp-modal-confirm">Import</button></div></div>`;
+    overlay.className = 'imp-modal-overlay';
+    overlay.dataset.sidebarPersist = '';
+    const m = { ...mapping };
+    if (m.open == null && m.price != null) m.close = m.price;
+    const roles = ['time', 'open', 'high', 'low', 'close', 'volume'];
+    const labels = { time: 'Time', open: 'Open', high: 'High', low: 'Low', close: 'Close', volume: 'Volume' };
+    const rows = roles.map(r =>
+      `<div class="imp-map-row"><label class="imp-map-label" for="imp-map-${r}">${labels[r]}</label><select class="imp-map-sel" id="imp-map-${r}" name="imp-map-${r}" data-role="${r}">${['(none)', ...parsed.headers].map((h, i) => `<option value="${i - 1}"${i - 1 === (m[r] ?? -1) ? ' selected' : ''}>${h}</option>`).join('')}</select></div>`
+    ).join('');
+    overlay.innerHTML = `<div class="imp-modal"><div class="imp-modal-head"><span class="imp-modal-title">Confirm Column Mapping</span><button class="icon-btn imp-modal-close">✕</button></div><div class="imp-modal-body">${rows}</div><div class="imp-modal-foot"><button class="btn-primary imp-modal-confirm">Import</button></div></div>`;
     document.body.appendChild(overlay);
-    const close=()=>document.body.removeChild(overlay);
-    overlay.querySelector('.imp-modal-close').onclick=close;
-    overlay.querySelector('.imp-modal-cancel').onclick=close;
-    overlay.querySelector('.imp-modal-confirm').onclick=()=>{
-      const fm={...mapping};
-      overlay.querySelectorAll('.imp-map-sel').forEach(s=>{fm[s.dataset.role]=Number(s.value)>=0?Number(s.value):null;});
+    const close = () => {
+      document.body.removeChild(overlay);
+      if (this._fileInput) this._fileInput.value = '';
+    };
+    overlay.querySelector('.imp-modal-close').onclick = close;
+    overlay.querySelector('.imp-modal-confirm').onclick = () => {
+      const fm = { ...mapping };
+      overlay.querySelectorAll('.imp-map-sel').forEach(s => { fm[s.dataset.role] = Number(s.value) >= 0 ? Number(s.value) : null; });
       close();
-      this._load(parsed,fm);
+      this._load(parsed, fm);
     };
   }
 }

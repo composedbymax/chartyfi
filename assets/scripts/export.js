@@ -1,4 +1,3 @@
-//export.js with old setup to fix
 export class Exporter {
   constructor(chart) {
     this._chart = chart;

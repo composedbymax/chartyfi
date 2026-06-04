@@ -19,7 +19,7 @@ export class Tools{
     this.chart=chart;
     this.api=api;
     this.visible=toolsVisibility.get();
-    this.mode = isMobile ? 'crosshair' : 'cursor';
+    this.mode=isMobile?'crosshair':'cursor';
     this.drawings=[];
     this.draft=null;
     this.down=false;
@@ -60,12 +60,10 @@ export class Tools{
       if(t.mobileGroup!=null)mobileGroup=t.mobileGroup;
       if(t.mobileGroupTool)mobileTool=t.mobileGroupTool;
     }
-    return {tools,mobileGroup,mobileTool};
+    return{tools,mobileGroup,mobileTool};
   }
   _render(){
-    if(this._groupPopouts){
-      Object.values(this._groupPopouts).forEach(g=>g.popout.remove());
-    }
+    if(this._groupPopouts){Object.values(this._groupPopouts).forEach(g=>g.popout.remove());}
     this._groupPopouts={};
     this.inner.innerHTML='';
     const panel=document.createElement('div');
@@ -78,11 +76,9 @@ export class Tools{
         if(seen.has(tool.group))return;
         seen.add(tool.group);
         const meta=this._groupMeta(tool.group);
-        const {tools,mobileGroup,mobileTool}=meta;
+        const{tools,mobileGroup,mobileTool}=meta;
         if(isMobile){
-          if(mobileGroup==='single'){
-            const active=tools.find(t=>t.id===mobileTool)||tools[0];
-            if(active)list.appendChild(this._btn(active));}
+          if(mobileGroup==='single'){const active=tools.find(t=>t.id===mobileTool)||tools[0];if(active)list.appendChild(this._btn(active));}
           else{list.appendChild(this._groupBtn(tool.group,tools));}}
         else{list.appendChild(this._groupBtn(tool.group,tools));}}
       else{list.appendChild(this._btn(tool));}
@@ -105,21 +101,9 @@ export class Tools{
     tools.forEach(tool=>popout.appendChild(this._btn(tool)));
     document.body.appendChild(popout);
     this._groupPopouts[groupId]={wrap,mainBtn,trigger,popout,tools};
-    const show=()=>{
-      const r=wrap.getBoundingClientRect();
-      popout.style.left=`${r.right+4}px`;
-      popout.style.top=`${r.top}px`;
-      popout.classList.add('open');
-      trigger.classList.add('open');
-    };
-    const hide=()=>{
-      popout.classList.remove('open');
-      trigger.classList.remove('open');
-    };
-    mainBtn.addEventListener('click',()=>{
-      const active=tools.find(t=>t.id===this.mode)||tools[0];
-      active.action();
-    });
+    const show=()=>{const r=wrap.getBoundingClientRect();popout.style.left=`${r.right+4}px`;popout.style.top=`${r.top}px`;popout.classList.add('open');trigger.classList.add('open');};
+    const hide=()=>{popout.classList.remove('open');trigger.classList.remove('open');};
+    mainBtn.addEventListener('click',()=>{const active=tools.find(t=>t.id===this.mode)||tools[0];active.action();});
     if(isMobile){
       trigger.addEventListener('click',()=>popout.classList.contains('open')?hide():show());
     }else{
@@ -162,10 +146,10 @@ export class Tools{
     const ts=this.chart._chart?.timeScale?.();
     ts?.subscribeVisibleLogicalRangeChange?.(this._onRange);
     ts?.subscribeSizeChange?.(this._onSize);
-    this._onLoad = ({sym}) => {
-      if (this._lastSym && this._lastSym !== sym) {this.clear();}
-      this._lastSym = sym;
-      requestAnimationFrame(() => {this._fitChart();});
+    this._onLoad=({sym})=>{
+      if(this._lastSym&&this._lastSym!==sym){this.clear();}
+      this._lastSym=sym;
+      requestAnimationFrame(()=>{this._fitChart();});
       this._scheduleDraw();
     };
     this._onData=()=>this._scheduleDraw();
@@ -177,17 +161,12 @@ export class Tools{
     this._onKey=e=>{if(e.key==='Escape')this._cancelDraft()};
     window.addEventListener('keydown',this._onKey);
     this._offToolsVisibility=toolsVisibility.on(v=>{
-      if(!v){this.clear();this._setMode(isMobile ? 'crosshair' : 'cursor');}
+      if(!v){this.clear();this._setMode(isMobile?'crosshair':'cursor');}
       this.setVisible(v);
     });
   }
-  _trashBtn(){
-    return this.inner.querySelector('.tool-btn[data-tool="clear"]')||null;
-  }
-  _setTrashActive(on){
-    const btn=this._trashBtn();
-    if(btn)btn.classList.toggle('trash-hot',on);
-  }
+  _trashBtn(){return this.inner.querySelector('.tool-btn[data-tool="clear"]')||null;}
+  _setTrashActive(on){const btn=this._trashBtn();if(btn)btn.classList.toggle('trash-hot',on);}
   _isOverTrash(clientX,clientY){
     const btn=this._trashBtn();
     if(!btn)return false;
@@ -196,10 +175,7 @@ export class Tools{
   }
   _setChartLocked(locked){
     if(!isMobile)return;
-    this.chart._chart?.applyOptions?.({
-      handleScroll: locked ? false : true,
-      handleScale: locked ? false : true
-    });
+    this.chart._chart?.applyOptions?.({handleScroll:locked?false:true,handleScale:locked?false:true});
   }
   _setMode(mode,silent=false){
     this.mode=mode;
@@ -207,7 +183,7 @@ export class Tools{
     this.dragState=null;
     this._setTrashActive(false);
     this._cancelDraft();
-    const drawMode = mode==='trend'||mode==='brush'||mode==='fib'||mode==='measure'||mode==='select';
+    const drawMode=mode==='trend'||mode==='brush'||mode==='fib'||mode==='measure'||mode==='select';
     this._setChartLocked(drawMode);
     this._applyMode();
     this._syncModeUI();
@@ -260,6 +236,45 @@ export class Tools{
       this._scheduleDraw();
     }
   }
+  _getPaneBounds(){
+    const r=this.chartWrap.getBoundingClientRect();
+    const chartEl=this.chart._chart?.chartElement?.();
+    if(!chartEl)return null;
+    const table=chartEl.querySelector('table');
+    if(!table)return null;
+    const rows=Array.from(table.rows);
+    if(rows.length<2)return null;
+    const paneRows=rows.slice(0,-1);
+    return paneRows.map((row,idx)=>{
+      const rr=row.getBoundingClientRect();
+      const cells=Array.from(row.cells);
+      const priceW=cells.length>1?cells[cells.length-1].getBoundingClientRect().width:0;
+      return{
+        index:idx,
+        x:0,
+        y:Math.round(rr.top-r.top),
+        width:Math.max(1,Math.round(r.width-priceW)),
+        height:Math.max(1,Math.round(rr.height)),
+      };
+    });
+  }
+  _getPaneIndexAtY(y){
+    const bounds=this._getPaneBounds();
+    if(!bounds||!bounds.length)return 0;
+    for(const b of bounds){if(y>=b.y&&y<b.y+b.height)return b.index;}
+    return bounds.length-1;
+  }
+  _getSeriesForPane(paneIndex){
+    if(!paneIndex)return this.chart._main;
+    try{
+      const panes=this.chart._chart?.panes?.();
+      if(panes&&panes[paneIndex]){
+        const sl=panes[paneIndex].getSeries?.();
+        if(sl&&sl.length>0)return sl[0];
+      }
+    }catch(e){}
+    return this.chart._main;
+  }
   _paneRect(){
     const r=this.chartWrap.getBoundingClientRect();
     let pw=0,th=0;
@@ -276,34 +291,46 @@ export class Tools{
     return{x:0,y:0,w:Math.max(1,r.width-pw),h:Math.max(1,r.height-th)};
   }
   _inPane(x,y){const p=this._paneRect();return x>=p.x&&x<p.x+p.w&&y>=p.y&&y<p.y+p.h;}
-  _scheduleDraw(){
-    if(this.raf)return;
-    this.raf=requestAnimationFrame(()=>{
-      this.raf=0;
-      this._draw();
-    });
+  _inAnyPane(x,y){
+    const bounds=this._getPaneBounds();
+    if(bounds&&bounds.length)return bounds.some(b=>x>=b.x&&x<b.x+b.width&&y>=b.y&&y<b.y+b.height);
+    return this._inPane(x,y);
   }
-  _data(){
-    return this.chart._getCurrentData?.()||[];
-  }
-  _pixelToPoint(x,y){
+  _pixelToPoint(x,y,paneIndex=null){
     const data=this._data();
     if(!data.length||!this.chart._chart||!this.chart._main)return null;
+    if(paneIndex===null)paneIndex=this._getPaneIndexAtY(y);
+    const series=this._getSeriesForPane(paneIndex);
+    if(!series)return null;
     const logical=this.chart._chart.timeScale().coordinateToLogical(x);
-    const price=this.chart._main.coordinateToPrice(y);
+    const price=series.coordinateToPrice(y);
     if(logical==null||price==null)return null;
     const idx=Math.max(0,Math.min(data.length-1,Math.round(logical)));
     const bar=data[idx];
     if(!bar)return null;
-    return {time:bar.time,price,x,y,idx};
+    return{time:bar.time,price,x,y,idx,pane:paneIndex};
   }
   _pickPoint(e){
     const r=this.chartWrap.getBoundingClientRect();
     return this._pixelToPoint(e.clientX-r.left,e.clientY-r.top);
   }
   _clonePoint(p){
-    return {time:p.time,price:p.price,idx:p.idx,x:p.x,y:p.y};
+    return{time:p.time,price:p.price,idx:p.idx,x:p.x,y:p.y,pane:p.pane??0};
   }
+  _xy(p){
+    if(!p||!this.chart._chart)return null;
+    const x=this.chart._chart.timeScale().timeToCoordinate(p.time);
+    const series=this._getSeriesForPane(p.pane??0);
+    if(!series)return null;
+    const y=series.priceToCoordinate(p.price);
+    if(x==null||y==null)return null;
+    return{x,y};
+  }
+  _scheduleDraw(){
+    if(this.raf)return;
+    this.raf=requestAnimationFrame(()=>{this.raf=0;this._draw();});
+  }
+  _data(){return this.chart._getCurrentData?.()||[];}
   _distToSegment(px,py,ax,ay,bx,by){
     const dx=bx-ax,dy=by-ay;
     const lenSq=dx*dx+dy*dy;
@@ -311,9 +338,7 @@ export class Tools{
     const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/lenSq));
     return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
   }
-  _handleMetrics(){
-    return isMobile?{r:9,hit:14}:{r:5,hit:8};
-  }
+  _handleMetrics(){return isMobile?{r:9,hit:14}:{r:5,hit:8};}
   _hitTestDrawing(d,x,y){
     const m=this._handleMetrics();
     if(d.type==='brush'){
@@ -334,21 +359,28 @@ export class Tools{
   _hitTest(x,y){
     for(let i=this.drawings.length-1;i>=0;i--){
       const h=this._hitTestDrawing(this.drawings[i],x,y);
-      if(h)return {idx:i,handle:h};
+      if(h)return{idx:i,handle:h};
     }
     return null;
   }
-  _cancelDraft(){
-    this.draft=null;
-    this.down=false;
-    this._scheduleDraw();
-  }
+  _cancelDraft(){this.draft=null;this.down=false;this._scheduleDraw();}
   _commitDraft(){
     if(!this.draft)return;
     if(this.draft.type==='brush'){
-      if(this.draft.points.length>1)this.drawings.push({type:'brush',points:this.draft.points.map(p=>this._clonePoint(p))});
+      if(this.draft.points.length>1){
+        this.drawings.push({
+          type:'brush',
+          points:this.draft.points.map(p=>this._clonePoint(p)),
+          pane:this.draft.pane??0,
+        });
+      }
     }else if(this.draft.a&&this.draft.b){
-      this.drawings.push({type:this.draft.type,a:this._clonePoint(this.draft.a),b:this._clonePoint(this.draft.b)});
+      this.drawings.push({
+        type:this.draft.type,
+        a:this._clonePoint(this.draft.a),
+        b:this._clonePoint(this.draft.b),
+        pane:this.draft.pane??this.draft.a?.pane??0,
+      });
     }
     this.draft=null;
     this.down=false;
@@ -369,8 +401,11 @@ export class Tools{
           this.selected=hit.idx;
           const d=this.drawings[hit.idx];
           if(hit.handle==='body'){
-            if(d.type==='brush'){this.dragState={idx:hit.idx,handle:'body',origXY:d.points.map(p=>this._xy(p)),startX:x,startY:y};}
-            else{this.dragState={idx:hit.idx,handle:'body',origA:this._clonePoint(d.a),origB:this._clonePoint(d.b),startX:x,startY:y};}
+            if(d.type==='brush'){
+              this.dragState={idx:hit.idx,handle:'body',origXY:d.points.map(p=>this._xy(p)),startX:x,startY:y};
+            }else{
+              this.dragState={idx:hit.idx,handle:'body',origA:this._clonePoint(d.a),origB:this._clonePoint(d.b),startX:x,startY:y};
+            }
           }else{
             this.dragState={idx:hit.idx,handle:hit.handle};
           }
@@ -392,17 +427,25 @@ export class Tools{
           if(btn)btn.classList.toggle('trash-over',this._isOverTrash(e.clientX,e.clientY));
           const d=this.drawings[this.dragState.idx];
           if(d){
+            const pane=d.pane??0;
             if(this.dragState.handle==='body'){
               const dx=x-this.dragState.startX;
               const dy=y-this.dragState.startY;
-              if(d.type==='brush'){d.points=this.dragState.origXY.map(xy=>xy?this._pixelToPoint(xy.x+dx,xy.y+dy):null).filter(Boolean);}
-              else{const oa=this._xy(this.dragState.origA);const ob=this._xy(this.dragState.origB);
-                if(oa&&ob){const na=this._pixelToPoint(oa.x+dx,oa.y+dy);const nb=this._pixelToPoint(ob.x+dx,ob.y+dy);
+              if(d.type==='brush'){
+                d.points=this.dragState.origXY
+                  .map(xy=>xy?this._pixelToPoint(xy.x+dx,xy.y+dy,pane):null)
+                  .filter(Boolean);
+              }else{
+                const oa=this._xy(this.dragState.origA);
+                const ob=this._xy(this.dragState.origB);
+                if(oa&&ob){
+                  const na=this._pixelToPoint(oa.x+dx,oa.y+dy,pane);
+                  const nb=this._pixelToPoint(ob.x+dx,ob.y+dy,pane);
                   if(na&&nb){d.a=na;d.b=nb;}
                 }
               }
             }else{
-              const p=this._pixelToPoint(x,y);
+              const p=this._pixelToPoint(x,y,pane);
               if(p){
                 if(this.dragState.handle==='a')d.a=p;
                 else d.b=p;
@@ -436,25 +479,37 @@ export class Tools{
     }
     const activeDrawing=this.mode==='trend'||this.mode==='brush'||this.mode==='fib'||this.mode==='measure';
     if(!activeDrawing)return;
-    const p=this._pickPoint(e);
-    if(!p)return;
+    const r=this.chartWrap.getBoundingClientRect();
+    const x=e.clientX-r.left;
+    const y=e.clientY-r.top;
     if(e.type==='pointerdown'){
-      if(isMobile&&this.mode==='brush'&&!this._inPane(p.x,p.y))return;
+      const paneIndex=this._getPaneIndexAtY(y);
+      const p=this._pixelToPoint(x,y,paneIndex);
+      if(!p)return;
+      if(isMobile&&this.mode==='brush'&&!this._inAnyPane(x,y))return;
       e.preventDefault();
       e.stopImmediatePropagation();
       this.down=true;
       try{this.chartWrap.setPointerCapture?.(e.pointerId)}catch(_){}
-      if(this.mode==='brush'){this.draft={type:'brush',points:[p]};this._scheduleDraw();
+      if(this.mode==='brush'){
+        this.draft={type:'brush',points:[p],pane:paneIndex};
+        this._scheduleDraw();
         return;
       }
-      if(!this.draft||this.draft.type!==this.mode){this.draft={type:this.mode,a:p,b:p};this._scheduleDraw();
+      if(!this.draft||this.draft.type!==this.mode){
+        this.draft={type:this.mode,a:p,b:p,pane:paneIndex};
+        this._scheduleDraw();
         return;
       }
-      this.draft.b=p;
+      const p2=this._pixelToPoint(x,y,this.draft.pane);
+      if(p2)this.draft.b=p2;
       this._commitDraft();
       return;
     }
     if(e.type==='pointermove'){
+      const draftPane=this.draft?.pane??0;
+      const p=this._pixelToPoint(x,y,draftPane);
+      if(!p)return;
       if(this.mode==='brush'){
         if(!this.down||!this.draft||this.draft.type!=='brush')return;
         const last=this.draft.points[this.draft.points.length-1];
@@ -466,9 +521,13 @@ export class Tools{
       return;
     }
     if(e.type==='pointerup'||e.type==='pointercancel'){
+      const draftPane=this.draft?.pane??0;
+      const p=this._pixelToPoint(x,y,draftPane);
       if(this.mode==='brush'&&this.draft?.type==='brush'){
-        const last=this.draft.points[this.draft.points.length-1];
-        if(last&&(last.time!==p.time||last.price!==p.price))this.draft.points.push(p);
+        if(p){
+          const last=this.draft.points[this.draft.points.length-1];
+          if(last&&(last.time!==p.time||last.price!==p.price))this.draft.points.push(p);
+        }
         e.preventDefault();
         e.stopImmediatePropagation();
         try{this.chartWrap.releasePointerCapture?.(e.pointerId)}catch(_){}
@@ -479,30 +538,9 @@ export class Tools{
       try{this.chartWrap.releasePointerCapture?.(e.pointerId)}catch(_){}
     }
   }
-  _xy(p){
-    if(!p||!this.chart._chart||!this.chart._main)return null;
-    const x=this.chart._chart.timeScale().timeToCoordinate(p.time);
-    const y=this.chart._main.priceToCoordinate(p.price);
-    if(x==null||y==null)return null;
-    return {x,y};
-  }
-  _fmtPrice(v){
-    const f=this.chart._main?.priceFormatter?.();
-    if(f?.format)return f.format(v);
-    const a=Math.abs(v);
-    const d=a<1?4:a<100?2:0;
-    return Number(v).toFixed(d);
-  }
-  _fmtSpan(sec){
-    const s=Math.abs(sec);
-    if(s<60)return `${s.toFixed(0)}s`;
-    if(s<3600)return `${(s/60).toFixed(1)}m`;
-    if(s<86400)return `${(s/3600).toFixed(1)}h`;
-    return `${(s/86400).toFixed(1)}d`;
-  }
   _styles(){
     const s=getComputedStyle(document.documentElement);
-    return {
+    return{
       accent:s.getPropertyValue('--accent').trim(),
       accentHl:s.getPropertyValue('--accent-hl').trim(),
       bg:s.getPropertyValue('--bg').trim(),
@@ -527,24 +565,15 @@ export class Tools{
     ctx.fillStyle=opts.fill||this._styles().bg2;
     ctx.strokeStyle=opts.stroke||this._styles().border;
     ctx.lineWidth=1;
-    ctx.beginPath();
-    ctx.roundRect(left,top,w,h,4);
-    ctx.fill();
-    ctx.stroke();
+    ctx.beginPath();ctx.roundRect(left,top,w,h,4);ctx.fill();ctx.stroke();
     ctx.fillStyle=opts.color||this._styles().text;
-    ctx.textBaseline='top';
-    ctx.textAlign='left';
+    ctx.textBaseline='top';ctx.textAlign='left';
     lines.forEach((t,i)=>ctx.fillText(t,left+padX,top+padY+i*lineH));
     ctx.restore();
   }
   _endpoints(ctx,a,b,color){
-    ctx.save();
-    ctx.fillStyle=color;
-    [a,b].forEach(p=>{
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,3,0,Math.PI*2);
-      ctx.fill();
-    });
+    ctx.save();ctx.fillStyle=color;
+    [a,b].forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();});
     ctx.restore();
   }
   _drawLine(ctx,a,b,opts={}){
@@ -556,10 +585,7 @@ export class Tools{
     ctx.lineWidth=opts.width||2;
     ctx.setLineDash(opts.dash||[]);
     ctx.lineCap='round';
-    ctx.beginPath();
-    ctx.moveTo(p1.x,p1.y);
-    ctx.lineTo(p2.x,p2.y);
-    ctx.stroke();
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();
     if(opts.points!==false)this._endpoints(ctx,p1,p2,opts.color||this._styles().accent);
     ctx.restore();
   }
@@ -570,32 +596,52 @@ export class Tools{
     ctx.save();
     ctx.strokeStyle=opts.color||this._styles().accent;
     ctx.lineWidth=opts.width||2;
-    ctx.lineCap='round';
-    ctx.lineJoin='round';
-    ctx.beginPath();
-    ctx.moveTo(xy[0].x,xy[0].y);
+    ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.beginPath();ctx.moveTo(xy[0].x,xy[0].y);
     for(let i=1;i<xy.length;i++)ctx.lineTo(xy[i].x,xy[i].y);
-    ctx.stroke();
-    ctx.restore();
+    ctx.stroke();ctx.restore();
   }
+  _fmtSpan(sec){
+    const s=Math.abs(sec);
+    if(s<60)return `${s.toFixed(0)}s`;
+    if(s<3600)return `${(s/60).toFixed(1)}m`;
+    if(s<86400)return `${(s/3600).toFixed(1)}h`;
+    return `${(s/86400).toFixed(1)}d`;
+  }
+  _fmtPriceForPane(v,paneIndex=0){
+    if(!paneIndex){
+      const f=this.chart._main?.priceFormatter?.();
+      if(f?.format)return f.format(v);
+    }else{
+      try{
+        const panes=this.chart._chart?.panes?.();
+        if(panes&&panes[paneIndex]){
+          const sl=panes[paneIndex].getSeries?.();
+          if(sl&&sl.length>0){const f=sl[0].priceFormatter?.();if(f?.format)return f.format(v);}
+        }
+      }catch(e){}
+    }
+    const a=Math.abs(v);
+    const d=a<1?4:a<100?2:0;
+    return Number(v).toFixed(d);
+  }
+  _fmtPrice(v){return this._fmtPriceForPane(v,0);}
   _drawMeasure(ctx,a,b,opts={}){
     const p1=this._xy(a);
     const p2=this._xy(b);
     if(!p1||!p2)return;
     const s=this._styles();
+    const pane=opts.pane??a.pane??0;
     ctx.save();
     ctx.strokeStyle=opts.color||s.accent;
     ctx.fillStyle=opts.color||s.accent;
     ctx.lineWidth=1.5;
     ctx.setLineDash([5,4]);
-    ctx.beginPath();
-    ctx.moveTo(p1.x,p1.y);
-    ctx.lineTo(p2.x,p2.y);
-    ctx.stroke();
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();
     ctx.setLineDash([]);
     const dP=b.price-a.price;
     const pct=a.price?dP/a.price*100:0;
-    const lines=[`Δ ${this._fmtPrice(dP)}`,`${pct>=0?'+':''}${pct.toFixed(2)}%`];
+    const lines=[`Δ ${this._fmtPriceForPane(dP,pane)}`,`${pct>=0?'+':''}${pct.toFixed(2)}%`];
     const span=typeof a.time==='number'&&typeof b.time==='number'?Math.abs(b.time-a.time):null;
     if(span!=null)lines.push(this._fmtSpan(span));
     this._tag(ctx,(p1.x+p2.x)/2,(p1.y+p2.y)/2,lines,{fill:s.bg2,stroke:s.border,color:s.text});
@@ -608,7 +654,13 @@ export class Tools{
     if(!p1||!p2)return;
     const s=this._styles();
     const levels=[0,.236,.382,.5,.618,.786,1];
-    const w=this.canvas.clientWidth;
+    const pane=opts.pane??a.pane??0;
+    const series=this._getSeriesForPane(pane);
+    if(!series)return;
+    const paneBounds=this._getPaneBounds();
+    const paneRight=(paneBounds&&paneBounds[pane])
+      ?(paneBounds[pane].x+paneBounds[pane].width-4)
+      :(this.canvas.clientWidth-8);
     ctx.save();
     ctx.setLineDash([6,4]);
     ctx.strokeStyle=opts.color||s.text2;
@@ -616,14 +668,11 @@ export class Tools{
     ctx.lineWidth=1;
     levels.forEach(l=>{
       const price=a.price+(b.price-a.price)*l;
-      const y=this.chart._main.priceToCoordinate(price);
+      const y=series.priceToCoordinate(price);
       if(y==null)return;
-      ctx.beginPath();
-      ctx.moveTo(Math.min(p1.x,p2.x),y);
-      ctx.lineTo(Math.max(p1.x,p2.x),y);
-      ctx.stroke();
-      const label=`${(l*100).toFixed(1)}%  ${this._fmtPrice(price)}`;
-      this._tag(ctx,w-8,y,[label],{align:'right',fill:s.bg2,stroke:s.border,color:s.text});
+      ctx.beginPath();ctx.moveTo(Math.min(p1.x,p2.x),y);ctx.lineTo(Math.max(p1.x,p2.x),y);ctx.stroke();
+      const label=`${(l*100).toFixed(1)}%  ${this._fmtPriceForPane(price,pane)}`;
+      this._tag(ctx,paneRight,y,[label],{align:'right',fill:s.bg2,stroke:s.border,color:s.text});
     });
     ctx.setLineDash([]);
     this._endpoints(ctx,p1,p2,opts.color||s.accent);
@@ -631,17 +680,10 @@ export class Tools{
   }
   _drawSelectionHandles(ctx,s){
     const st=this._styles();
-    const {r}=this._handleMetrics();
+    const{r}=this._handleMetrics();
     ctx.save();
-    ctx.fillStyle=st.bg;
-    ctx.strokeStyle=st.accent;
-    ctx.lineWidth=1.5;
-    const drawHandle=(x,y)=>{
-      ctx.beginPath();
-      ctx.arc(x,y,r,0,Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-    };
+    ctx.fillStyle=st.bg;ctx.strokeStyle=st.accent;ctx.lineWidth=1.5;
+    const drawHandle=(x,y)=>{ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();};
     if(s.type==='brush'){
       const first=this._xy(s.points[0]);
       const last=this._xy(s.points[s.points.length-1]);
@@ -657,11 +699,12 @@ export class Tools{
   }
   _drawShape(ctx,s,preview=false,selected=false){
     const alpha=preview?0.7:1;
+    const pane=s.pane??0;
     ctx.globalAlpha=alpha;
     if(s.type==='brush')this._drawBrush(ctx,s.points,{color:this._styles().accent,width:2});
     else if(s.type==='trend')this._drawLine(ctx,s.a,s.b,{color:this._styles().accent,width:2});
-    else if(s.type==='measure')this._drawMeasure(ctx,s.a,s.b,{color:this._styles().accent});
-    else if(s.type==='fib')this._drawFib(ctx,s.a,s.b,{color:this._styles().text2});
+    else if(s.type==='measure')this._drawMeasure(ctx,s.a,s.b,{color:this._styles().accent,pane});
+    else if(s.type==='fib')this._drawFib(ctx,s.a,s.b,{color:this._styles().text2,pane});
     ctx.globalAlpha=1;
     if(selected)this._drawSelectionHandles(ctx,s);
   }
@@ -671,14 +714,30 @@ export class Tools{
     const w=this.canvas.clientWidth;
     const h=this.canvas.clientHeight;
     ctx.clearRect(0,0,w,h);
-    const pr=this._paneRect();
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(pr.x,pr.y,pr.w,pr.h);
-    ctx.clip();
-    this.drawings.forEach((s,i)=>this._drawShape(ctx,s,false,this.mode==='select'&&i===this.selected));
-    if(this.draft)this._drawShape(ctx,this.draft,true,false);
-    ctx.restore();
+    const paneBounds=this._getPaneBounds();
+    const getClip=(shape)=>{
+      const idx=shape.pane??shape.a?.pane??0;
+      if(paneBounds&&paneBounds[idx]){
+        const b=paneBounds[idx];
+        return{x:b.x,y:b.y,w:b.width,h:b.height};
+      }
+      const pr=this._paneRect();
+      return{x:pr.x,y:pr.y,w:pr.w,h:pr.h};
+    };
+    this.drawings.forEach((s,i)=>{
+      ctx.save();
+      const c=getClip(s);
+      ctx.beginPath();ctx.rect(c.x,c.y,c.w,c.h);ctx.clip();
+      this._drawShape(ctx,s,false,this.mode==='select'&&i===this.selected);
+      ctx.restore();
+    });
+    if(this.draft){
+      ctx.save();
+      const c=getClip(this.draft);
+      ctx.beginPath();ctx.rect(c.x,c.y,c.w,c.h);ctx.clip();
+      this._drawShape(ctx,this.draft,true,false);
+      ctx.restore();
+    }
   }
   clear(){
     this.drawings=[];
@@ -687,7 +746,7 @@ export class Tools{
     this._cancelDraft();
   }
   async _screenshotAction(){
-    if(!await confirm('Download screenshot?')) return;
+    if(!await confirm('Download screenshot?'))return;
     const url=URL.createObjectURL(await captureScreenshot(this.chartWrap,{quality:1,maxWidth:3840}));
     Object.assign(document.createElement('a'),{href:url,download:'chart.jpg'}).click();
     URL.revokeObjectURL(url);
