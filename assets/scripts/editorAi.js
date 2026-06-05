@@ -216,6 +216,7 @@ export function openAiChat({ getCode, onInsert }) {
                     action: 'chat',
                     model: modelSelect.value,
                     messages: _chatMessages,
+                    instructionTypes: ['indicators'],
                     customInstructions: instrTa.value.trim(),
                     currentCode: getCode()
                 })
