@@ -1,14 +1,20 @@
 import { attachSpinner } from "./spinner.js";
 const CUSTOM_KEY = 'eai-custom-instructions';
-let _activeOverlay = null;
-let _modelsPromise = null;
-let _chatMessages = [];
+let _activeOverlay  = null;
+let _modelsPromise  = null;
+let _chatMessages   = [];
 export function initAiChatModels() {
-    if (!_modelsPromise) {_modelsPromise = fetch(window.ARI.api + '?action=init').then(r => r.json()).catch(() => ({ models: [] }));}
+    if (!_modelsPromise) {
+        _modelsPromise = fetch(window.ARI.api, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'list' })
+        }).then(r => r.json()).catch(() => ({ models: [] }));
+    }
     return _modelsPromise;
 }
 export function openAiChat({ getCode, onInsert }) {
-    if (_activeOverlay) {_activeOverlay.querySelector('.eai-input-ta')?.focus(); return;}
+    if (_activeOverlay) { _activeOverlay.querySelector('.eai-input-ta')?.focus(); return; }
     let sending = false;
     const overlay = document.createElement('div');
     overlay.className = 'eai-overlay';
@@ -40,16 +46,15 @@ export function openAiChat({ getCode, onInsert }) {
     `;
     document.body.appendChild(overlay);
     _activeOverlay = overlay;
-    const closeBtn = overlay.querySelector('.eai-close');
+    const closeBtn    = overlay.querySelector('.eai-close');
     const modelSelect = overlay.querySelector('.eai-model-select');
-    const newChatBtn = overlay.querySelector('.eai-new-chat');
+    const newChatBtn  = overlay.querySelector('.eai-new-chat');
     const instrToggle = overlay.querySelector('.eai-instr-toggle');
-    const instrArea = overlay.querySelector('.eai-instr-area');
-    const instrTa = overlay.querySelector('.eai-instr-ta');
-    const msgsEl = overlay.querySelector('.eai-messages');
-    const inputTa = overlay.querySelector('.eai-input-ta');
-    const sendBtn = overlay.querySelector('.eai-send-btn');
-    const INPUT_MIN_HEIGHT = 30;
+    const instrArea   = overlay.querySelector('.eai-instr-area');
+    const instrTa     = overlay.querySelector('.eai-instr-ta');
+    const msgsEl      = overlay.querySelector('.eai-messages');
+    const inputTa     = overlay.querySelector('.eai-input-ta');
+    const sendBtn     = overlay.querySelector('.eai-send-btn');
     const INPUT_MAX_HEIGHT = 100;
     function resizeInput() {
         inputTa.style.height = 'auto';
@@ -73,6 +78,51 @@ export function openAiChat({ getCode, onInsert }) {
         if (tail) parts.push({ type: 'text', content: tail });
         return parts;
     }
+    function buildIndicatorBlock(content) {
+        const block = document.createElement('div');
+        block.className = 'eai-code-block';
+        const pre = document.createElement('pre');
+        pre.className = 'eai-code-pre';
+        pre.textContent = content;
+        const actions = document.createElement('div');
+        actions.className = 'eai-code-actions';
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn-primary eai-add-btn';
+        addBtn.textContent = '+ Add to Editor';
+        addBtn.onclick = () => {
+            onInsert(content);
+            addBtn.textContent = '✓ Added';
+            addBtn.disabled = true;
+            setTimeout(() => { addBtn.textContent = '+ Add to Editor'; addBtn.disabled = false; }, 2000);
+        };
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn-sm eai-copy-btn';
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = () => navigator.clipboard.writeText(content).then(() => {
+            copyBtn.textContent = '✓';
+            setTimeout(() => copyBtn.textContent = 'Copy', 1500);
+        });
+        actions.append(addBtn, copyBtn);
+        block.append(pre, actions);
+        return block;
+    }
+    function appendAssistantContent(row, content) {
+        parseContent(content).forEach(part => {
+            if (part.type === 'text') {
+                const p = document.createElement('div');
+                p.className = 'eai-msg-text';
+                p.textContent = part.content;
+                row.appendChild(p);
+            } else if (part.type === 'indicator') {
+                row.appendChild(buildIndicatorBlock(part.content));
+            } else {
+                const pre = document.createElement('pre');
+                pre.className = 'eai-code-pre eai-code-pre--plain';
+                pre.textContent = part.content;
+                row.appendChild(pre);
+            }
+        });
+    }
     function buildMessage(role, content) {
         const row = document.createElement('div');
         row.className = `eai-msg eai-msg--${role}`;
@@ -82,69 +132,20 @@ export function openAiChat({ getCode, onInsert }) {
             p.textContent = content;
             row.appendChild(p);
         } else {
-            const parts = parseContent(content);
-            parts.forEach(part => {
-                if (part.type === 'text') {
-                    const p = document.createElement('div');
-                    p.className = 'eai-msg-text';
-                    p.textContent = part.content;
-                    row.appendChild(p);
-                } else if (part.type === 'indicator') {
-                    const block = document.createElement('div');
-                    block.className = 'eai-code-block';
-                    const pre = document.createElement('pre');
-                    pre.className = 'eai-code-pre';
-                    pre.textContent = part.content;
-                    const actions = document.createElement('div');
-                    actions.className = 'eai-code-actions';
-                    const addBtn = document.createElement('button');
-                    addBtn.className = 'btn-primary eai-add-btn';
-                    addBtn.textContent = '+ Add to Editor';
-                    addBtn.onclick = () => {
-                        onInsert(part.content);
-                        addBtn.textContent = '✓ Added';
-                        addBtn.disabled = true;
-                        setTimeout(() => {
-                            addBtn.textContent = '+ Add to Editor';
-                            addBtn.disabled = false;
-                        }, 2000);
-                    };
-                    const copyBtn = document.createElement('button');
-                    copyBtn.className = 'btn-sm eai-copy-btn';
-                    copyBtn.textContent = 'Copy';
-                    copyBtn.onclick = () => {
-                        navigator.clipboard.writeText(part.content)
-                            .then(() => {
-                                copyBtn.textContent = '✓';
-                                setTimeout(() => copyBtn.textContent = 'Copy', 1500);
-                            });
-                    };
-                    actions.append(addBtn, copyBtn);
-                    block.append(pre, actions);
-                    row.appendChild(block);
-                } else {
-                    const pre = document.createElement('pre');
-                    pre.className = 'eai-code-pre eai-code-pre--plain';
-                    pre.textContent = part.content;
-                    row.appendChild(pre);
-                }
-            });
+            appendAssistantContent(row, content);
         }
         return row;
     }
     function renderMessages() {
         msgsEl.innerHTML = '';
         _chatMessages.forEach(msg => msgsEl.appendChild(buildMessage(msg.role, msg.content)));
-        const loaderLayer = document.createElement('div');
-        loaderLayer.className = 'eai-loader-layer';
-        msgsEl.appendChild(loaderLayer);
-        return loaderLayer;
+        const ll = document.createElement('div');
+        ll.className = 'eai-loader-layer';
+        msgsEl.appendChild(ll);
+        return ll;
     }
     let loaderLayer = renderMessages();
-    const spinner = attachSpinner(loaderLayer, {
-        size: 40,
-        color: "var(--accent)"
-    });
+    const spinner = attachSpinner(loaderLayer, { size: 40, color: "var(--accent)" });
     spinner.hide();
     instrTa.value = localStorage.getItem(CUSTOM_KEY) || '';
     initAiChatModels().then(data => {
@@ -152,8 +153,8 @@ export function openAiChat({ getCode, onInsert }) {
         if (data.models?.length) {
             data.models.forEach(m => {
                 const o = document.createElement('option');
-                o.value = m.provider_id;
-                o.textContent = m.llm_name;
+                o.value = m;
+                o.textContent = m;
                 modelSelect.appendChild(o);
             });
         } else {
@@ -170,14 +171,11 @@ export function openAiChat({ getCode, onInsert }) {
         loaderLayer.remove();
         loaderLayer = renderMessages();
         spinner.destroy?.();
-        const freshSpinner = attachSpinner(loaderLayer, {
-            size: 40,
-            color: "var(--accent)"
-        });
-        freshSpinner.hide();
-        spinner.hide = freshSpinner.hide.bind(freshSpinner);
-        spinner.show = freshSpinner.show.bind(freshSpinner);
-        spinner.destroy = freshSpinner.destroy?.bind(freshSpinner);
+        const s = attachSpinner(loaderLayer, { size: 40, color: "var(--accent)" });
+        s.hide();
+        spinner.hide    = s.hide.bind(s);
+        spinner.show    = s.show.bind(s);
+        spinner.destroy = s.destroy?.bind(s);
         inputTa.focus();
     };
     async function send() {
@@ -192,6 +190,24 @@ export function openAiChat({ getCode, onInsert }) {
         msgsEl.insertBefore(buildMessage('user', text), loaderLayer);
         spinner.show();
         msgsEl.scrollTop = msgsEl.scrollHeight;
+        const assistantRow = document.createElement('div');
+        assistantRow.className = 'eai-msg eai-msg--assistant';
+        const reasoningBlock  = document.createElement('div');
+        reasoningBlock.className = 'eai-reasoning eai-reasoning--streaming hidden';
+        const reasoningToggle = document.createElement('button');
+        reasoningToggle.className = 'eai-reasoning-toggle';
+        reasoningToggle.type      = 'button';
+        reasoningToggle.textContent = 'Thinking…';
+        const reasoningBody = document.createElement('div');
+        reasoningBody.className = 'eai-reasoning-body';
+        reasoningBlock.append(reasoningToggle, reasoningBody);
+        const streamText = document.createElement('div');
+        streamText.className = 'eai-msg-text eai-stream-text';
+        assistantRow.append(reasoningBlock, streamText);
+        msgsEl.insertBefore(assistantRow, loaderLayer);
+        let reasoningContent = '';
+        let mainContent      = '';
+        let success          = false;
         try {
             const res = await fetch(window.ARI.api, {
                 method: 'POST',
@@ -204,23 +220,68 @@ export function openAiChat({ getCode, onInsert }) {
                     currentCode: getCode()
                 })
             });
-            const data = await res.json();
-            if (data.error) {
-                const err = document.createElement('div');
-                err.className = 'eai-error';
-                err.textContent = data.error;
-                msgsEl.insertBefore(err, loaderLayer);
-                _chatMessages.pop();
-            } else {
-                _chatMessages.push({ role: 'assistant', content: data.reply });
-                msgsEl.insertBefore(buildMessage('assistant', data.reply), loaderLayer);
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('text/event-stream')) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
             }
+            spinner.hide();
+            if (!res.body) throw new Error('No response body');
+            const reader  = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buf  = '';
+            let done = false;
+            while (!done) {
+                const { done: d, value } = await reader.read();
+                if (d) break;
+                buf += decoder.decode(value, { stream: true });
+                const lines = buf.split('\n');
+                buf = lines.pop();
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const raw = line.slice(6).trim();
+                    if (raw === '[DONE]') { done = true; break; }
+                    let chunk;
+                    try { chunk = JSON.parse(raw); } catch { continue; }
+                    const delta = chunk.choices?.[0]?.delta;
+                    if (!delta) continue;
+                    if (typeof delta.reasoning_content === 'string') {
+                        reasoningContent += delta.reasoning_content;
+                        if (reasoningBlock.classList.contains('hidden')) {
+                            reasoningBlock.classList.remove('hidden');
+                        }
+                        reasoningBody.textContent = reasoningContent;
+                    }
+                    if (typeof delta.content === 'string') {
+                        mainContent += delta.content;
+                        streamText.textContent = mainContent;
+                    }
+                    msgsEl.scrollTop = msgsEl.scrollHeight;
+                }
+            }
+            success = true;
         } catch (e) {
+            spinner.hide();
+            assistantRow.remove();
+            _chatMessages.pop();
             const err = document.createElement('div');
             err.className = 'eai-error';
-            err.textContent = 'Network error: ' + e.message;
+            err.textContent = 'Error: ' + e.message;
             msgsEl.insertBefore(err, loaderLayer);
-            _chatMessages.pop();
+        }
+        if (success) {
+            if (reasoningContent) {
+                reasoningBlock.classList.remove('eai-reasoning--streaming');
+                reasoningToggle.textContent = '▼ Reasoning';
+                reasoningToggle.onclick = () => {
+                    const collapsed = reasoningBody.classList.toggle('hidden');
+                    reasoningToggle.textContent = collapsed ? '▶ Reasoning' : '▼ Reasoning';
+                };
+            }
+            streamText.remove();
+            const trimmed = mainContent.trim();
+            if (trimmed) appendAssistantContent(assistantRow, trimmed);
+            _chatMessages.push({ role: 'assistant', content: trimmed });
         }
         spinner.hide();
         sending = false;
@@ -230,10 +291,7 @@ export function openAiChat({ getCode, onInsert }) {
     }
     sendBtn.onclick = send;
     inputTa.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            send();
-        }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
     });
     function close() {
         overlay.remove();
