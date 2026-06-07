@@ -84,6 +84,10 @@ export class Settings {
           <div class="toggle-group">${toggleBtns(['off','overlay','pane'],this.chart.volMode,'data-vol')}</div>
         </fieldset>
       </div>
+      <div class="setting-row">
+        <label for="ai-model-select">LLM Model</label>
+        <select id="ai-model-select">${storage.getModelList().map(m=>`<option value="${m}"${m===storage.getPreferredModel()?' selected':''}>${m}</option>`).join('')}</select>
+      </div>
       <form id="manual-post-form" onsubmit="return false;">
         <div class="setting-row">
           <label for="api-key-in">Cycles API Key</label>
@@ -121,6 +125,7 @@ export class Settings {
     });
     bindGroup('[data-field]',btn=>{this.chart._setField(btn.dataset.field);storage.setChartField(btn.dataset.field)});
     bindGroup('[data-vol]',  btn=>{this.chart._setVolMode(btn.dataset.vol);storage.setChartVol(btn.dataset.vol)});
+    box.querySelector('#ai-model-select').onchange=e=>storage.setPreferredModel(e.target.value);
     const keyIn=box.querySelector('#api-key-in');
     this.api._getKeyAPI().then(k=>{if(k) keyIn.value=k});
     keyIn.onchange=async()=>{

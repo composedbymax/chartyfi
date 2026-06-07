@@ -30,6 +30,7 @@ export function confirm(msg) {
   return new Promise(resolve=>{
     const ov=document.createElement('div');
     ov.id='dialog-overlay';
+    ov.dataset.sidebarPersist = '';
     ov.innerHTML=`<div class="dialog">
       <div class="dialog-msg">${msg}</div>
       <div class="dialog-btns">

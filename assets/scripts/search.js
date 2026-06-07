@@ -11,7 +11,6 @@ export function initUrlState(chart) {
   const [symRaw = '', intRaw = ''] = q.split('&');
   const sym = decodeURIComponent(symRaw);
   const int = decodeURIComponent(intRaw) || chart._currentInterval;
-  document.dispatchEvent(new CustomEvent('symbol-changed', {detail: {sym, name: null}}));
   chart.load(sym, int);
   return true;
 }
@@ -78,8 +77,7 @@ export class Search{
   _select(sym,name){
     this._hide();
     this.el.value='';
-    this.chart.load(sym,this.chart._currentInterval);
-    document.dispatchEvent(new CustomEvent('symbol-changed',{detail:{sym,name}}));
+    this.chart.load(sym,this.chart._currentInterval,name);
   }
   _hide(){
     this.res.classList.remove('open');

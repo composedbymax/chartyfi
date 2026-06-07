@@ -10,6 +10,7 @@ import {storage} from './storage.js';
 import {AutoFetch, autofetchEnabled} from './autofetch.js';
 import {tooltip} from './tooltip.js';
 import {initGuard} from './appGuard.js';
+import {initModels} from './models.js';
 initGuard();
 const _t = storage.getTheme();
 if (_t) document.documentElement.setAttribute('data-theme', _t);
@@ -39,7 +40,6 @@ async function main() {
   const api = new ApiClient(window.CFG.api);
   const config = await api._userConfig().catch(() => ({}));
   let chartTz = 'UTC';
-  let currentAssetName = null;
   const chart = new Chart(document.getElementById('chart-wrap'), api, chartTz);
   const tools = new Tools(document.getElementById('tools-wrap'), chart, api, { visible: storage.getTools() });
   const af = new AutoFetch(chart); autofetchEnabled._inst = af;
@@ -60,33 +60,32 @@ async function main() {
     label.dataset.name = name || sym;
     tooltip(label, name || sym);
   }
-  document.addEventListener('symbol-changed',e=>{currentAssetName=e.detail.name || null;});
-  chart._chartOn('load', async ({ sym, int }) => {
-    if (currentAssetName) {
-      updateHeader(sym, int, currentAssetName);
-      toast(`${currentAssetName} loaded`, 'success');
+  chart._chartOn('load', async ({ sym, int, name }) => {
+    if (name) {
+      updateHeader(sym, int, name);
+      toast(`${name} loaded`, 'success');
       return;
     }
     updateHeader(sym, int, sym);
     try {
       const d = await api._searchAPI(sym);
       const match = (d.results || []).find(r => r.symbol === sym);
-      const name = match?.longname || match?.shortname || sym;
-      currentAssetName = name;
-      updateHeader(sym, int, name);
-      toast(`${name} loaded`, 'success');
+      const resolved = match?.longname || match?.shortname || sym;
+      chart._currentName = resolved;
+      updateHeader(sym, int, resolved);
+      toast(`${resolved} loaded`, 'success');
     } catch {
       toast(`${sym} loaded`, 'success');
     }
   });
   chart._chartOn('dataset-loaded',({int}) => {
-    currentAssetName = null;
     updateHeader('Dataset', int || '', 'Dataset');
     history.replaceState(null, '', '?dataset');
   });
   const first = config?.tracked?.[0];
-  if (first && !urlLoaded) { currentAssetName = null; chart.load(first.symbol, first.interval); }
+  if (first && !urlLoaded) chart.load(first.symbol, first.interval);
   setupPolling(config, chart, api);
+  initModels();
 }
 function setupPolling(config,chart,api) {
   const ci=config?.cron_info;

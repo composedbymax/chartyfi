@@ -10,7 +10,7 @@ function _chartOpts(){
 }
 export class Chart{
   constructor(container,api,timezone='UTC'){
-    this.container=container;this.api=api;this.sym=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._isDataset=false;this._datasetFull=[];this._savedPaneLayout=null;this._init();
+    this.container=container;this.api=api;this.sym=null;this._currentName=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._isDataset=false;this._datasetFull=[];this._savedPaneLayout=null;this._init();
   }
   _tzOffset(iana){if(iana==='UTC')return 0;try{return offsetMinutesForZone(iana)}catch(e){return 0}}
   _setTimezone(tz){this._timezone=tz;this._tzOffsetMin=this._tzOffset(tz);if(this._data.length)this._apply()}
@@ -43,7 +43,7 @@ export class Chart{
     this._data=[...map.values()].sort((a,b)=>a.time-b.time);
     if(this._data.length){this._p1=this._data[0].time;this._p2=this._data[this._data.length-1].time;this.container.dataset.p1=this._p1;this.container.dataset.p2=this._p2;}
   }
-  _futureWhitespace(data,count=100){
+  _futureWhitespace(data,count=20){
     if(data.length<2)return[];
     const n=Math.min(30,data.length-1);
     const tail=data.slice(-(n+1));
@@ -58,16 +58,17 @@ export class Chart{
     this._normalizeData();
     const clean=this._data;
     if(!clean.length)return;
-    const ws=this._futureWhitespace(clean,100);
+    const ws=this._futureWhitespace(clean,20);
     if(this.mode==='candle'){this._main.setData([...clean.map(c=>({time:this._shiftTime(c.time),open:c.open,high:c.high,low:c.low,close:c.close})),...ws])}
     else{this._main.setData([...clean.map(c=>({time:this._shiftTime(c.time),value:c[this.field]})),...ws])}
     if(this._vol){this._vol.setData([...clean.map(c=>({time:this._shiftTime(c.time),value:c.volume,color:c.close>=c.open?'rgba(34,197,94,0.35)':'rgba(239,68,68,0.35)'})),...ws])}
     this._emit('barsChanged',{count:clean.length});
     this._emit('dataChanged',{sym:this.sym,int:this.int,count:clean.length});
   }
-  async load(sym,int,p1,p2){
+  async load(sym,int,name=null,p1,p2){
     this._isDataset=false;
     this._datasetFull=[];
+    this._currentName=name;
     this.sym=sym;
     this.int=int||this.int;
     this._tzOffsetMin=this._tzOffset(this._timezone);
@@ -79,11 +80,12 @@ export class Chart{
     this._savePaneLayout();
     this._buildSeries();
     this._emit('dataChanged',{sym:this.sym,int:this.int,count:this._data.length});
-    this._emit('load',{sym,int:this.int,count:this._data.length});
+    this._emit('load',{sym,int:this.int,name:this._currentName,count:this._data.length});
     if(res.end_of_data&&res.loadedBars<INITIAL_LIMIT)toast(`${res.loadedBars} bars loaded. End of avaliable data`,'info',3000);
   }
   _loadDataset(candles,interval){
     this.sym=null;
+    this._currentName=null;
     this.int=interval||this.int;
     this._isDataset=true;
     this._datasetFull=[...candles];

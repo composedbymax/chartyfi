@@ -1,13 +1,15 @@
-const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,tools_bar:true,theme:null,chart_mode:null,chart_field:null,chart_vol:null,autofetch:false,link:null,cycles_api_key:null,chart_timezone:'UTC'};
+const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,tools_bar:true,theme:null,chart_mode:null,chart_field:null,chart_vol:null,autofetch:false,link:null,cycles_api_key:null,chart_timezone:'UTC',ai_preferred_model:null,ai_model_list:[]};
 function read(key){
   const v=localStorage.getItem(key);
   if(v===null||v==='null') return DEFAULTS[key]??null;
   if(v==='true') return true;
   if(v==='false') return false;
+  if(v[0]==='{' || v[0]==='['){try{return JSON.parse(v)}catch{}}
   return v;
 }
 function write(key,val){
   if(val===null||val===undefined) localStorage.removeItem(key);
+  else if(typeof val==='object') localStorage.setItem(key,JSON.stringify(val));
   else localStorage.setItem(key,String(val));
 }
 export const storage={
@@ -35,4 +37,9 @@ export const storage={
   setApiKey:v=>write('cycles_api_key',v),
   getChartTz:()=>read('chart_timezone'),
   setChartTz:v=>write('chart_timezone',v),
+  getPreferredModel:()=>read('ai_preferred_model'),
+  setPreferredModel:v=>write('ai_preferred_model',v),
+  getModelList:()=>read('ai_model_list'),
+  setModelList:v=>write('ai_model_list',v),
+  clearModelList:()=>write('ai_model_list',null),
 };

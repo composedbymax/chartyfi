@@ -290,7 +290,6 @@ export class Sidebar {
   }
   _assetCard(t,stream){
     const uid=`${t.symbol}-${t.interval}`.replace(/[^a-z0-9]/gi,'-');
-    const autoId=`auto-toggle-${uid}`;
     const card=document.createElement('div');card.className='asset-card';
     card.innerHTML=`<div class="asset-card-top">
       <span class="ac-sym">${t.symbol}</span><span class="ac-int">${t.interval}</span>
@@ -298,10 +297,6 @@ export class Sidebar {
         <button class="btn-sm load-btn">Load</button>
         <button class="btn-sm danger rm-btn">Remove</button>
       </div>
-    </div>
-    <div class="ac-switch-row">
-      <label class="switch" for="${autoId}"><input type="checkbox" id="${autoId}" class="auto-toggle" ${t.auto_update_enabled?'checked':''}><span class="slider"></span></label>
-      <span>Auto-update</span>
     </div>`;
     card.querySelector('.load-btn').onclick=()=>{
       this.chart.load(t.symbol,t.interval);
@@ -315,19 +310,18 @@ export class Sidebar {
       this._config.tracked=this._config.tracked.filter(x=>!(x.symbol===t.symbol&&x.interval===t.interval));
       toast('Removed','success');this._renderSidebar();
     };
-    card.querySelector('.auto-toggle').onchange=async e=>{
-      const en=e.target.checked;
-      const r=await this.api._setTrackAPI(t.symbol,t.interval,en);
-      if(r.error){deny(r.error);e.target.checked=!en;return}
-      t.auto_update_enabled=en?1:0;
-    };
     const sd=document.createElement('div');
+    sd.className='ac-switch-row';
     if(stream){
       const stId=`stream-toggle-${uid}`;
       const tzLabel=stream.stream_timezone&&stream.stream_timezone!=='UTC'?stream.stream_timezone:'UTC';
-      sd.innerHTML=`<span class="stream-id">Stream: ${stream.stream_id} <span class="stream-tz-badge">${tzLabel}</span></span>
-        <label class="switch" for="${stId}"><input type="checkbox" id="${stId}" class="stream-toggle" ${stream.enabled?'checked':''}><span class="slider"></span></label>
-        <button class="btn-sm danger rm-stream">×</button>`;
+      sd.innerHTML=`<span class="stream-id">Stream: ${stream.stream_id} 
+        <span class="stream-tz-badge">${tzLabel}</span>
+      </span>
+      <label class="switch" for="${stId}"><input type="checkbox" id="${stId}" class="stream-toggle" ${stream.enabled?'checked':''}>
+        <span class="slider"></span>
+      </label>
+      <button class="btn-sm danger rm-stream">×</button>`;
       sd.querySelector('.stream-toggle').onchange=async e=>{
         const r=await this.api._toggleStreamAPI(stream.id,e.target.checked);
         if(r.error){deny(r.error);e.target.checked=!e.target.checked}
@@ -349,7 +343,6 @@ export class Sidebar {
   _showAddStreamForm(t,sd){
     const uid=`asf-${t.symbol}-${t.interval}`.replace(/[^a-z0-9]/gi,'-');
     const sidId=`${uid}-sid`;
-    const keyId=`${uid}-key`;
     const fieldId=`${uid}-field`;
     const tzId=`${uid}-tz`;
     sd.innerHTML=`<div class="add-stream-form">
@@ -366,26 +359,21 @@ export class Sidebar {
           ${this._localTz!=='UTC'?`<option value="${this._localTz}">${this._localTz}</option>`:''}
         </select>
       </div>
-      <label for="${keyId}" class="sr-only">Cycles API Key</label>
-      <form id="manual-post-form" onsubmit="return false;">
-        <input type="password" id="${keyId}" autocomplete="off" placeholder="Cycles API Key (or use saved)">
-        <div class="row row-end">
-          <button class="btn-sm" id="asf-cancel">Cancel</button>
-          <button class="btn-primary" id="asf-save">Save</button>
-        </div>
-      </form>
+      <div class="row row-end">
+        <button class="btn-sm" id="asf-cancel">Cancel</button>
+        <button class="btn-primary" id="asf-save">Save</button>
+      </div>
     </div>`;
     sd.querySelector('#asf-cancel').onclick=()=>this._renderSidebar();
     sd.querySelector('#asf-save').onclick=async()=>{
       const sid=sd.querySelector(`#${sidId}`).value.trim();
-      let key=sd.querySelector(`#${keyId}`).value.trim();
-      if(!key) key=await this.api._getKeyAPI()||'';
+      const key=await this.api._getKeyAPI()||'';
       const field=sd.querySelector(`#${fieldId}`).value;
       const streamTz=sd.querySelector(`#${tzId}`).value;
-      if(!sid||!key){deny('Stream ID and API Key required');return}
+      if(!sid){deny('Stream ID required');return}
+      if(!key){deny('No API key set. Please configure one in Settings.');return}
       const r=await this.api._addStreamAPI({symbol:t.symbol,interval:t.interval,stream_id:sid,api_key:key,field,stream_timezone:streamTz});
       if(r.error){deny(r.error);return}
-      if(key) await this.api._setKeyAPI(key);
       this._config.streams.push({id:r.id,stream_id:sid,symbol:t.symbol,interval:t.interval,field,enabled:1,stream_timezone:streamTz});
       toast('Stream added','success');this._renderSidebar();
     };

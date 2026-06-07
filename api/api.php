@@ -106,7 +106,7 @@ function doRemoveTrack(){
   needLogin();
   $sym=trim($_POST['symbol']??'');$int=$_POST['interval']??'';
   if(!$sym||!$int)err('Missing params');
-  $pdo->prepare("UPDATE cycle_streams SET enabled=0 WHERE user=? AND symbol=? AND `interval`=?")->execute([$user,$sym,$int]);
+  $pdo->prepare("DELETE FROM cycle_streams WHERE user=? AND symbol=? AND `interval`=?")->execute([$user,$sym,$int]);
   $pdo->prepare("DELETE FROM tracked_assets WHERE user=? AND symbol=? AND `interval`=?")->execute([$user,$sym,$int]);
   ok(['ok'=>true]);
 }
@@ -123,6 +123,9 @@ function doAddStream(){
   $s=$pdo->prepare("SELECT auto_update_enabled FROM tracked_assets WHERE user=? AND symbol=? AND `interval`=?");
   $s->execute([$user,$sym,$int]);$tr=$s->fetch();
   if(!$tr||!$tr['auto_update_enabled'])err('Enable auto-update for this asset first');
+  $e=$pdo->prepare("SELECT COUNT(*) FROM cycle_streams WHERE user=? AND symbol=? AND `interval`=?");
+  $e->execute([$user,$sym,$int]);
+  if((int)$e->fetchColumn()>0)err('A stream already exists for this symbol and timeframe');
   $s=$pdo->prepare("SELECT COUNT(*) FROM cycle_streams WHERE user=?");
   $s->execute([$user]);
   if((int)$s->fetchColumn()>=lim($role))err('Stream limit reached');

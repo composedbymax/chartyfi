@@ -27,7 +27,8 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS cycle_streams(
   symbol VARCHAR(20) NOT NULL,`interval` VARCHAR(5) NOT NULL,
   field VARCHAR(10) NOT NULL DEFAULT 'close',enabled TINYINT(1) NOT NULL DEFAULT 1,
   last_sent_timestamp INT UNSIGNED NULL,
-  stream_timezone VARCHAR(60) NOT NULL DEFAULT 'UTC'
+  stream_timezone VARCHAR(60) NOT NULL DEFAULT 'UTC',
+  UNIQUE KEY uniq_user_sym_int (user,symbol,`interval`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 $pdo->exec("CREATE TABLE IF NOT EXISTS settings(
   `key` VARCHAR(50) PRIMARY KEY,`value` TEXT

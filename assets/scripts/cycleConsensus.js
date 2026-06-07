@@ -4,7 +4,6 @@ import { settingsIcon } from './svg.js';
 const CC_STEP_KEY = 'cc_bar_step';
 const CC_AI_KEY = 'cc_ai_enabled';
 const DEFAULT_STEP = 200;
-let _aiModelCache = null;
 function getStep() {
   const n = parseInt(localStorage.getItem(CC_STEP_KEY), 10);
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_STEP;
@@ -26,23 +25,14 @@ function scoreClass(score) {
 function fmtScore(score) {
   return typeof score === 'number' ? score.toFixed(2) : '--';
 }
-async function getAIModel() {
-  if (_aiModelCache) return _aiModelCache;
-  const res = await fetch(window.ARI.api, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'list' })
-  });
-  const data = await res.json();
-  _aiModelCache = data.models?.[0] || null;
-  return _aiModelCache;
-}
 export class CycleConsensus {
   static config = { title: 'Cycle Consensus', description: 'Cycle.Tools consensus scoring across multiple bar windows', width: '45vw', mobileWidth: '92vw' };
   constructor(chart, api) {
     this.chart = chart;
     this.api = api;
-    this._onDataChanged = () => this._load();
+    this._onDataChanged = () => {if (this._destroyed) return;
+      this._load();
+    };
     this.chart._chartOn('dataChanged', this._onDataChanged);
     this._destroyed = false;
     this._settingsOpen = false;
@@ -118,6 +108,7 @@ export class CycleConsensus {
     }
   }
   async _load() {
+    if (this._destroyed) return;
     const sym  = this.chart._currentSymbol;
     const data = this.chart._getCurrentData();
     if (!sym || !data?.length) {
@@ -171,7 +162,7 @@ export class CycleConsensus {
       return;
     }
     try {
-      const model = await getAIModel();
+      const model = storage.getPreferredModel();
       if (signal.aborted || this._destroyed) return;
       if (!model) throw new Error('No AI model');
       const res = await fetch(window.ARI.api, {

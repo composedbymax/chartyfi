@@ -1,21 +1,11 @@
 import { attachSpinner } from "./spinner.js";
-const CUSTOM_KEY = 'eai-custom-instructions';
-let _activeOverlay  = null;
-let _modelsPromise  = null;
-let _chatMessages   = [];
-export function initAiChatModels() {
-    if (!_modelsPromise) {
-        _modelsPromise = fetch(window.ARI.api, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'list' })
-        }).then(r => r.json()).catch(() => ({ models: [] }));
-    }
-    return _modelsPromise;
-}
+import { storage } from "./storage.js";
+let _activeOverlay = null;
+let _chatMessages  = [];
 export function openAiChat({ getCode, onInsert }) {
     if (_activeOverlay) { _activeOverlay.querySelector('.eai-input-ta')?.focus(); return; }
     let sending = false;
+    let abortController = null;
     const overlay = document.createElement('div');
     overlay.className = 'eai-overlay';
     overlay.dataset.sidebarPersist = '';
@@ -26,15 +16,7 @@ export function openAiChat({ getCode, onInsert }) {
                 <button class="icon-btn eai-close">&times;</button>
             </div>
             <div class="eai-controls">
-                <select class="eai-model-select" id="eai-model-select" name="model">
-                    <option disabled selected>Loading models…</option>
-                </select>
                 <button class="btn-sm eai-new-chat">New Chat</button>
-                <button class="btn-sm eai-instr-toggle">Instructions</button>
-            </div>
-            <div class="eai-instr-area hidden">
-                <textarea class="eai-instr-ta" id="eai-instr-ta" name="instructions"
-                    placeholder='Custom instructions (e.g. "always use EMA not SMA")...'></textarea>
             </div>
             <div class="eai-messages"></div>
             <div class="eai-input-row">
@@ -46,15 +28,11 @@ export function openAiChat({ getCode, onInsert }) {
     `;
     document.body.appendChild(overlay);
     _activeOverlay = overlay;
-    const closeBtn    = overlay.querySelector('.eai-close');
-    const modelSelect = overlay.querySelector('.eai-model-select');
-    const newChatBtn  = overlay.querySelector('.eai-new-chat');
-    const instrToggle = overlay.querySelector('.eai-instr-toggle');
-    const instrArea   = overlay.querySelector('.eai-instr-area');
-    const instrTa     = overlay.querySelector('.eai-instr-ta');
-    const msgsEl      = overlay.querySelector('.eai-messages');
-    const inputTa     = overlay.querySelector('.eai-input-ta');
-    const sendBtn     = overlay.querySelector('.eai-send-btn');
+    const closeBtn   = overlay.querySelector('.eai-close');
+    const newChatBtn = overlay.querySelector('.eai-new-chat');
+    const msgsEl     = overlay.querySelector('.eai-messages');
+    const inputTa    = overlay.querySelector('.eai-input-ta');
+    const sendBtn    = overlay.querySelector('.eai-send-btn');
     const INPUT_MAX_HEIGHT = 100;
     function resizeInput() {
         inputTa.style.height = 'auto';
@@ -123,7 +101,7 @@ export function openAiChat({ getCode, onInsert }) {
             }
         });
     }
-    function buildMessage(role, content) {
+    function buildMessage(role, content, reasoning) {
         const row = document.createElement('div');
         row.className = `eai-msg eai-msg--${role}`;
         if (role === 'user') {
@@ -132,13 +110,30 @@ export function openAiChat({ getCode, onInsert }) {
             p.textContent = content;
             row.appendChild(p);
         } else {
+            if (reasoning) {
+                const rb = document.createElement('div');
+                rb.className = 'eai-reasoning';
+                const rt = document.createElement('button');
+                rt.className = 'eai-reasoning-toggle';
+                rt.type = 'button';
+                rt.textContent = '▼ Reasoning';
+                const rbody = document.createElement('div');
+                rbody.className = 'eai-reasoning-body';
+                rbody.textContent = reasoning;
+                rt.onclick = () => {
+                    const collapsed = rbody.classList.toggle('hidden');
+                    rt.textContent = collapsed ? '▶ Reasoning' : '▼ Reasoning';
+                };
+                rb.append(rt, rbody);
+                row.appendChild(rb);
+            }
             appendAssistantContent(row, content);
         }
         return row;
     }
     function renderMessages() {
         msgsEl.innerHTML = '';
-        _chatMessages.forEach(msg => msgsEl.appendChild(buildMessage(msg.role, msg.content)));
+        _chatMessages.forEach(msg => msgsEl.appendChild(buildMessage(msg.role, msg.content, msg.reasoning)));
         const ll = document.createElement('div');
         ll.className = 'eai-loader-layer';
         msgsEl.appendChild(ll);
@@ -147,24 +142,6 @@ export function openAiChat({ getCode, onInsert }) {
     let loaderLayer = renderMessages();
     const spinner = attachSpinner(loaderLayer, { size: 40, color: "var(--accent)" });
     spinner.hide();
-    instrTa.value = localStorage.getItem(CUSTOM_KEY) || '';
-    initAiChatModels().then(data => {
-        modelSelect.innerHTML = '';
-        if (data.models?.length) {
-            data.models.forEach(m => {
-                const o = document.createElement('option');
-                o.value = m;
-                o.textContent = m;
-                modelSelect.appendChild(o);
-            });
-        } else {
-            modelSelect.innerHTML = `<option disabled selected>No free models available</option>`;
-        }
-    }).catch(() => {
-        modelSelect.innerHTML = `<option disabled selected>Failed to load models</option>`;
-    });
-    instrToggle.onclick = () => instrArea.classList.toggle('hidden');
-    instrTa.oninput = () => localStorage.setItem(CUSTOM_KEY, instrTa.value);
     newChatBtn.onclick = () => {
         if (sending) return;
         _chatMessages = [];
@@ -179,24 +156,25 @@ export function openAiChat({ getCode, onInsert }) {
         inputTa.focus();
     };
     async function send() {
-        const text = inputTa.value.trim();
-        if (!text || sending || !modelSelect.value) return;
+        const text  = inputTa.value.trim();
+        const model = storage.getPreferredModel();
+        if (!text || sending || !model) return;
         sending = true;
-        sendBtn.disabled = true;
-        sendBtn.textContent = '…';
+        abortController = new AbortController();
+        sendBtn.textContent = 'Stop';
         inputTa.value = '';
         resizeInput();
         _chatMessages.push({ role: 'user', content: text });
         msgsEl.insertBefore(buildMessage('user', text), loaderLayer);
         spinner.show();
         msgsEl.scrollTop = msgsEl.scrollHeight;
-        const assistantRow = document.createElement('div');
+        const assistantRow    = document.createElement('div');
         assistantRow.className = 'eai-msg eai-msg--assistant';
         const reasoningBlock  = document.createElement('div');
         reasoningBlock.className = 'eai-reasoning eai-reasoning--streaming hidden';
         const reasoningToggle = document.createElement('button');
-        reasoningToggle.className = 'eai-reasoning-toggle';
-        reasoningToggle.type      = 'button';
+        reasoningToggle.className   = 'eai-reasoning-toggle';
+        reasoningToggle.type        = 'button';
         reasoningToggle.textContent = 'Thinking…';
         const reasoningBody = document.createElement('div');
         reasoningBody.className = 'eai-reasoning-body';
@@ -212,12 +190,12 @@ export function openAiChat({ getCode, onInsert }) {
             const res = await fetch(window.ARI.api, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: abortController.signal,
                 body: JSON.stringify({
                     action: 'chat',
-                    model: modelSelect.value,
+                    model,
                     messages: _chatMessages,
                     instructionTypes: ['indicators'],
-                    customInstructions: instrTa.value.trim(),
                     currentCode: getCode()
                 })
             });
@@ -248,9 +226,7 @@ export function openAiChat({ getCode, onInsert }) {
                     if (!delta) continue;
                     if (typeof delta.reasoning_content === 'string') {
                         reasoningContent += delta.reasoning_content;
-                        if (reasoningBlock.classList.contains('hidden')) {
-                            reasoningBlock.classList.remove('hidden');
-                        }
+                        if (reasoningBlock.classList.contains('hidden')) reasoningBlock.classList.remove('hidden');
                         reasoningBody.textContent = reasoningContent;
                     }
                     if (typeof delta.content === 'string') {
@@ -263,12 +239,20 @@ export function openAiChat({ getCode, onInsert }) {
             success = true;
         } catch (e) {
             spinner.hide();
-            assistantRow.remove();
-            _chatMessages.pop();
-            const err = document.createElement('div');
-            err.className = 'eai-error';
-            err.textContent = 'Error: ' + e.message;
-            msgsEl.insertBefore(err, loaderLayer);
+            if (e.name === 'AbortError') {
+                success = mainContent.trim().length > 0;
+                if (!success) {
+                    assistantRow.remove();
+                    _chatMessages.pop();
+                }
+            } else {
+                assistantRow.remove();
+                _chatMessages.pop();
+                const err = document.createElement('div');
+                err.className = 'eai-error';
+                err.textContent = 'Error: ' + e.message;
+                msgsEl.insertBefore(err, loaderLayer);
+            }
         }
         if (success) {
             if (reasoningContent) {
@@ -281,16 +265,21 @@ export function openAiChat({ getCode, onInsert }) {
             }
             streamText.remove();
             const trimmed = mainContent.trim();
-            if (trimmed) appendAssistantContent(assistantRow, trimmed);
-            _chatMessages.push({ role: 'assistant', content: trimmed });
+            if (trimmed) {
+                appendAssistantContent(assistantRow, trimmed);
+                _chatMessages.push({ role: 'assistant', content: trimmed, reasoning: reasoningContent || undefined });
+            } else {
+                assistantRow.remove();
+                _chatMessages.pop();
+            }
         }
         spinner.hide();
         sending = false;
-        sendBtn.disabled = false;
+        abortController = null;
         sendBtn.textContent = 'Send';
         msgsEl.scrollTop = msgsEl.scrollHeight;
     }
-    sendBtn.onclick = send;
+    sendBtn.onclick = () => { if (sending) abortController?.abort(); else send(); };
     inputTa.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
     });
@@ -300,7 +289,7 @@ export function openAiChat({ getCode, onInsert }) {
         spinner.destroy?.();
     }
     closeBtn.onclick = close;
-    overlay.onclick = e => { if (e.target === overlay) close(); };
+    overlay.onclick  = e => { if (e.target === overlay) close(); };
     overlay.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
     inputTa.focus();
     resizeInput();
