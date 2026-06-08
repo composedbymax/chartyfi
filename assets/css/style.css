@@ -162,7 +162,7 @@ td[colspan="3"] > div[style*="z-index: 50"] {background-color: var(--bg6) !impor
 .stream-id{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;flex:1}
 .stream-tz-badge{font-size:10px;background:var(--bg4);padding:1px 5px;border-radius:3px;color:var(--text3);}
 .stream-tz-select{height:28px;font-size:12px;flex:1;}
-.add-stream-form{display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--bg5);padding-top:6px;margin-top:2px}
+.add-stream-form{width:100%;display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--bg5);padding-top:6px;margin-top:2px}
 .add-stream-form input{padding:4px 8px;font-size:12px;height:28px;width:100%}
 .add-stream-form select{height:28px;font-size:12px}
 .add-stream-form .row{display:flex;gap:5px;margin-top:5px}
@@ -710,3 +710,5 @@ td[colspan="3"] > div[style*="z-index: 50"] {background-color: var(--bg6) !impor
 .scr-loading { color: var(--text2); }
 .scr-err { color: var(--red); }
 .scr-row { cursor: pointer; }
+.scr-body{position:relative;min-height:180px;}
+.scr-body>.spinner-wrapper{position:absolute;inset:0;}

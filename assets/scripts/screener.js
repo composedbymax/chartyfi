@@ -1,3 +1,4 @@
+import {attachSpinner} from './spinner.js';
 export class Screener {
   static config = {
     title: 'Screener',
@@ -9,6 +10,7 @@ export class Screener {
     this._tab = 'gainers';
     this._data = null;
     this._shown = { gainers: 20, losers: 20, actives: 20 };
+    this._spinner = null;
     this._build();
     this._load();
   }
@@ -42,7 +44,9 @@ export class Screener {
   async _load() {
     const cached = this._getCache();
     if (cached) { this._data = cached; this._renderList(); return; }
-    this._body.innerHTML = '<div class="scr-loading">Loading…</div>';
+    this._body.innerHTML = '';
+    this._spinner = attachSpinner(this._body, { size: 40, color: "var(--accent)" });
+    this._spinner.show();
     try {
       const res = await fetch(window.YFS.api);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -50,11 +54,12 @@ export class Screener {
       if (json.error) throw new Error(json.error);
       this._data = json;
       this._setCache(json);
+      this._renderList();
     } catch (e) {
       this._body.innerHTML = `<div class="scr-err">${e.message}</div>`;
-      return;
+    } finally {
+      if (this._spinner) { this._spinner.destroy(); this._spinner = null; }
     }
-    this._renderList();
   }
   _renderList() {
     if (!this._data) return;
@@ -90,10 +95,12 @@ export class Screener {
   }
   _fmtVol(v) {
     if (v == null) return '--';
-    if (v >= 1e9) return (v/1e9).toFixed(2)+'B';
-    if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
-    if (v >= 1e3) return (v/1e3).toFixed(1)+'K';
+    if (v >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+    if (v >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+    if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
     return String(v);
   }
-  destroy() {}
+  destroy() {
+    if (this._spinner) { this._spinner.destroy(); this._spinner = null; }
+  }
 }

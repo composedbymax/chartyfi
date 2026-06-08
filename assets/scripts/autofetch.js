@@ -23,11 +23,10 @@ export class AutoFetch {
     if(data.length<20) return;
     const range=this._chart._chart.timeScale().getVisibleRange();
     if(!range) return;
-    const EDGE=15;
-    const edgeTime=this._chart._shiftTime(data[Math.min(EDGE,data.length-1)].time);
-    if(range.from>edgeTime) return;
-    const count=data.filter(c=>{const t=this._chart._shiftTime(c.time);return t>=range.from&&t<=range.to}).length;
-    if(count<=40) this._fetch();
+    const LOOKAHEAD=30;
+    if(data.length<=LOOKAHEAD) return;
+    const threshold=this._chart._shiftTime(data[LOOKAHEAD].time);
+    if(range.from<=threshold) this._fetch();
   }
   async _fetch(){
     this._fetching=true;

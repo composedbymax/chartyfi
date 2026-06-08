@@ -114,26 +114,26 @@ export class Chart{
     if(!silent&&loaded<requested){if(res.end_of_data)toast(`${loaded} bars loaded. End of avaliable data`,'info',3000);else toast(`${loaded} bars loaded`,'info',2000)}
     return loaded;
   }
-  async _extendAfter(bars){
+  async _extendAfter(bars, silent=false){
     const requested=Math.max(1,Math.floor(Number(bars)||0));
     if(this._isDataset){
       const p2=this._data[this._data.length-1]?.time;
       const toAdd=p2?this._datasetFull.filter(c=>c.time>p2).slice(0,requested):[];
-      if(!toAdd.length){toast('No more data available','warn');return 0;}
+      if(!toAdd.length){if(!silent) toast('No more data available','warn');return 0;}
       this._data=[...this._data,...toAdd];this._apply();return toAdd.length;
     }
     if(!this.sym||!requested)return 0;
     const anchor=this._data[this._data.length-1]?.time??0;
-    if(!anchor){toast('Load a chart first','warn');return 0}
+    if(!anchor){if(!silent) toast('Load a chart first','warn');return 0}
     const beforeCount=this._data.length;
     const res=await this.api._chartData(this.sym,this.int,{bars:requested,direction:'after',anchor});
-    if(res.error){toast(res.error,'error');return 0}
+    if(res.error){if(!silent) toast(res.error,'error');return 0}
     const fresh=res.candles||[];
-    if(!fresh.length){toast('No more data available','warn');return 0}
+    if(!fresh.length){if(!silent) toast('No more data available','warn');return 0}
     this._data=[...this._data,...fresh];
     this._apply();
     const loaded=this._data.length-beforeCount;
-    if(loaded<requested){if(res.end_of_data)toast(`${loaded} bars loaded. End of avaliable data`,'info',3000);else toast(`${loaded} bars loaded`,'info',2000)}
+    if(!silent && loaded<requested){if(res.end_of_data)toast(`${loaded} bars loaded. End of avaliable data`,'info',3000);else toast(`${loaded} bars loaded`,'info',2000)}
     return loaded;
   }
   _trimBefore(bars){if(!this._data.length)return;this._data=this._data.slice(Math.min(bars,this._data.length));if(this._data.length)this._p1=this._data[0].time;this._apply()}

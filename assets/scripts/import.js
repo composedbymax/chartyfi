@@ -1,4 +1,5 @@
 import {toast} from './message.js';
+import {INTERVALS_S} from './chart.js';
 function _parseTimestamp(val) {
   const n = Number(val);
   if (!isNaN(n) && n > 1e8) return n > 1e11 ? Math.floor(n/1000) : Math.floor(n);
@@ -101,9 +102,8 @@ function _detectInterval(candles) {
   for (let i = 1; i < Math.min(candles.length, 20); i++) diffs.push(candles[i].time - candles[i-1].time);
   diffs.sort((a,b) => a-b);
   const median = diffs[Math.floor(diffs.length/2)];
-  const map = {'1m':60,'2m':120,'5m':300,'15m':900,'30m':1800,'1h':3600,'4h':14400,'1d':86400,'1wk':604800,'1mo':2592000,'3mo':7776000};
   let best = null, bestDiff = Infinity;
-  for (const [label, secs] of Object.entries(map)) {
+  for (const [label, secs] of Object.entries(INTERVALS_S)) {
     const d = Math.abs(median - secs);
     if (d < bestDiff) { bestDiff = d; best = label; }
   }

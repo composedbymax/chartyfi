@@ -11,6 +11,7 @@ import {AutoFetch, autofetchEnabled} from './autofetch.js';
 import {tooltip} from './tooltip.js';
 import {initGuard} from './appGuard.js';
 import {initModels} from './models.js';
+import {initPolling} from './autoPoll.js';
 initGuard();
 const _t = storage.getTheme();
 if (_t) document.documentElement.setAttribute('data-theme', _t);
@@ -84,25 +85,7 @@ async function main() {
   });
   const first = config?.tracked?.[0];
   if (first && !urlLoaded) chart.load(first.symbol, first.interval);
-  setupPolling(config, chart, api);
   initModels();
-}
-function setupPolling(config,chart,api) {
-  const ci=config?.cron_info;
-  if(!ci?.last_cron_run) return;
-  const freq=ci.cron_frequency*1000;
-  const nextRun=(ci.last_cron_run*1000)+freq+120000;
-  const wait=Math.max(nextRun-Date.now(),freq);
-  setTimeout(()=>poll(chart,api,freq),wait);
-}
-async function poll(chart,api,freq) {
-  const sym=chart._currentSymbol;
-  const int=chart._currentInterval;
-  if(sym&&int) {
-    const since=chart._getLastTimestamp();
-    const res=await api._checkUpdatesAPI(sym,int,since).catch(()=>null);
-    if(res?.candles?.length) {chart._appendCandles(res.candles);}
-  }
-  setTimeout(()=>poll(chart,api,freq),freq);
+  initPolling(chart);
 }
 main().catch(e => console.error(e));

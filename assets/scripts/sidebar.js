@@ -117,7 +117,7 @@ export class Sidebar {
     let title='Menu';
     if(this.showSettings) title='Settings';
     if(this.showEditor) title='Indicators';
-    if(this.showMiniApps) title='Mini Apps';
+    if(this.showMiniApps) title='Tools';
     if(this._activeApp) title=this._activeApp.constructor.config?.title||'App';
     const inSub=this.showSettings||this.showEditor||this.showMiniApps||this._activeApp;
     const row=Object.assign(document.createElement('div'),{
@@ -162,8 +162,8 @@ export class Sidebar {
       ma.appendChild(miniAppsIcon({className:'icon'}));
       ed.appendChild(codeIcon({className:'icon'}));
       st.appendChild(settingsIcon({className:'icon'}));
-      ma.title='Mini Apps';st.title='Settings';ed.title='Indicators';
-      tooltip(ma,'Mini Apps');tooltip(ed,'Indicators');tooltip(st,'Settings');
+      ma.title='Tools';st.title='Settings';ed.title='Indicators';
+      tooltip(ma,'Tools');tooltip(ed,'Indicators');tooltip(st,'Settings');
       ma.onclick=()=>{this.showMiniApps=true;this.showEditor=false;this.showSettings=false;this._renderSidebar();};
       ed.onclick=()=>{this.showEditor=true;this.showSettings=false;this.showMiniApps=false;this._renderSidebar();};
       st.onclick=()=>{this.showSettings=true;this.showEditor=false;this.showMiniApps=false;this._renderSidebar();};
