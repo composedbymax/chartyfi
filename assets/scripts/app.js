@@ -39,7 +39,7 @@ document.getElementById('app').innerHTML = `
 async function main() {
   initMessage();
   const api = new ApiClient(window.CFG.api);
-  const config = await api._userConfig().catch(() => ({}));
+  const config = window.userLoggedIn ? await api._userConfig().catch(() => ({})) : {};
   let chartTz = 'UTC';
   const chart = new Chart(document.getElementById('chart-wrap'), api, chartTz);
   const tools = new Tools(document.getElementById('tools-wrap'), chart, api, { visible: storage.getTools() });

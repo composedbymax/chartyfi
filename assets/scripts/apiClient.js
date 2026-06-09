@@ -23,7 +23,7 @@ export class ApiClient{
   }
   async _get(params){const url=`${this.ep}?${new URLSearchParams(params)}`;const r=await fetch(url);return r.json()}
   async _post(action,data){const body=new URLSearchParams({action,...data});const r=await fetch(this.ep,{method:'POST',body});return r.json()}
-  _userConfig(){return this._get({action:'user_config'})}
+  _userConfig(){if (!window.userLoggedIn) return Promise.resolve(null); return this._get({ action: 'user_config' });}
   async _chartData(sym,int,p1,p2,limit,initial=false){
     const opts=typeof p1==='object'&&p1!==null?{...p1}:{p1,p2,limit,initial}
     if(opts.initial==null)opts.initial=initial

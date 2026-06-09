@@ -1,5 +1,5 @@
 <?php
 return [
-    'indicators'=>__DIR__.'/indicators.txt',
-    'ratings'=>__DIR__.'/ratings.txt',
+    'indicators'=>__DIR__.'/instructions/indicators.txt',
+    'ratings'=>__DIR__.'/instructions/ratings.txt',
 ];

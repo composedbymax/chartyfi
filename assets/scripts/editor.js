@@ -90,6 +90,7 @@ export class Editor{
     this._shareUi = null;
     this._exploreUi = null;
     this._activeCtrl = null;
+    this._busyCount = 0;
     this._refreshSnapshot = null;
     this._refreshTimer = null;
     this._helpSpinner = null;
@@ -251,6 +252,7 @@ export class Editor{
     this._renderIndicatorList();
   }
   _loadSharedItem(item){
+    if(this._busyCount>0){deny('Editor is currently executing');return false;}
     this._snippetId=null;
     this._snippetName=item.name||'Untitled';
     this._code=item.code||'';
@@ -336,6 +338,7 @@ export class Editor{
     this.el.querySelector('#ed-snippets').onchange = async e => {
       const id = parseInt(e.target.value);
       if (!id) return;
+      if(this._busyCount>0){deny('Editor is currently executing');e.target.value='';return;}
       try {
         const db = await openDB();
         const tx = db.transaction(STORE, 'readonly');
@@ -495,38 +498,43 @@ export class Editor{
   async _doRefresh() {
     const groups = this._refreshSnapshot;
     if (!groups?.length) return;
-    this._cancelActive();
-    const ctrl = new AbortController();
-    this._activeCtrl = ctrl;
-    const signal = ctrl.signal;
-    const selectedIndex = groups.findIndex(g => g.id === this._editingGroupId);
-    const savedCode = this._code;
-    const savedName = this._snippetName;
-    const savedSnippetId = this._snippetId;
-    this._pom.clearAll();
-    this._editingGroupId = null;
-    for (const g of groups) {
-      if (signal.aborted) break;
-      this._snippetName = g.name;
-      this._code = g.code || '';
-      await this._run(true, signal);
-    }
-    if (signal.aborted) {
+    this._busyCount++;
+    try {
+      this._cancelActive();
+      const ctrl = new AbortController();
+      this._activeCtrl = ctrl;
+      const signal = ctrl.signal;
+      const selectedIndex = groups.findIndex(g => g.id === this._editingGroupId);
+      const savedCode = this._code;
+      const savedName = this._snippetName;
+      const savedSnippetId = this._snippetId;
+      this._pom.clearAll();
+      this._editingGroupId = null;
+      for (const g of groups) {
+        if (signal.aborted) break;
+        this._snippetName = g.name;
+        this._code = g.code || '';
+        await this._run(true, signal);
+      }
+      if (signal.aborted) {
+        if (this._activeCtrl === ctrl) this._activeCtrl = null;
+        return;
+      }
+      this._refreshSnapshot = null;
+      this._code = savedCode;
+      this._snippetName = savedName;
+      this._snippetId = savedSnippetId;
+      const newGroups = this._pom.getGroups();
+      if (selectedIndex >= 0 && newGroups[selectedIndex]) {
+        this._editingGroupId = newGroups[selectedIndex].id;
+      } else {
+        this._editingGroupId = newGroups.at(-1)?.id ?? null;
+      }
+      this._renderIndicatorList();
       if (this._activeCtrl === ctrl) this._activeCtrl = null;
-      return;
+    } finally {
+      this._busyCount--;
     }
-    this._refreshSnapshot = null;
-    this._code = savedCode;
-    this._snippetName = savedName;
-    this._snippetId = savedSnippetId;
-    const newGroups = this._pom.getGroups();
-    if (selectedIndex >= 0 && newGroups[selectedIndex]) {
-      this._editingGroupId = newGroups[selectedIndex].id;
-    } else {
-      this._editingGroupId = newGroups.at(-1)?.id ?? null;
-    }
-    this._renderIndicatorList();
-    if (this._activeCtrl === ctrl) this._activeCtrl = null;
   }
   _refreshIndicators() {
     const groups=this._pom.getGroups();
@@ -546,6 +554,7 @@ export class Editor{
       const ctrl = new AbortController();
       this._activeCtrl = ctrl;
       signal = ctrl.signal;
+      this._busyCount++;
     }
     if (signal.aborted) return;
     const runBtn = this.el.querySelector('#ed-run');
@@ -558,6 +567,7 @@ export class Editor{
       this._hideBtProgress();
       if (isOwned && runBtn) { runBtn.disabled = false; runBtn.textContent = '▶ Run'; }
       if (isOwned && this._activeCtrl?.signal === signal) this._activeCtrl = null;
+      if (isOwned) this._busyCount--;
     }
   }
   async _runInner(silent = false, signal = null) {

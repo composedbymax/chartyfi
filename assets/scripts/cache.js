@@ -1,44 +1,22 @@
-const DB_NAME='chartcache',DB_VER=4,CHART_STORE='charts',SEARCH_STORE='search',EXPIRY=60*24*60*60*1000
+const DB_NAME='chartcache',DB_VER=5,CHART_STORE='charts',SEARCH_STORE='search',META_STORE='chartmeta',EXPIRY=60*24*60*60*1000
+const _MIN_T=-9007199254740991,_MAX_T=9007199254740991
 let _db=null
 const _writeQueues=new Map()
-const _dbReady=new Promise((res,rej)=>{const req=indexedDB.open(DB_NAME,DB_VER);req.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains(CHART_STORE))db.createObjectStore(CHART_STORE);if(!db.objectStoreNames.contains(SEARCH_STORE))db.createObjectStore(SEARCH_STORE)};req.onsuccess=e=>{_db=e.target.result;res(_db)};req.onerror=e=>rej(e.target.error)})
-function _tx(store,mode,fn){return _dbReady.then(db=>new Promise((res,rej)=>{const tx=db.transaction(store,mode);const st=tx.objectStore(store);const req=fn(st);req.onsuccess=()=>res(req.result);req.onerror=e=>rej(e.target.error)}))}
-function _get(store,key){return _tx(store,'readonly',st=>st.get(key))}
-function _put(store,key,val){return _tx(store,'readwrite',st=>st.put(val,key))}
+const _dbReady=new Promise((res,rej)=>{const req=indexedDB.open(DB_NAME,DB_VER);req.onupgradeneeded=e=>{const db=e.target.result;if(db.objectStoreNames.contains(CHART_STORE))db.deleteObjectStore(CHART_STORE);if(db.objectStoreNames.contains(META_STORE))db.deleteObjectStore(META_STORE);const charts=db.createObjectStore(CHART_STORE,{keyPath:['symbol','interval','time']});charts.createIndex('series',['symbol','interval'],{unique:false});db.createObjectStore(META_STORE,{keyPath:'series'});if(!db.objectStoreNames.contains(SEARCH_STORE))db.createObjectStore(SEARCH_STORE)};req.onsuccess=e=>{_db=e.target.result;res(_db)};req.onerror=e=>rej(e.target.error)})
+function _get(store,key){return _dbReady.then(db=>new Promise((res,rej)=>{const tx=db.transaction(store,'readonly');const st=tx.objectStore(store);const req=st.get(key);req.onsuccess=()=>res(req.result);req.onerror=e=>rej(e.target.error)}))}
+function _put(store,val,key){return _dbReady.then(db=>new Promise((res,rej)=>{const tx=db.transaction(store,'readwrite');const st=tx.objectStore(store);const req=key===undefined?st.put(val):st.put(val,key);req.onsuccess=()=>res(req.result);req.onerror=e=>rej(e.target.error)}))}
 function _enqueue(key,fn){const prev=_writeQueues.get(key)||Promise.resolve();const next=prev.catch(()=>{}).then(fn);_writeQueues.set(key,next);return next.finally(()=>{if(_writeQueues.get(key)===next)_writeQueues.delete(key)})}
+function _seriesKey(sym,int){return `${sym}_${int}`}
 function _normalizeCandles(candles){const map=new Map();for(const c of candles||[]){if(c?.time==null)continue;const time=Number(c.time);if(!Number.isFinite(time))continue;map.set(time,{time,open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close),volume:Number(c.volume??0)})}return [...map.values()].sort((a,b)=>a.time-b.time)}
-export async function getCachedChart(sym,int,p1,p2,limit,opts={}){
-  if(typeof p1==='object'&&p1!==null){opts=p1;p1=opts.p1??null;p2=opts.p2??null;limit=opts.limit??null}
-  const key=`${sym}_${int}`
-  const entry=await _get(CHART_STORE,key)
-  if(!entry||Date.now()-entry.cachedAt>EXPIRY)return null
-  const candles=Array.isArray(entry.candles)?entry.candles:[]
-  const bars=Number(opts.bars??0)||0
-  const direction=opts.direction||''
-  const anchor=Number(opts.anchor??0)||0
-  if(bars>0&&direction){
-    const filtered=direction==='before'?candles.filter(c=>c.time<anchor):candles.filter(c=>c.time>anchor)
-    if(filtered.length<bars)return null
-    const slice=direction==='before'?filtered.slice(-bars):filtered.slice(0,bars)
-    return{candles:slice,symbol:sym,interval:int,p1:slice[0].time,p2:slice[slice.length-1].time,loadedBars:slice.length,requestedBars:bars,end_of_data:false,cached:true}
-  }
-  let out=candles
-  if(p1!=null)out=out.filter(c=>c.time>=Number(p1))
-  if(p2!=null)out=out.filter(c=>c.time<=Number(p2))
-  if(!out.length)return null
-  if(limit&&p1==null&&p2==null&&out.length>limit)out=out.slice(-limit)
-  return{candles:out,symbol:sym,interval:int,p1:out[0].time,p2:out[out.length-1].time,loadedBars:out.length,requestedBars:limit??out.length,end_of_data:false,cached:true}
-}
-export function setCachedChart(sym,int,newCandles){
-  if(!newCandles?.length)return
-  const key=`${sym}_${int}`
-  return _enqueue(key,async()=>{const entry=await _get(CHART_STORE,key);const existing=entry&&Date.now()-entry.cachedAt<=EXPIRY&&Array.isArray(entry.candles)?entry.candles:[];const map=new Map();for(const c of existing)map.set(Number(c.time),c);for(const c of _normalizeCandles(newCandles))map.set(Number(c.time),c);await _put(CHART_STORE,key,{candles:[...map.values()].sort((a,b)=>a.time-b.time),cachedAt:Date.now()})})
-}
-export async function getLastCachedTime(sym,int){
-  const key=`${sym}_${int}`
-  const entry=await _get(CHART_STORE,key)
-  if(!entry||!Array.isArray(entry.candles)||!entry.candles.length)return null
-  return entry.candles[entry.candles.length-1].time
-}
+function _seriesRange(sym,int,from,to,exclusiveFrom=false,exclusiveTo=false){const lower=[sym,int,from==null?_MIN_T:Number(from)],upper=[sym,int,to==null?_MAX_T:Number(to)];return IDBKeyRange.bound(lower,upper,exclusiveFrom,exclusiveTo)}
+function _collectSeries(sym,int,{from=null,to=null,direction='next',limit=0,exclusiveFrom=false,exclusiveTo=false}={}){return _dbReady.then(db=>new Promise((res,rej)=>{const tx=db.transaction(CHART_STORE,'readonly');const st=tx.objectStore(CHART_STORE);const range=from!=null||to!=null?_seriesRange(sym,int,from,to,exclusiveFrom,exclusiveTo):IDBKeyRange.bound([sym,int,_MIN_T],[sym,int,_MAX_T]);const out=[];let done=false;const finish=()=>{if(done)return;done=true;if(direction==='prev')out.reverse();res(out)};tx.onerror=e=>{if(done)return;done=true;rej(tx.error||e.target.error)};tx.onabort=e=>{if(done)return;done=true;rej(tx.error||e.target.error)};const req=st.openCursor(range,direction);req.onsuccess=e=>{const cur=e.target.result;if(!cur)return finish();out.push(cur.value);if(limit>0&&out.length>=limit)return finish();cur.continue()};req.onerror=e=>{if(done)return;done=true;rej(e.target.error)}}))}
+export async function detectCacheGaps(sym,int,step){if(!step)return[];const meta=await _get(META_STORE,_seriesKey(sym,int));if(!meta||Date.now()-meta.cachedAt>EXPIRY)return[];const candles=await _collectSeries(sym,int);if(candles.length<20)return[];const expected=_inferExpectedGaps(candles,step);return _detectMissingRanges(candles,expected,step)}
+function _inferExpectedGaps(candles,step){if(candles.length<20)return new Set([step]);const counts=new Map();let total=0;for(let i=1;i<candles.length;i++){const raw=candles[i].time-candles[i-1].time;if(raw<=0)continue;const rounded=Math.round(raw/step)*step;if(rounded<=0)continue;counts.set(rounded,(counts.get(rounded)||0)+1);total++}if(!total)return new Set([step]);const thresh=Math.max(2,total*0.01);const expected=new Set([step]);for(const [gap,n] of counts)if(n>=thresh)expected.add(gap);return expected}
+function _detectMissingRanges(candles,expected,step){if(candles.length<2)return[];const maxExp=[...expected].reduce((a,b)=>Math.max(a,b),step);const cutoff=maxExp/step>5?maxExp*5:maxExp+step*0.5;const out=[];for(let i=1;i<candles.length;i++){const gap=candles[i].time-candles[i-1].time;const rounded=Math.round(gap/step)*step;if(gap>cutoff&&!expected.has(rounded))out.push({from:candles[i-1].time,to:candles[i].time})}return out}
+export async function getCachedChart(sym,int,p1,p2,limit,opts={}){if(typeof p1==='object'&&p1!==null){opts=p1;p1=opts.p1??null;p2=opts.p2??null;limit=opts.limit??null}const key=_seriesKey(sym,int);const meta=await _get(META_STORE,key);if(!meta||Date.now()-meta.cachedAt>EXPIRY)return null;const bars=Number(opts.bars??0)||0;const direction=opts.direction||'';const anchor=Number(opts.anchor??0)||0;const reqLimit=Number(limit)||0;if(bars>0&&direction){const candles=direction==='before'?await _collectSeries(sym,int,{to:anchor,exclusiveTo:true,direction:'prev',limit:bars}):await _collectSeries(sym,int,{from:anchor,exclusiveFrom:true,direction:'next',limit:bars});if(candles.length<bars)return null;return{candles,symbol:sym,interval:int,p1:candles[0].time,p2:candles[candles.length-1].time,loadedBars:candles.length,requestedBars:bars,end_of_data:false,cached:true}}let out;if(p1!=null||p2!=null)out=await _collectSeries(sym,int,{from:p1,to:p2});else if(reqLimit>0)out=await _collectSeries(sym,int,{direction:'prev',limit:reqLimit});else out=await _collectSeries(sym,int);if(!out.length)return null;if(p1==null&&p2==null&&reqLimit>0&&out.length>reqLimit)out=out.slice(-reqLimit);return{candles:out,symbol:sym,interval:int,p1:out[0].time,p2:out[out.length-1].time,loadedBars:out.length,requestedBars:reqLimit||out.length,end_of_data:false,cached:true}}
+function _writeSeries(sym,int,candles){const series=_seriesKey(sym,int);return new Promise((res,rej)=>{const tx=_db.transaction([CHART_STORE,META_STORE],'readwrite');const charts=tx.objectStore(CHART_STORE);const meta=tx.objectStore(META_STORE);for(const c of candles)charts.put({symbol:sym,interval:int,...c});meta.put({series,cachedAt:Date.now()});tx.oncomplete=()=>res();tx.onerror=e=>rej(tx.error||e.target.error);tx.onabort=e=>rej(tx.error||e.target.error)})}
+export function setCachedChart(sym,int,newCandles){if(!newCandles?.length)return;const normalized=_normalizeCandles(newCandles).slice(0,-1);if(!normalized.length)return;const key=_seriesKey(sym,int);return _enqueue(key,()=>_writeSeries(sym,int,normalized))}
+export function patchCacheRange(sym,int,newCandles){if(!newCandles?.length)return;const normalized=_normalizeCandles(newCandles);if(!normalized.length)return;const key=_seriesKey(sym,int);return _enqueue(key,()=>_writeSeries(sym,int,normalized))}
+export async function getLastCachedTime(sym,int){const key=_seriesKey(sym,int);const meta=await _get(META_STORE,key);if(!meta||Date.now()-meta.cachedAt>EXPIRY)return null;const candles=await _collectSeries(sym,int,{direction:'prev',limit:1});if(!candles.length)return null;return candles[0].time}
 export async function getCachedSearch(q){const entry=await _get(SEARCH_STORE,q);if(!entry||Date.now()-entry.cachedAt>EXPIRY)return null;return entry.results}
-export function setCachedSearch(q,results){if(!results?.length)return;_enqueue(`search_${q}`,()=>_put(SEARCH_STORE,q,{results,cachedAt:Date.now()}))}
+export function setCachedSearch(q,results){if(!results?.length)return;_enqueue(`search_${q}`,()=>_put(SEARCH_STORE,{results,cachedAt:Date.now()},q))}

@@ -18,6 +18,7 @@ export class Sidebar {
     this._datasetMode=false;
     this.onTimezoneChange=null;
     this._editor=new Editor(document.createElement('div'),chart);
+    Object.defineProperty(this.chart, '_isEditorBusy', {get: () => this._editor._busyCount > 0, configurable: true});
     this._settings=new Settings(chart,api,config,this._localTz,{
       onTzChange:tz=>{this._chartTz=tz;this._applyChartTz();},
       onRerender:()=>this._renderSidebar(),

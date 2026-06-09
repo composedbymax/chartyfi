@@ -1,9 +1,14 @@
+//autofetch.js needs a fix
 import {storage} from './storage.js';
 import {toast} from './message.js';
 export const autofetchEnabled={_inst:null,set(v){this._inst?.setEnabled(v)}};
 export class AutoFetch {
   constructor(chart){
-    this._chart=chart;this._fetching=false;this._exhausted=false;this._unsub=null;
+    this._chart=chart;
+    this._fetching=false;
+    this._exhausted=false;
+    this._unsub=null;
+    this._lastFetch=0;
     this._handler=()=>this._check();
     chart._chartOn('load',()=>this.reset());
     if(storage.getAutofetch()) this._attach();
@@ -19,6 +24,8 @@ export class AutoFetch {
   _detach(){this._unsub?.();this._unsub=null}
   _check(){
     if(!storage.getAutofetch()||this._fetching||this._exhausted) return;
+    if (this._chart._isEditorBusy) return;
+    if(Date.now() - this._lastFetch < 700) return;
     const data=this._chart._getCurrentData();
     if(data.length<20) return;
     const range=this._chart._chart.timeScale().getVisibleRange();
@@ -30,6 +37,7 @@ export class AutoFetch {
   }
   async _fetch(){
     this._fetching=true;
+    this._lastFetch=Date.now();
     const prev=this._chart._getCurrentData().length;
     await this._chart._extendBefore(300,true);
     const next=this._chart._getCurrentData().length;

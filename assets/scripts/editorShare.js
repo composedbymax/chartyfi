@@ -167,7 +167,7 @@ function card(item,onLoad){
     load.textContent='Loading…';
     try{
       const data=await loadPublicIndicator(item.id);
-      onLoad(data.item);
+      if(onLoad(data.item)===false){load.disabled=false;load.textContent='Load';}
     }catch(e){
       deny(e.message);
       load.textContent='Error';
@@ -210,8 +210,9 @@ export function createExplorePanel({onLoad}={}){
       const items=data.items||[];
       lastCount=items.length;
       items.forEach(it=>list.append(card(it,item=>{
-        onLoad&&onLoad(item);
-        closePanel();
+        const r=onLoad&&onLoad(item);
+        if(r!==false) closePanel();
+        return r;
       })));
       next.textContent='Next →';
       updateButtons();

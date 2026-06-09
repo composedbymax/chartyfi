@@ -40,7 +40,8 @@ function doUserConfig(){
     $s->execute([$user]);$streams=$s->fetchAll();
   }
   $lc=(int)getSetting($pdo,'last_cron_symbol_store',0);
-  ok(['user'=>$user,'role'=>$role,'limits'=>['assets'=>lim($role),'streams'=>lim($role)],'tracked'=>$tracked,'streams'=>$streams,'cron_info'=>['last_cron_run'=>$lc,'cron_frequency'=>3600]]);
+  $limits = $user ? ['assets' => lim($role), 'streams' => lim($role)] : ['assets' => 0, 'streams' => 0];
+  ok(['user' => $user, 'role' => $role, 'limits' => $limits, 'tracked' => $tracked, 'streams' => $streams, 'cron_info' => ['last_cron_run' => $lc,'cron_frequency' => 3600]]);
 }
 function doChartData(){
   global $pdo;
