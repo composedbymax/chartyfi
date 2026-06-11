@@ -1,5 +1,6 @@
 import {Watchlist}      from './watchlist.js';
-import {Screener}      from './screener.js';
+import {Screener}       from './screener.js';
+import {Alerts}         from './alerts.js';
 import {DataIntegrity}  from './dataintegrity.js';
 import {News}           from './news.js';
 import {CycleConsensus} from './cycleConsensus.js';
@@ -7,8 +8,9 @@ import {authModal}      from './authPage.js';
 const APPS = [
   [Watchlist],
   [Screener],
-  [News, { authRequired: true }],
+  [Alerts],
   [DataIntegrity],
+  [News, { authRequired: true }],
   [CycleConsensus, { authRequired: true }],
 ];
 export class MiniApps {

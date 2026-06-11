@@ -1,3 +1,4 @@
+import {setGuardBypass} from './appGuard.js';
 const $=(tag,className='',text='')=>{
   const el=document.createElement(tag);
   if(className) el.className=className;
@@ -39,8 +40,9 @@ export function createAuthModal(){
     setLink();
     mount(root);
     root.classList.remove('hidden');
+    setGuardBypass(true);
   };
-  const closeModal=()=>{root.classList.add('hidden');};
+  const closeModal=()=>{root.classList.add('hidden');setGuardBypass(false);};
   close.onclick=closeModal;
   root.onclick=e=>{if(e.target===root) closeModal();};
   mount(root);

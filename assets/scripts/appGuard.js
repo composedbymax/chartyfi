@@ -1,6 +1,9 @@
 let initialized = false;
 let lockKeys = false;
+let bypassUnload = false;
+export const setGuardBypass = (val) => { bypassUnload = val; };
 const onBeforeUnload = e => {
+  if (bypassUnload) return;
   e.preventDefault();
   e.returnValue = '';
 };

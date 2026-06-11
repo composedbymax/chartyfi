@@ -1,7 +1,9 @@
-window.CFG={api:'api/api.php'}
-window.EDS={api:'api/editorShare.php'}
-window.ARI={api:'api/ai.php'}
-window.NWS={api:'api/news.php'}
-window.CYL={api:'api/cycleapi.php'}
-window.CYL={api:'api/cycleapi.php'}
-window.YFS={api:'api/yfiScreener.php'}
+const API_JSON_PATH = 'api/link.php';
+export async function initApiLink() {
+  const res = await fetch(API_JSON_PATH);
+  if (!res.ok) throw new Error(`Failed to load API config: ${res.status} ${res.statusText}`);
+  const config = await res.json();
+  for (const [key, value] of Object.entries(config)) {
+    window[key] = value;
+  }
+}

@@ -6,11 +6,12 @@
 ╚██████╗██║  ██║██║  ██║██║  ██║   ██║      ██║   ██║     ██║
  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚═╝
                                                              
+Created by: Max Warren
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>MW - Chartyfi</title>
+    <title>CHARTYFI</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
     <meta name="description" content="Chart App using tradingview lightweight charts and yahoo finance data">
@@ -19,14 +20,19 @@
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#101010">
     <meta name="referrer" content="no-referrer-when-downgrade">
+    <link rel="icon" type="image/png" sizes="512x512" href="/_assets/img/icon/chartyfi-icon-512.png">
+    <link rel="apple-touch-icon" href="/_assets/img/icon/chartyfi-icon-192.png">
     <meta property="og:title" content="Chartyfi">
     <meta property="og:site_name" content="Chartyfi">
     <meta property="og:description" content="Chart App using tradingview lightweight charts and yahoo finance data">
     <meta property="og:type" content="website">
     <meta property="og:locale" content="en_US">
-    <meta property="og:url" content="https://max.x10.mx/chartyfi">
-    <meta property="og:image" content="https://max.x10.mx/_assets/img/chart.webp">
-    <meta name="twitter:image" content="https://max.x10.mx/_assets/img/chart.webp">
+    <meta property="og:url" content="https://vault.x10.mx/chartyfi">
+    <meta property="og:image" content="https://vault.x10.mx/_assets/img/chartyfi-landscape.png">
+    <meta name="twitter:image" content="https://vault.x10.mx/_assets/img/chartyfi-landscape.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:site" content="@composedbymax">
     <meta name="twitter:creator" content="@composedbymax">
     <meta name="twitter:card" content="summary">
@@ -42,10 +48,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Chartyfi">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/_assets/img/icon/data-icon-192.png">
     <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" href="/favicon.ico">
-    <link rel="canonical" href="https://max.x10.mx/chartyfi/">
+    <link rel="canonical" href="https://vault.x10.mx/chartyfi/">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
@@ -57,10 +61,10 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'sha256-3pRED1tOXas1FXFoPb9TGCjmYe9XQsmO9OV23khV2nY='; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Chart App","description":"Chart App using tradingview lightweight charts and yahoo finance data","applicationCategory":"FinanceApplication","operatingSystem":"Web"}</script>
     <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="preload" href="assets/scripts/api.js" as="script">
-    <script src ="assets/scripts/api.js"></script>
+    <link rel="stylesheet" href="assets/css/font.css">
     <script src="/_assets/auth/check.js.php"></script>
     <script src="assets/scripts/libs/lightweight-charts.standalone.production.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>-->
 </head>
     <body>
         <div id="app"></div>

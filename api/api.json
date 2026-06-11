@@ -1,0 +1,8 @@
+{
+  "CFG": { "api": "api/api.php",          "auth": false },
+  "YFS": { "api": "api/yfiScreener.php",  "auth": false },
+  "EDS": { "api": "api/editorShare.php",  "auth": false  },
+  "ARI": { "api": "api/ai.php",           "auth": false  },
+  "NWS": { "api": "api/news.php",         "auth": true  },
+  "CYL": { "api": "api/cycleapi.php",     "auth": true  }
+}

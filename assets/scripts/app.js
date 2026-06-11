@@ -12,6 +12,7 @@ import {tooltip} from './tooltip.js';
 import {initGuard} from './appGuard.js';
 import {initModels} from './models.js';
 import {initPolling} from './autoPoll.js';
+import {initApiLink} from './api.js';
 initGuard();
 const _t = storage.getTheme();
 if (_t) document.documentElement.setAttribute('data-theme', _t);
@@ -37,6 +38,7 @@ document.getElementById('app').innerHTML = `
   <aside id="sidebar"><div id="sb-inner"></div></aside>
 </div>`;
 async function main() {
+  await initApiLink();
   initMessage();
   const api = new ApiClient(window.CFG.api);
   const config = window.userLoggedIn ? await api._userConfig().catch(() => ({})) : {};

@@ -1,4 +1,11 @@
 @font-face{
+    font-family:"Doto";
+    src:url("/_assets/fonts/doto/Doto-VariableFont_ROND,wght.ttf") format("truetype");
+    font-style:normal;
+    font-weight:100 900;
+}
+
+@font-face{
     font-family:"Electrolize";
     src:url("/_assets/fonts/electrolize/Electrolize-Regular.ttf") format("truetype");
     font-style:normal;

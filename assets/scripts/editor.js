@@ -251,6 +251,16 @@ export class Editor{
     this._updateHelpToggle();
     this._renderIndicatorList();
   }
+  _selectGroup(g) {
+    this._editingGroupId = g.id;
+    this._snippetName = g.name;
+    this._code = g.code || '';
+    const ta = this.el.querySelector('#ed-code');
+    const nameIn = this.el.querySelector('#ed-name');
+    if (ta) ta.value = this._code;
+    if (nameIn) nameIn.value = this._snippetName;
+    this._renderIndicatorList();
+  }
   _loadSharedItem(item){
     if(this._busyCount>0){deny('Editor is currently executing');return false;}
     this._snippetId=null;
@@ -421,17 +431,10 @@ export class Editor{
       editBtn.className='icon-btn ed-indicator-edit';
       editBtn.title=`Load "${g.name}" into editor`;
       editBtn.appendChild(codeIcon({width:14,height:14}));
-      editBtn.onclick=e=>{
+      editBtn.onclick = e => {
         e.stopPropagation();
-        this._editingGroupId=g.id;
-        this._snippetName=g.name;
-        this._code=g.code||'';
-        const ta=this.el.querySelector('#ed-code');
-        const nameIn=this.el.querySelector('#ed-name');
-        if(ta) ta.value=this._code;
-        if(nameIn) nameIn.value=this._snippetName;
-        this._renderIndicatorList();
-        toast(`Editing "${g.name}"`,'info');
+        this._selectGroup(g);
+        toast(`Editing "${g.name}"`, 'info');
       };
       const badge=document.createElement('span');
       badge.className='ed-ind-badge';
@@ -474,6 +477,7 @@ export class Editor{
           if(ta && this._editingGroupId===g.id) ta.value=newCode;
         }
       );
+      paramsBtn.addEventListener('click', () => this._selectGroup(g), true);
       row.append(swatch,lbl,paramsBtn,editBtn,badge,rmBtn);
       el.appendChild(row);
       rows.push(row);
