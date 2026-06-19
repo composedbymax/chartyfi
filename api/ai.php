@@ -1,5 +1,8 @@
 <?php
 header('Content-Type: application/json');
+header("Cross-Origin-Opener-Policy: same-origin");
+header("X-Frame-Options: DENY");
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none';");
 ignore_user_abort(false);
 set_time_limit(0);
 while(ob_get_level()>0) ob_end_clean();

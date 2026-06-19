@@ -14,11 +14,7 @@ Desktop.ini
 
 
 
-db.txt
-setup.sql
-destroy.sql
-models_cache.json
+screener.json
 
 **/libs/*
-**/notes/*
 **/indicators/*

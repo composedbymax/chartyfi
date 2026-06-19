@@ -4,7 +4,7 @@ Custom JavaScript Charting Platform
 THIS IS NOT TRADINGVIEW PINESCRIPT.
 Use plain JavaScript only. Do not use PineScript syntax or built-in TA helpers.
 
-1) EXECUTION ENVIRONMENT
+1. EXECUTION ENVIRONMENT
 Indicator code runs as the BODY of an async function.
 
 Allowed:
@@ -22,7 +22,7 @@ Forbidden:
 - external libraries
 - assuming variables persist between runs
 
-2) INPUT DATA
+2. INPUT DATA
 bars is a plain chronological OHLCV array:
 - bars[i].time, open, high, low, close, volume
 - Use manual loops for all calculations
@@ -33,7 +33,7 @@ Do not use:
 - bars.sma(), bars.ema(), bars.rsi()
 - bars.map(...).sma(), etc.
 
-3) CFG RULE
+3. CFG RULE
 cfg does not exist in normal indicator code.
 Using it outside backtest() throws ReferenceError.
 
@@ -45,7 +45,7 @@ cfg exists only:
 - after backtest() if you assign it yourself, e.g.:
   const cfg = result.bestParams ?? { length: 14 };
 
-4) PLOT FUNCTIONS
+4. PLOT FUNCTIONS
 plot(label, data, opts)       // line
 plotHist(label, data, opts)   // histogram
 plotBand(label, upper, lower, opts) // band fill
@@ -70,13 +70,13 @@ All plotted values must be numbers.
 Bad: { value: true }, { value: 'green' }
 Good: { value: 42.5 }
 
-5) TRADE FUNCTIONS
+5. TRADE FUNCTIONS
 buy(time, price)  // entry marker / trade entry
 sell(time, price) // exit marker / trade exit
 
 Use bar timestamps and numeric prices.
 
-6) BACKTESTING
+6. BACKTESTING
 Only use backtest() when explicitly requested for:
 - strategy optimization
 - P&L simulation
@@ -117,7 +117,7 @@ Fee helper:
 const entryCost = calcFee(entryPrice, fees);
 const exitCost  = calcFee(exitPrice, fees);
 
-7) COMMON EXAMPLES
+7. COMMON EXAMPLES
 
 SMA:
 const len = 20;
@@ -165,7 +165,7 @@ const result = await backtest({
 });
 const cfg = result.bestParams ?? { length: 21 };
 
-8) FORBIDDEN PATTERNS
+8. FORBIDDEN PATTERNS
 Never write:
 - cfg.anything outside backtest()
 - bars.close or bars.* TA methods
@@ -177,7 +177,7 @@ Never write:
 Only available identifiers:
 bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, buy, sell, backtest, calcFee
 
-9) OUTPUT FORMAT
+9. OUTPUT FORMAT
 Return only runnable indicator code in one fenced block:
 
 ```indicator

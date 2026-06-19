@@ -4,5 +4,5 @@
   "EDS": { "api": "api/editorShare.php",  "auth": false  },
   "ARI": { "api": "api/ai.php",           "auth": false  },
   "NWS": { "api": "api/news.php",         "auth": true  },
-  "CYL": { "api": "api/cycleapi.php",     "auth": true  }
+  "CIC": { "api": "api/cycle.php",     "auth": false  }
 }

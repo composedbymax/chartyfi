@@ -25,13 +25,23 @@ function scoreClass(score) {
 function fmtScore(score) {
   return typeof score === 'number' ? score.toFixed(2) : '--';
 }
+function extractDatapoints(data) {
+  const isOHLC = data[0] != null && typeof data[0] === 'object' && 'close' in data[0];
+  return data.map(d => isOHLC ? d.close : d);
+}
+function phaseLengths(cycles) {
+  if (!Array.isArray(cycles) || !cycles.length) return 'None';
+  return cycles.map(c => c.cycleLength).join(', ');
+}
 export class CycleConsensus {
   static config = { title: 'Cycle Consensus', description: 'Cycle.Tools consensus scoring across multiple bar windows', width: '45vw', mobileWidth: '92vw' };
   constructor(chart, api) {
     this.chart = chart;
     this.api = api;
-    this._onDataChanged = () => {if (this._destroyed) return;
-      this._load();
+    this._onDataChanged = () => {
+      if (this._destroyed) return;
+      clearTimeout(this._loadDebounce);
+      this._loadDebounce = setTimeout(() => this._load(), 150);
     };
     this.chart._chartOn('dataChanged', this._onDataChanged);
     this._destroyed = false;
@@ -72,10 +82,7 @@ export class CycleConsensus {
       </label>
     `;
     this._aiToggle = aiRow.querySelector('#cc-ai-toggle');
-    this._aiToggle.addEventListener('change', () => {
-      saveAI(this._aiToggle.checked);
-      this._load();
-    });
+    this._aiToggle.addEventListener('change', () => { saveAI(this._aiToggle.checked); this._load(); });
     this._settingsPanel.appendChild(offsetRow);
     this._settingsPanel.appendChild(aiRow);
     this.el.appendChild(this._settingsPanel);
@@ -123,12 +130,12 @@ export class CycleConsensus {
       this.content.innerHTML = `<div class="cc-empty">Set your Cycles API key in settings</div>`;
       return;
     }
-    const step     = getStep();
-    const baseBars = data.length;
-    const counts   = [Math.max(50, baseBars - step), baseBars, baseBars + step];
-    const symbol   = `${sym}:YFI`;
+    const allPoints = extractDatapoints(data);
+    const step      = getStep();
+    const baseBars  = allPoints.length;
+    const counts    = [Math.max(100, baseBars - step), baseBars, baseBars + step];
     try {
-      const results = await Promise.all(counts.map(n => this._fetchConsensus(symbol, n)));
+      const results = await Promise.all(counts.map(n => this._fetchConsensus(apiKey, allPoints, n)));
       if (this._destroyed) return;
       if (getAI()) {
         await this._loadAI(results, counts, sym);
@@ -224,9 +231,8 @@ export class CycleConsensus {
         `Combined Score: ${fmtScore(r?.combinedScore)}`,
         `Bullish: ${fmtScore(r?.bullishConsensus)} | Bearish: ${fmtScore(r?.bearishConsensus)}`,
         `CRSI: ${r?.crsiScore ?? '--'} (${r?.crsiSignal ?? '--'}) p${r?.crsiLength ?? '--'} from ${r?.crsiSourceCycleLength ?? '--'}-bar`,
-        `Signal: ${r?.signal || r?.crsiSignal || 'Unknown'}`,
-        `Bull Cycles: ${r?.bullishCycles?.join(', ') || 'None'}`,
-        `Bear Cycles: ${r?.bearishCycles?.join(', ') || 'None'}`,
+        `Rising: ${phaseLengths(r?.risingCycles)} | Bottoming: ${phaseLengths(r?.bottomingCycles)}`,
+        `Falling: ${phaseLengths(r?.fallingCycles)} | Topping: ${phaseLengths(r?.toppingCycles)}`,
       ].join('\n');
     }).join('\n\n');
   }
@@ -243,12 +249,34 @@ export class CycleConsensus {
       </div>
     `;
   }
-  async _fetchConsensus(symbol, barCount) {
-    const apiKey   = storage.getApiKey();
-    const endpoint = `/api/CycleConsensus/score/${symbol}?barCount=${barCount}&api_key=${encodeURIComponent(apiKey || '')}`;
-    const url      = `${window.CYL.api}?endpoint=${encodeURIComponent(endpoint)}`;
-    const res      = await fetch(url);
-    if (res.status === 401) {const err=new Error('Unauthorized'); err.unauthorized=true; throw err;}
+  async _fetchConsensus(apiKey, allPoints, barCount) {
+    let datapoints = allPoints.slice(-barCount);
+    const deficit = barCount - allPoints.length;
+    if (deficit > 0) {
+      try {
+        const extraRes = await this.chart.api._chartData(
+          this.chart._currentSymbol,
+          this.chart._currentInterval,
+          { bars: deficit, direction: 'before', anchor: this.chart._getRawData()[0]?.time }
+        );
+        const extra = extraRes?.candles ?? [];
+        if (extra.length) datapoints = [...extractDatapoints(extra), ...allPoints];
+      } catch (_) {}
+    }
+    if (datapoints.length < 100) {
+      return { error: 'Insufficient data points (min 100)' };
+    }
+    const res = await fetch(window.CIC.api, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'consensus',
+        api_key: apiKey,
+        params: {},
+        payload: datapoints,
+      }),
+    });
+    if (res.status === 401) { const err = new Error('Unauthorized'); err.unauthorized = true; throw err; }
     return await res.json();
   }
   _card(data, barCount) {
@@ -258,9 +286,9 @@ export class CycleConsensus {
     const score = data?.combinedScore || 0;
     const crsiParts = [
       `${data?.crsiScore ?? '--'}`,
-      data?.crsiSignal              ? `(${data.crsiSignal})`              : '',
-      data?.crsiLength              ? `· p${data.crsiLength}`             : '',
-      data?.crsiSourceCycleLength   ? `from ${data.crsiSourceCycleLength}-bar` : '',
+      data?.crsiSignal            ? `(${data.crsiSignal})`              : '',
+      data?.crsiLength            ? `· p${data.crsiLength}`             : '',
+      data?.crsiSourceCycleLength ? `from ${data.crsiSourceCycleLength}-bar` : '',
     ].filter(Boolean).join(' ');
     return `
       <div class="cc-card">
@@ -278,16 +306,20 @@ export class CycleConsensus {
             <span class="cc-signal-value">${crsiParts}</span>
           </div>
           <div class="cc-signal-row">
-            <span class="cc-signal-label">Signal</span>
-            <span class="cc-signal-value">${data?.signal || data?.crsiSignal || 'Unknown'}</span>
+            <span class="cc-signal-label">Rising</span>
+            <span class="cc-signal-value">${phaseLengths(data?.risingCycles)}</span>
           </div>
           <div class="cc-signal-row">
-            <span class="cc-signal-label">Bull Cycles</span>
-            <span class="cc-signal-value">${data?.bullishCycles?.length ? data.bullishCycles.join(', ') : 'None'}</span>
+            <span class="cc-signal-label">Bottoming</span>
+            <span class="cc-signal-value">${phaseLengths(data?.bottomingCycles)}</span>
           </div>
           <div class="cc-signal-row">
-            <span class="cc-signal-label">Bear Cycles</span>
-            <span class="cc-signal-value">${data?.bearishCycles?.length ? data.bearishCycles.join(', ') : 'None'}</span>
+            <span class="cc-signal-label">Falling</span>
+            <span class="cc-signal-value">${phaseLengths(data?.fallingCycles)}</span>
+          </div>
+          <div class="cc-signal-row">
+            <span class="cc-signal-label">Topping</span>
+            <span class="cc-signal-value">${phaseLengths(data?.toppingCycles)}</span>
           </div>
         </div>
       </div>
@@ -295,6 +327,7 @@ export class CycleConsensus {
   }
   destroy() {
     this._destroyed = true;
+    clearTimeout(this._loadDebounce);
     this._aiAbort?.abort();
     this.spinner.destroy();
   }

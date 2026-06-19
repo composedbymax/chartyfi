@@ -14,10 +14,11 @@ export function createAuthModal(){
   const title=$('div','auth-title','User required');
   const close=$('button','btn-sm','Close');
   const body=$('div','auth-body');
-  const copy=$('div','auth-copy','Sign in to unlock sharing features.');
+  const copy=$('div','auth-copy','Sign in to unlock upgraded features.');
   const chart=$('div','auth-chart');
   const rows=[
-    'Auto-updating assets',
+    'Find relevant news for any asset',
+    'Auto-update intraday assets to preserve history',
     'Stream assets to the Cycles app',
     'Share indicators publicly',
     'Generate & revise indicator code with AI'

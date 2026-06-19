@@ -1,4 +1,3 @@
-//autofetch.js needs a fix
 import {storage} from './storage.js';
 import {toast} from './message.js';
 export const autofetchEnabled={_inst:null,set(v){this._inst?.setEnabled(v)}};
@@ -27,13 +26,11 @@ export class AutoFetch {
     if (this._chart._isEditorBusy) return;
     if(Date.now() - this._lastFetch < 700) return;
     const data=this._chart._getCurrentData();
-    if(data.length<20) return;
-    const range=this._chart._chart.timeScale().getVisibleRange();
-    if(!range) return;
+    if(data.length<2) return;
+    const logicalRange=this._chart._chart.timeScale().getVisibleLogicalRange();
+    if(!logicalRange) return;
     const LOOKAHEAD=30;
-    if(data.length<=LOOKAHEAD) return;
-    const threshold=this._chart._shiftTime(data[LOOKAHEAD].time);
-    if(range.from<=threshold) this._fetch();
+    if(logicalRange.from<=LOOKAHEAD) this._fetch();
   }
   async _fetch(){
     this._fetching=true;

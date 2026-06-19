@@ -1,8 +1,9 @@
 <?php
-if (!ini_get('zlib.output_compression')) {
-    ob_start('ob_gzhandler');
-}
+if (!ini_get('zlib.output_compression')) {ob_start('ob_gzhandler');}
 header("Content-Type: application/json; charset=utf-8");
+header("Cross-Origin-Opener-Policy: same-origin");
+header("X-Frame-Options: DENY");
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none';");
 function curlGet($url){
     $ch=curl_init();
     curl_setopt_array($ch,[

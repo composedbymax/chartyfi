@@ -61,6 +61,7 @@ Created by: Max Warren
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'sha256-3pRED1tOXas1FXFoPb9TGCjmYe9XQsmO9OV23khV2nY='; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;">
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Chart App","description":"Chart App using tradingview lightweight charts and yahoo finance data","applicationCategory":"FinanceApplication","operatingSystem":"Web"}</script>
     <link rel="stylesheet" href="assets/css/style.css">
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/composedbymax/chartyfi@main/assets/css/style.css">-->
     <link rel="stylesheet" href="assets/css/font.css">
     <script src="/_assets/auth/check.js.php"></script>
     <script src="assets/scripts/libs/lightweight-charts.standalone.production.js"></script>
@@ -68,7 +69,8 @@ Created by: Max Warren
 </head>
     <body>
         <div id="app"></div>
-        <script type="module" src="assets/scripts/app.bundled.js" defer></script>
+        <script type="module" src="assets/scripts/app.js" defer></script>
+        <!-- <script src="https://cdn.jsdelivr.net/gh/composedbymax/chartyfi@main/assets/scripts/app.bundled.js" defer></script>-->
         <noscript>Please enable JavaScript to use this app</noscript>
     </body>
 </html>

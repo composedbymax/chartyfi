@@ -1,4 +1,4 @@
-import {deny} from './message.js';
+import {deny, toast} from './message.js';
 import {storage} from './storage.js';
 import {authModal} from './authPage.js';
 import {captureScreenshot} from './screenshot.js'
@@ -135,6 +135,7 @@ export function createShareModal({getSource}={}){
   const publish=async()=>{
     if(!currentBlob) throw new Error('Screenshot not ready');
     const data=await saveSharedIndicator({name:nameIn.value.trim()||'Untitled',description:descIn.value.trim(),code:currentCode,image:currentBlob,isDark:shotIsDark});
+    toast(`Published "${nameIn.value.trim() || 'Untitled'}"`,'info',5000);
     closeModal();
     return data;
   };

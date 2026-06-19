@@ -12,9 +12,9 @@ export class Chart{
   constructor(container,api,timezone='UTC'){
     this.container=container;this.api=api;this.sym=null;this._currentName=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._isDataset=false;this._datasetFull=[];this._savedPaneLayout=null;this._init();
   }
-  _tzOffset(iana){if(iana==='UTC')return 0;try{return offsetMinutesForZone(iana)}catch(e){return 0}}
+  _tzOffset(iana){if(!iana||iana==='UTC')return 0;try{return offsetMinutesForZone(iana)}catch(e){return 0}}
   _setTimezone(tz){this._timezone=tz;this._tzOffsetMin=this._tzOffset(tz);if(this._data.length)this._apply()}
-  _shiftTime(unixSec){return shiftTimestamp(unixSec,this._tzOffsetMin)}
+  _st(unixSec){return shiftTimestamp(unixSec,this._tzOffsetMin)}
   _init(){this._chart=LightweightCharts.createChart(this.container,{..._chartOpts(),width:this.container.clientWidth,height:this.container.clientHeight});new ResizeObserver(()=>this._chart.resize(this.container.clientWidth,this.container.clientHeight)).observe(this.container);this._buildSeries()}
   _applyTheme(){this._chart.applyOptions(_chartOpts())}
   _buildSeries(){
@@ -50,7 +50,7 @@ export class Chart{
     const gaps=[];
     for(let i=1;i<tail.length;i++)gaps.push(tail[i].time-tail[i-1].time);
     const ws=[];let last=data[data.length-1].time;
-    for(let i=0;i<count;i++){last+=gaps[i%gaps.length];ws.push({time:this._shiftTime(last)});}
+    for(let i=0;i<count;i++){last+=gaps[i%gaps.length];ws.push({time:this._st(last)});}
     return ws;
   }
   _apply(){
@@ -59,9 +59,9 @@ export class Chart{
     const clean=this._data;
     if(!clean.length)return;
     const ws=this._futureWhitespace(clean,20);
-    if(this.mode==='candle'){this._main.setData([...clean.map(c=>({time:this._shiftTime(c.time),open:c.open,high:c.high,low:c.low,close:c.close})),...ws])}
-    else{this._main.setData([...clean.map(c=>({time:this._shiftTime(c.time),value:c[this.field]})),...ws])}
-    if(this._vol){this._vol.setData([...clean.map(c=>({time:this._shiftTime(c.time),value:c.volume,color:c.close>=c.open?'rgba(34,197,94,0.35)':'rgba(239,68,68,0.35)'})),...ws])}
+    if(this.mode==='candle'){this._main.setData([...clean.map(c=>({time:this._st(c.time),open:c.open,high:c.high,low:c.low,close:c.close})),...ws])}
+    else{this._main.setData([...clean.map(c=>({time:this._st(c.time),value:c[this.field]})),...ws])}
+    if(this._vol){this._vol.setData([...clean.map(c=>({time:this._st(c.time),value:c.volume,color:c.close>=c.open?'rgba(34,197,94,0.35)':'rgba(239,68,68,0.35)'})),...ws])}
     this._emit('barsChanged',{count:clean.length});
     this._emit('dataChanged',{sym:this.sym,int:this.int,count:clean.length});
   }
@@ -114,7 +114,7 @@ export class Chart{
     if(!silent&&loaded<requested){if(res.end_of_data)toast(`${loaded} bars loaded. End of avaliable data`,'info',3000);else toast(`${loaded} bars loaded`,'info',2000)}
     return loaded;
   }
-  async _extendAfter(bars, silent=false){
+  async _extendAfter(bars,silent=false){
     const requested=Math.max(1,Math.floor(Number(bars)||0));
     if(this._isDataset){
       const p2=this._data[this._data.length-1]?.time;
@@ -144,9 +144,9 @@ export class Chart{
     const fresh=candles.filter(c=>!existing.has(c.time));
     if(!fresh.length)return;
     this._data=[...this._data,...fresh];
+    if(this._data.length>INITIAL_LIMIT)this._data=this._data.slice(this._data.length-INITIAL_LIMIT);
     this._apply();
-    toast(`${fresh.length} new bar${fresh.length>1?'s':''}`,'info',2000);
-  }
+}
   _setMode(mode){this.mode=mode;this._buildSeries()}
   _setField(f){this.field=f;if(this.mode==='line')this._apply()}
   _setVolMode(m){this.volMode=m;this._buildSeries()}
@@ -157,7 +157,8 @@ export class Chart{
   get _currentInterval(){return this.int}
   _getBarCount(){return this._data.length}
   _getLastTimestamp(){return this._data.length?this._data[this._data.length-1].time:0}
-  _getCurrentData(){return this._data}
+  _getCurrentData(){return this._tzOffsetMin===0?this._data:this._data.map(c=>({...c,time:this._st(c.time)}))}
+  _getRawData(){return this._data}
   _getRange(){return{p1:this._p1,p2:this._p2}}
   _forceResize(){this._chart.resize(this.container.clientWidth,this.container.clientHeight)}
   _savePaneLayout(){

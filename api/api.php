@@ -1,18 +1,16 @@
 <?php
-if (!ini_get('zlib.output_compression')) {
-    ob_start('ob_gzhandler');
-}
+$session=dirname(__DIR__).'/../session.php';
+if(file_exists($session)) require $session;
+$user=$_SESSION['user']??null;
+$role=$_SESSION['user_role']??'guest';
+$action=$_REQUEST['action']??'';
+if (!ini_get('zlib.output_compression')) {ob_start('ob_gzhandler');}
 header('Content-Type: application/json');
 header('Cache-Control: no-cache');
 header("Cross-Origin-Opener-Policy: same-origin");
 header("X-Frame-Options: DENY");
 header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none';");
-$session=dirname(__DIR__).'/../session.php';
-if(file_exists($session)) require $session;
 require __DIR__.'/data.php';
-$user=$_SESSION['user']??null;
-$role=$_SESSION['user_role']??'guest';
-$action=$_REQUEST['action']??'';
 function ok($d){echo json_encode($d);exit;}
 function err($m,$c=400){http_response_code($c);ok(['error'=>$m]);}
 function needLogin(){global $user;if(!$user)err('Login required',401);}
@@ -174,9 +172,13 @@ function doManualPost(){
   $sid=trim($_POST['stream_id']??'');
   if(!$sym||!$apiKey||!$sid)err('Missing params');
   if(!$p1)$p1=time()-(DEFAULT_DAYS[$int]??60)*86400;
+  $s=$pdo->prepare("SELECT stream_timezone FROM cycle_streams WHERE stream_id=? AND symbol=? AND `interval`=? LIMIT 1");
+  $s->execute([$sid,$sym,$int]);
+  $row=$s->fetch();
+  $tz=($row&&$row['stream_timezone'])?$row['stream_timezone']:'UTC';
   $candles=getCachedCandles($pdo,$sym,$int,$p1,$p2);
   if(!$candles)err('No data in cache for this range');
-  $dates=array_map(fn($c)=>gmdate('c',$c['time']),$candles);
+  $dates=array_map(fn($c)=>formatInTimezone($c['time'],$tz),$candles);
   $values=array_map(fn($c)=>(float)$c[$field],$candles);
   $res=pushToCycles($apiKey,$sid,$dates,$values);
   $decoded=$res?json_decode($res,true):null;

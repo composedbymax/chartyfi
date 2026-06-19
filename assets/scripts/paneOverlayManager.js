@@ -12,6 +12,12 @@ function rawPaneOf(pf){
   return pf.opts.pane!=null?pf.opts.pane:0;
 }
 function nextFreePaneBase(groups,chart){
+  if(chart?._chart){
+    try{
+      const panes=chart._chart.panes?.();
+      if(Array.isArray(panes)&&panes.length>0) return panes.length;
+    }catch(e){}
+  }
   let next=(chart&&chart.volMode==='pane')?2:1;
   const all=chart?[...(_registry.get(chart)||[])]:groups;
   for(const g of all){

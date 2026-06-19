@@ -1,5 +1,9 @@
 <?php
+if (!ini_get('zlib.output_compression')) {ob_start('ob_gzhandler');}
 header('Content-Type: application/json');
+header("Cross-Origin-Opener-Policy: same-origin");
+header("X-Frame-Options: DENY");
+header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none';");
 $dir=__DIR__.'/data/';
 $file=$dir.'screener.json';
 $today=gmdate('Y-m-d');

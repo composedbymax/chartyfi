@@ -223,7 +223,7 @@ export class Editor{
     const runRow = document.createElement('div');
     runRow.className = 'ed-run-row';
     runRow.innerHTML = `
-      <button class="btn-primary ed-run-btn" id="ed-run">▶ Run</button>
+      <button class="btn-primary ed-run-btn" id="ed-run">&#x25B6;&#xFE0E Run</button>
       <button class="btn-sm" id="ed-update">↺ Update</button>
       <button class="btn-sm" id="ed-clear">Clear All</button>`;
     tooltip(runRow.querySelector('#ed-run'), 'Run indicator');
@@ -569,7 +569,7 @@ export class Editor{
       if (e?.name !== 'AbortError' && !silent) deny('Error: ' + e.message);
     } finally {
       this._hideBtProgress();
-      if (isOwned && runBtn) { runBtn.disabled = false; runBtn.textContent = '▶ Run'; }
+      if (isOwned && runBtn) { runBtn.disabled = false; runBtn.textContent = '&#x25B6;&#xFE0E Run'; }
       if (isOwned && this._activeCtrl?.signal === signal) this._activeCtrl = null;
       if (isOwned) this._busyCount--;
     }

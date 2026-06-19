@@ -12,22 +12,29 @@
   "lang": "en-US",
   "icons": [
     {
-      "src": "/_assets/img/icon/data-icon-192.png",
+      "src": "/_assets/img/icon/chartyfi-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/_assets/img/icon/data-icon-512.png",
+      "src": "/_assets/img/icon/chartyfi-icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
   ],
   "screenshots": [
     {
-      "src": "/_assets/img/data-view.webp",
-      "sizes": "1080x1920",
-      "type": "image/webp"
+      "src": "/_assets/img/chartyfi-portrait.webp",
+      "sizes": "1280x1920",
+      "type": "image/webp",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/_assets/img/chartyfi-landscape.webp",
+      "sizes": "1920x1080",
+      "type": "image/webp",
+      "form_factor": "wide"
     }
   ]
 }
