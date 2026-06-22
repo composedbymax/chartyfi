@@ -1,6 +1,6 @@
 import { settingsIcon } from './svg.js';
 import {toast,deny} from './message.js';
-import {PaneOverlayManager} from './paneOverlayManager.js';
+import {PaneManager} from './paneManager.js';
 import {storage} from './storage.js';
 const PALETTE = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#a78bfa','#06b6d4','#ec4899','#84cc16'];
 const DTYPES  = [[0,'HP Filter'],[1,'Boosted HP'],[2,'Spline'],[3,'Polynomial'],[4,'One-Sided HP'],[9,'None']];
@@ -88,7 +88,7 @@ export class CycleApp {
     this.chart=chart;
     this.api=api;
     this.el=document.createElement('div');
-    this._pom=new PaneOverlayManager(chart);
+    this._pom=new PaneManager(chart);
     this._result=null;
     this._peaks=null;
     this._scannedBarCount=0;

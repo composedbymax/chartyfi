@@ -61,7 +61,7 @@ export class ApiClient{
   _removeTrackAPI(sym,int){return this._post('remove_track',{symbol:sym,interval:int})}
   _addStreamAPI(d){return this._post('add_stream',d)}
   _removeStreamAPI(id){return this._post('remove_stream',{id})}
-  _toggleStreamAPI(id,en){return this._post('toggle_stream',{id,enabled:en?'1':'0'})}
+  _updateStreamKeyAPI(id,key){return this._post('update_stream_key',{id,api_key:key})}
   _manualPostAPI(d){return this._post('manual_post',d)}
   async _getKeyAPI(){return storage.getApiKey()}
   async _setKeyAPI(k){storage.setApiKey(k)}

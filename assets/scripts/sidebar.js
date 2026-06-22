@@ -1,5 +1,5 @@
 import {toast,confirm,deny} from './message.js';
-import {settingsIcon,codeIcon,miniAppsIcon} from './svg.js';
+import {settingsIcon,codeIcon,miniAppsIcon,deleteIcon} from './svg.js';
 import {Chart,INTERVALS} from './chart.js';
 import {Exporter} from './export.js';
 import {Editor} from './editor.js';
@@ -8,6 +8,7 @@ import {Settings} from './settings.js';
 import {storage} from './storage.js';
 import {MiniApps} from './miniApps.js';
 import {Importer} from './import.js';
+import {INITIAL_LIMIT} from './chart.js';
 export class Sidebar {
   constructor(container,chart,api,config,localTimezone){
     this.el=container;this.chart=chart;this.api=api;this.config=config;
@@ -314,18 +315,21 @@ export class Sidebar {
     const sd=document.createElement('div');
     sd.className='ac-switch-row';
     if(stream){
-      const stId=`stream-toggle-${uid}`;
       const tzLabel=stream.stream_timezone&&stream.stream_timezone!=='UTC'?stream.stream_timezone:'UTC';
-      sd.innerHTML=`<span class="stream-id">Stream: ${stream.stream_id} 
+      sd.innerHTML=`<span class="stream-id">Stream: ${stream.stream_id}
         <span class="stream-tz-badge">${tzLabel}</span>
       </span>
-      <label class="switch" for="${stId}"><input type="checkbox" id="${stId}" class="stream-toggle" ${stream.enabled?'checked':''}>
-        <span class="slider"></span>
-      </label>
-      <button class="btn-sm danger rm-stream">×</button>`;
-      sd.querySelector('.stream-toggle').onchange=async e=>{
-        const r=await this.api._toggleStreamAPI(stream.id,e.target.checked);
-        if(r.error){deny(r.error);e.target.checked=!e.target.checked}
+      <button class="icon-btn stream-key-btn"></button>
+      <button class="icon-btn rm-stream"></button>`;
+      sd.querySelector('.stream-key-btn').appendChild(settingsIcon({className:'icon'}));
+      sd.querySelector('.rm-stream').appendChild(deleteIcon({className:'icon'}));
+      sd.querySelector('.stream-key-btn').onclick=async()=>{
+        if(!await confirm(`Update API key for stream ${stream.stream_id} with your saved key?`)) return;
+        const key=await this.api._getKeyAPI()||'';
+        if(!key){deny('No API key set. Please configure one in Settings.');return}
+        const r=await this.api._updateStreamKeyAPI(stream.id,key);
+        if(r.error){deny(r.error);return}
+        toast('Stream API key updated','success');
       };
       sd.querySelector('.rm-stream').onclick=async()=>{
         if(!await confirm('Remove stream?')) return;
@@ -373,7 +377,7 @@ export class Sidebar {
       const streamTz=sd.querySelector(`#${tzId}`).value;
       if(!sid){deny('Stream ID required');return}
       if(!key){deny('No API key set. Please configure one in Settings.');return}
-      const r=await this.api._addStreamAPI({symbol:t.symbol,interval:t.interval,stream_id:sid,api_key:key,field,stream_timezone:streamTz});
+      const r=await this.api._addStreamAPI({symbol:t.symbol,interval:t.interval,stream_id:sid,api_key:key,field,stream_timezone:streamTz,initial_limit:INITIAL_LIMIT});
       if(r.error){deny(r.error);return}
       this._config.streams.push({id:r.id,stream_id:sid,symbol:t.symbol,interval:t.interval,field,enabled:1,stream_timezone:streamTz});
       toast('Stream added','success');this._renderSidebar();

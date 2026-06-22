@@ -76,7 +76,7 @@ function _createSeries(lwChart,plotFns,groups,silent,chart){
   });
   return{series,_paneBase,_panesUsed};
 }
-export class PaneOverlayManager{
+export class PaneManager{
   constructor(chart){
     this._chart=chart;
     this._groups=[];

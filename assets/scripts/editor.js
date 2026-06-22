@@ -5,7 +5,7 @@ import {tooltip} from './tooltip.js';
 import {runBacktest,calcFee} from './backtester.js';
 import {openFullscreen} from './editorFullscreen.js';
 import {attachSpinner} from './spinner.js';
-import {PaneOverlayManager} from './paneOverlayManager.js';
+import {PaneManager} from './paneManager.js';
 import {createParamBtn} from './editorParam.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
@@ -83,7 +83,7 @@ export class Editor{
     this._showHelp = false;
     this._helpLoaded = false;
     this._helpHtml = '';
-    this._pom = new PaneOverlayManager(chart);
+    this._pom = new PaneManager(chart);
     this._indicatorListCollapsed = false;
     this._editingGroupId = null;
     this._rendered = false;
@@ -569,7 +569,7 @@ export class Editor{
       if (e?.name !== 'AbortError' && !silent) deny('Error: ' + e.message);
     } finally {
       this._hideBtProgress();
-      if (isOwned && runBtn) { runBtn.disabled = false; runBtn.textContent = '&#x25B6;&#xFE0E Run'; }
+      if (isOwned && runBtn) { runBtn.disabled = false; runBtn.innerHTML = '&#x25B6;&#xFE0E Run'; }
       if (isOwned && this._activeCtrl?.signal === signal) this._activeCtrl = null;
       if (isOwned) this._busyCount--;
     }

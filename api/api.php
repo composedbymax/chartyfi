@@ -23,7 +23,7 @@ switch($action){
   case 'remove_track':doRemoveTrack();break;
   case 'add_stream':doAddStream();break;
   case 'remove_stream':doRemoveStream();break;
-  case 'toggle_stream':doToggleStream();break;
+  case 'update_stream_key':doUpdateStreamKey();break;
   case 'manual_post':doManualPost();break;
   case 'check_updates':doCheckUpdates();break;
   default:err('Unknown action');
@@ -34,7 +34,7 @@ function doUserConfig(){
   if($user){
     $s=$pdo->prepare("SELECT symbol,`interval`,auto_update_enabled,last_updated FROM tracked_assets WHERE user=?");
     $s->execute([$user]);$tracked=$s->fetchAll();
-    $s=$pdo->prepare("SELECT id,stream_id,symbol,`interval`,field,enabled,stream_timezone FROM cycle_streams WHERE user=?");
+    $s=$pdo->prepare("SELECT id,stream_id,symbol,`interval`,field,stream_timezone FROM cycle_streams WHERE user=?");
     $s->execute([$user]);$streams=$s->fetchAll();
   }
   $lc=(int)getSetting($pdo,'last_cron_symbol_store',0);
@@ -118,6 +118,7 @@ function doAddStream(){
   $apiKey=trim($_POST['api_key']??'');
   $field=in_array($_POST['field']??'',['open','high','low','close'])?$_POST['field']:'close';
   $streamTz=trim($_POST['stream_timezone']??'UTC')?:'UTC';
+  $initialLimit=isset($_POST['initial_limit'])&&(int)$_POST['initial_limit']>0?(int)$_POST['initial_limit']:null;
   if(!$sym||!$int||!$sid||!$apiKey)err('Missing params');
   $s=$pdo->prepare("SELECT auto_update_enabled FROM tracked_assets WHERE user=? AND symbol=? AND `interval`=?");
   $s->execute([$user,$sym,$int]);$tr=$s->fetch();
@@ -129,10 +130,13 @@ function doAddStream(){
   $s->execute([$user]);
   if((int)$s->fetchColumn()>=lim($role))err('Stream limit reached');
   $enc=encryptKey($apiKey);
-  $pdo->prepare("INSERT INTO cycle_streams(user,encrypted_api_key,stream_id,symbol,`interval`,field,enabled,stream_timezone)VALUES(?,?,?,?,?,?,1,?)")->execute([$user,$enc,$sid,$sym,$int,$field,$streamTz]);
+  $pdo->prepare("INSERT INTO cycle_streams(user,encrypted_api_key,stream_id,symbol,`interval`,field,stream_timezone)VALUES(?,?,?,?,?,?,?)")->execute([$user,$enc,$sid,$sym,$int,$field,$streamTz]);
   $id=(int)$pdo->lastInsertId();
   $p1=time()-(DEFAULT_DAYS[$int]??60)*86400;
   $candles=getCachedCandles($pdo,$sym,$int,$p1,time());
+  if($initialLimit!==null&&count($candles)>$initialLimit){
+    $candles=array_slice($candles,-$initialLimit);
+  }
   $initialSent=0;
   if($candles){
     $dates=array_map(fn($c)=>formatInTimezone($c['time'],$streamTz),$candles);
@@ -152,13 +156,14 @@ function doRemoveStream(){
   $pdo->prepare("DELETE FROM cycle_streams WHERE id=? AND user=?")->execute([$id,$user]);
   ok(['ok'=>true]);
 }
-function doToggleStream(){
+function doUpdateStreamKey(){
   global $pdo,$user;
   needLogin();
   $id=(int)($_POST['id']??0);
-  $en=(int)($_POST['enabled']??1);
-  if(!$id)err('No id');
-  $pdo->prepare("UPDATE cycle_streams SET enabled=? WHERE id=? AND user=?")->execute([$en,$id,$user]);
+  $apiKey=trim($_POST['api_key']??'');
+  if(!$id||!$apiKey)err('Missing params');
+  $enc=encryptKey($apiKey);
+  $pdo->prepare("UPDATE cycle_streams SET encrypted_api_key=? WHERE id=? AND user=?")->execute([$enc,$id,$user]);
   ok(['ok'=>true]);
 }
 function doManualPost(){

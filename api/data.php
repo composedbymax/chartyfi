@@ -25,7 +25,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS cycle_streams(
   id INT AUTO_INCREMENT PRIMARY KEY,
   user VARCHAR(100) NOT NULL,encrypted_api_key TEXT,stream_id VARCHAR(100) NOT NULL,
   symbol VARCHAR(20) NOT NULL,`interval` VARCHAR(5) NOT NULL,
-  field VARCHAR(10) NOT NULL DEFAULT 'close',enabled TINYINT(1) NOT NULL DEFAULT 1,
+  field VARCHAR(10) NOT NULL DEFAULT 'close',
   last_sent_timestamp INT UNSIGNED NULL,
   stream_timezone VARCHAR(60) NOT NULL DEFAULT 'UTC',
   UNIQUE KEY uniq_user_sym_int (user,symbol,`interval`)
@@ -179,11 +179,12 @@ function loadHistoricalBars($pdo,$symbol,$interval,$bars,$direction,$anchor){
 }
 function encryptKey($plain){
   $iv=random_bytes(16);
-  $enc=openssl_encrypt($plain,'AES-256-CBC',CRYPT_KEY,0,base64_encode($iv));
+  $enc=openssl_encrypt($plain,'AES-256-CBC',CRYPT_KEY,0,$iv);
   return base64_encode($iv).'|'.$enc;
 }
 function decryptKey($stored){
-  [$iv,$data]=array_pad(explode('|',$stored,2),2,'');
+  [$ivB64,$data]=array_pad(explode('|',$stored,2),2,'');
+  $iv=base64_decode($ivB64);
   return openssl_decrypt($data,'AES-256-CBC',CRYPT_KEY,0,$iv);
 }
 function formatInTimezone($unixSec,$iana){
