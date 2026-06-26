@@ -82,44 +82,45 @@ export class Exporter {
   }
   _mergeRows(series) {
     const rows = this._getData().map(r => ({ ...r }));
-    if (!rows.length || !series.length) return rows;
+    if (!series.length) return rows;
     const byTime = new Map(rows.map(r => [r.time, r]));
+    const getOrCreate = (time) => {
+      if (!byTime.has(time)) {
+        const r = { time };
+        byTime.set(time, r);
+        rows.push(r);
+      }
+      return byTime.get(time);
+    };
     series.forEach(s => {
       if (s.type === 'band') {
-        (s.upper || []).forEach(p => {
-          const r = byTime.get(p.time);
-          if (r) r[s.upperCol] = p.value ?? null;
-        });
-        (s.lower || []).forEach(p => {
-          const r = byTime.get(p.time);
-          if (r) r[s.lowerCol] = p.value ?? null;
-        });
+        (s.upper || []).forEach(p => { getOrCreate(p.time)[s.upperCol] = p.value ?? null; });
+        (s.lower || []).forEach(p => { getOrCreate(p.time)[s.lowerCol] = p.value ?? null; });
       } else if (s.type === 'candle') {
         (s.data || []).forEach(p => {
-          const r = byTime.get(p.time);
-          if (r) {
-            r[s.openCol] = p.open ?? null;
-            r[s.highCol] = p.high ?? null;
-            r[s.lowCol] = p.low ?? null;
-            r[s.closeCol] = p.close ?? null;
-          }
+          const r = getOrCreate(p.time);
+          r[s.openCol]  = p.open  ?? null;
+          r[s.highCol]  = p.high  ?? null;
+          r[s.lowCol]   = p.low   ?? null;
+          r[s.closeCol] = p.close ?? null;
         });
       } else {
         (s.data || []).forEach(p => {
-          const r = byTime.get(p.time);
-          if (r) r[s.col] = s.type === 'label' ? (p.text ?? p.value ?? null) : (p.value ?? null);
+          getOrCreate(p.time)[s.col] =
+            s.type === 'label' ? (p.text ?? p.value ?? null) : (p.value ?? null);
         });
       }
     });
+    rows.sort((a, b) => a.time - b.time);
     rows.forEach(r => {
       series.forEach(s => {
         if (s.type === 'band') {
           if (!(s.upperCol in r)) r[s.upperCol] = null;
           if (!(s.lowerCol in r)) r[s.lowerCol] = null;
         } else if (s.type === 'candle') {
-          if (!(s.openCol in r)) r[s.openCol] = null;
-          if (!(s.highCol in r)) r[s.highCol] = null;
-          if (!(s.lowCol in r)) r[s.lowCol] = null;
+          if (!(s.openCol  in r)) r[s.openCol]  = null;
+          if (!(s.highCol  in r)) r[s.highCol]  = null;
+          if (!(s.lowCol   in r)) r[s.lowCol]   = null;
           if (!(s.closeCol in r)) r[s.closeCol] = null;
         } else if (!(s.col in r)) {
           r[s.col] = null;
