@@ -1,7 +1,8 @@
 import {initMessage, toast} from './message.js';
 import {ApiClient} from './apiClient.js';
 import {Chart} from './chart.js';
-import {Search, initUrlState} from './search.js';
+import {Search} from './search.js';
+import {initUrlState} from './urlState.js';
 import {Sidebar} from './sidebar.js';
 import {Tools} from './tools.js';
 import {localTimezone} from './timezone.js';
@@ -48,8 +49,7 @@ async function main() {
   const af = new AutoFetch(chart); autofetchEnabled._inst = af;
   api.onBackfill=(sym,int,candles)=>{if(chart._currentSymbol===sym&&chart._currentInterval===int)chart._appendCandles(candles)}
   window.addEventListener('toolsVisibility', e => { tools.setVisible(e.detail); chart._forceResize(); });
-  const isDatasetUrl = location.search === '?dataset';
-  const urlLoaded = isDatasetUrl ? false : initUrlState(chart);
+  const urlLoaded = initUrlState(chart);
   const sidebar = new Sidebar(document.getElementById('sb-inner'), chart, api, config, localTimezone);
   sidebar.onTimezoneChange = tz => { chartTz = tz; chart._setTimezone(tz); };
   new Search(document.getElementById('search-in'), document.getElementById('search-res'), chart, api);
