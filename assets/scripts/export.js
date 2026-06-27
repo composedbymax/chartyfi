@@ -65,8 +65,12 @@ export class Exporter {
     }
     return unix;
   }
+  _round4(v) {
+    if (typeof v !== 'number' || !Number.isFinite(v)) return v;
+    return Math.round(v * 10000) / 10000;
+  }
   _row(r, cols) {
-    return cols.map(c => c === 'time' ? this._formatTime(r.time) : (r[c] ?? ''));
+    return cols.map(c => c === 'time' ? this._formatTime(r.time) : this._round4(r[c] ?? ''));
   }
   _filename(ext) {
     const sym = this._chart._currentSymbol || 'data';
@@ -139,7 +143,7 @@ export class Exporter {
   _exportJSON() {
     const layout = this._layout();
     const rows = this._mergeRows(layout.series);
-    const data = rows.map(r => Object.fromEntries(layout.cols.map(c => [c, c === 'time' ? this._formatTime(r.time) : (r[c] ?? null)])));
+    const data = rows.map(r => Object.fromEntries(layout.cols.map(c => [c, c === 'time' ? this._formatTime(r.time) : this._round4(r[c] ?? null)])));
     this._download(JSON.stringify(data, null, 2), this._filename('json'), 'application/json');
   }
   _exportTXT() {
