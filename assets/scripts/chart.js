@@ -150,8 +150,20 @@ export class Chart{
   _setMode(mode){this.mode=mode;this._buildSeries()}
   _setField(f){this.field=f;if(this.mode==='line')this._apply()}
   _setVolMode(m){this.volMode=m;this._buildSeries()}
-  _setIndicators(items){this._indicators=(items||[]).map(i=>({type:i.type,label:i.label,opts:i.opts||{},data:(i.data||[]).map(p=>({...p})),upper:(i.upper||[]).map(p=>({...p})),lower:(i.lower||[]).map(p=>({...p}))}))}
-  _clearIndicators(){this._indicators=[]}
+  _setIndicators(items, sourceId=this){
+    if(!this._indicatorSources) this._indicatorSources=new Map();
+    this._indicatorSources.set(sourceId,(items||[]).map(i=>({
+      type:i.type,label:i.label,opts:i.opts||{},
+      data:(i.data||[]).map(p=>({...p})),
+      upper:(i.upper||[]).map(p=>({...p})),
+      lower:(i.lower||[]).map(p=>({...p}))
+    })));
+    this._indicators=[...this._indicatorSources.values()].flat();
+  }
+  _clearIndicators(sourceId=this){
+    if(this._indicatorSources) this._indicatorSources.delete(sourceId);
+    this._indicators=this._indicatorSources?[...this._indicatorSources.values()].flat():[];
+  }
   _getIndicators(){return this._indicators.slice()}
   get _currentSymbol(){return this.sym}
   get _currentInterval(){return this.int}

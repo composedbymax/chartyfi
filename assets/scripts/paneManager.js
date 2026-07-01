@@ -93,7 +93,7 @@ export class PaneManager{
     const group={id,name,code,color,series,plotFns,_paneBase,_panesUsed};
     this._groups.push(group);
     _reg(this._chart,group);
-    this._chart._setIndicators(this.getAllPlotFns());
+    this._chart._setIndicators(this.getAllPlotFns(), this);
     return group;
   }
   removeGroup(id){
@@ -103,7 +103,7 @@ export class PaneManager{
     g.series.forEach(s=>{try{this._chart._chart.removeSeries(s)}catch(e){}});
     _unreg(this._chart,g);
     this._groups.splice(idx,1);
-    this._chart._setIndicators(this.getAllPlotFns());
+    this._chart._setIndicators(this.getAllPlotFns(), this);
     this._chart._forceResize();
     return g;
   }
@@ -113,7 +113,7 @@ export class PaneManager{
       _unreg(this._chart,g);
     });
     this._groups=[];
-    this._chart._clearIndicators();
+    this._chart._clearIndicators(this);
     this._chart._forceResize();
   }
   suspendAll(){
