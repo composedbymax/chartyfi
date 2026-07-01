@@ -4,7 +4,7 @@ header('Content-Type: application/json');
 header("Cross-Origin-Opener-Policy: same-origin");
 header("X-Frame-Options: DENY");
 header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none';");
-$dir=__DIR__.'/data/';
+$dir=__DIR__.'/data/cache/';
 $file=$dir.'screener.json';
 $today=gmdate('Y-m-d');
 if (file_exists($file)) {

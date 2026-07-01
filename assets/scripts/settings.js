@@ -5,6 +5,7 @@ import {tooltip} from './tooltip.js';
 import {toolsVisibility} from './tools.js';
 import {autofetchEnabled} from './autofetch.js';
 import {nonStickyIcon,stickyIcon,sunIcon,moonIcon,toolsIcon,autoIcon} from './svg.js';
+import {setGuardBypass} from './appGuard.js';
 export class Settings {
   constructor(chart,api,config,localTz,{onTzChange,onRerender}){
     this.chart=chart;
@@ -53,8 +54,9 @@ export class Settings {
     const userDiv=this._el('div');
     userDiv.innerHTML=window.userLoggedIn
       ?`<div class="user-info"><span class="name">${window.userName||'User'}</span><span class="role-badge">${window.userRole||'basic'}</span></div>`
-      :`<div class="setting-row"><a href="/auth?redirect=/chartyfi/">Sign in</a> to enable auto-updates & streams</div>`;
+      :`<div class="setting-row"><a class="sign-in-link" href="/auth?redirect=/chartyfi/">Sign in</a> to enable auto-updates & streams</div>`;
     wrap.append(userDiv,this._el('div','sb-divider'));
+    if (!window.userLoggedIn) {userDiv.querySelector('.sign-in-link')?.addEventListener('click', () => setGuardBypass(true));}
     this._renderToggleSection(wrap);
     const localOpt=this._localTz!=='UTC'
       ?`<option value="${this._localTz}"${chartTz===this._localTz?' selected':''}>${this._localTz}</option>`:'';

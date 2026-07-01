@@ -362,6 +362,7 @@ export class Editor{
           ta.value = s.code;
           this.el.querySelector('#ed-name').value = s.name;
           toast(`Loaded "${s.name}"`, 'info');
+          this._run().then(()=>{const groups=this._pom.getGroups();const last=groups[groups.length-1];if (last){this._editingGroupId=last.id;this._renderIndicatorList();}});
         };
         req.onerror = () => deny('Failed to load snippet');
       } catch (e) {

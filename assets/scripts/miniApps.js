@@ -1,17 +1,19 @@
 import {Watchlist}      from './watchlist.js';
 import {Screener}       from './screener.js';
-import {Alerts}         from './alerts.js';
 import {DataIntegrity}  from './dataintegrity.js';
 import {CycleApp}       from './cycleApp.js';
+import {MarketSummary}  from './marketSummary.js';
+import {Insights}       from './insights.js';
 import {News}           from './news.js';
 import {CycleConsensus} from './cycleConsensus.js';
 import {authModal}      from './authPage.js';
 const APPS = [
   [Watchlist],
   [Screener],
-  [Alerts],
   [DataIntegrity],
-  [News, { authRequired: true }],
+  [MarketSummary],
+  [Insights,      { authRequired: true }],
+  [News,           { authRequired: true }],
   [CycleApp],
   [CycleConsensus, { authRequired: true }],
 ];

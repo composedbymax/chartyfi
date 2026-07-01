@@ -30,7 +30,7 @@ const onBlur  = () => { lockKeys = false; };
 export function initGuard() {
   if (initialized) return;
   initialized = true;
-  addEventListener('beforeunload', onBeforeUnload);
+  setTimeout(() => addEventListener('beforeunload', onBeforeUnload), 3_000);
   addEventListener('keydown', onKeydown, true);
   addEventListener('keyup',   onKeyup,   true);
   addEventListener('blur',    onBlur);
