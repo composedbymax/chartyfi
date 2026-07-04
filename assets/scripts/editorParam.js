@@ -266,11 +266,9 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
     if (plotsChanged && plotDefs) {
       plotDefs.forEach((def, idx) => {
         const orig = originalPlotDefs[idx];
-        // Revert in-memory def
         def.visible = orig.visible;
         Object.keys(def.opts).forEach(k => delete def.opts[k]);
         Object.assign(def.opts, orig.opts);
-        // Revert the live chart via onPlotChange
         const hasOpts = Object.keys(orig.opts).length > 0;
         onPlotChange(idx, hasOpts ? orig.opts : null, orig.visible);
       });
@@ -374,17 +372,19 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
       typeSelect.className = 'ep-select';
       typeSelect.id = 'bt-fees-type';
       typeSelect.name = 'bt_fees_type';
-      for (const t of ['percent', 'fixed']) {
+      const isNoFees = fees.type === 'fixed' && fees.value === 0;
+      for (const [t, tlbl] of [['none','No Fees'],['fixed','Fixed'],['percent','Percent']]) {
         const o = document.createElement('option');
         o.value = t;
-        o.textContent = t;
-        if (fees.type === t) o.selected = true;
+        o.textContent = tlbl;
+        if (isNoFees ? t === 'none' : fees.type === t) o.selected = true;
         typeSelect.appendChild(o);
       }
       typeField.append(typeSpan, typeSelect);
       feesGrid.appendChild(typeField);
       const feesInputs = {};
-      for (const [key, lbl, ph] of [['value','Value','0.1'],['min','Min ($)','optional'],['max','Max ($)','optional']]) {
+      const feesRows = {};
+      for (const [key, lbl, ph] of [['value','Value ($)','0.1'],['min','Min ($)','optional'],['max','Max ($)','optional']]) {
         const wrap = document.createElement('label');
         wrap.className = 'ep-field';
         const s = document.createElement('span');
@@ -398,15 +398,29 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
         inp.name = `bt_fees_${key}`;
         if (fees[key] !== undefined) inp.value = fees[key];
         feesInputs[key] = inp;
+        feesRows[key] = wrap;
         wrap.append(s, inp);
         feesGrid.appendChild(wrap);
       }
       feesSec.appendChild(feesGrid);
       body.appendChild(feesSec);
+      const updateFeesUI = () => {
+        const t = typeSelect.value;
+        feesRows.value.style.display = t === 'none' ? 'none' : '';
+        feesRows.min.style.display = t === 'percent' ? '' : 'none';
+        feesRows.max.style.display = t === 'percent' ? '' : 'none';
+        feesRows.value.querySelector('span').textContent = t === 'percent' ? 'Value (%)' : 'Value ($)';
+      };
+      typeSelect.onchange = updateFeesUI;
+      updateFeesUI();
       getNewFees = () => {
-        const f = {type: typeSelect.value, value: parseFloat(feesInputs.value.value) || 0};
-        if (feesInputs.min.value !== '') f.min = parseFloat(feesInputs.min.value);
-        if (feesInputs.max.value !== '') f.max = parseFloat(feesInputs.max.value);
+        const t = typeSelect.value;
+        if (t === 'none') return {type: 'fixed', value: 0};
+        const f = {type: t, value: parseFloat(feesInputs.value.value) || 0};
+        if (t === 'percent') {
+          if (feesInputs.min.value !== '') f.min = parseFloat(feesInputs.min.value);
+          if (feesInputs.max.value !== '') f.max = parseFloat(feesInputs.max.value);
+        }
         return f;
       };
     }
