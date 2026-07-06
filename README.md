@@ -5,382 +5,131 @@
 ██║     ██╔══██║██╔══██║██╔══██╗   ██║     ╚██╔╝  ██╔══╝  ██║
 ╚██████╗██║  ██║██║  ██║██║  ██║   ██║      ██║   ██║     ██║
  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝      ╚═╝   ╚═╝     ╚═╝
- ```
-
-## File Map
-
-| Script | Description | Exports |
-|--------|------------|--------|
-| `app.js` | App entry + wiring | — |
-| `apiClient.js` | API layer + caching | `ApiClient` |
-| `autofetch.js` | Auto-load historical data | `AutoFetch`, `autofetchEnabled` |
-| `chart.js` | Chart engine (data + rendering) | `Chart`, `INTERVALS` |
-| `sidebar.js` | Sidebar UI + controls | `Sidebar` |
-| `settings.js` | Settings + preferences | `Settings` |
-| `editor.js` | Indicator editor + runtime engine | `Editor` |
-| `backtester.js` | Strategy optimizer (Web Workers) | `runBacktest`, `countCombinations` |
-| `editorFullscreen.js` | Fullscreen code editor | `openFullscreen` |
-| `editorShare.js` | Share + explore public indicators | `createShareModal`, `createExplorePanel` |
-| `cache.js` | IndexedDB caching layer (charts + search) | `getCachedChart`, `setCachedChart`, `getCachedSearch`, `setCachedSearch` |
-| `detector.js` | Device/browser detection utilities | `isIOS`, `isMac`, `isAndroid`, `isMobile`, `isFirefox`, `isChrome`, `isSafari` |
-| `export.js` | Export system (CSV/JSON/TXT/table) | `Exporter` |
-| `message.js` | Toasts + dialogs | `toast`, `confirm`, `deny`, `initMessage` |
-| `network.js` | Online/offline state tracking | `isOnline`, `onNetworkChange` |
-| `search.js` | Symbol search + URL routing | `Search`, `initUrlState` |
-| `storage.js` | LocalStorage settings wrapper | `storage` |
-| `svg.js` | SVG icon system (sprite-based) | `initSvgSprite`, icon exports |
-| `timezone.js` | Timezone utilities | `localTimezone`, `isoInZone`, `shiftTimestamp` |
-| `tools.js` | Chart drawing + interaction tools system | `Tools`, `toolsVisibility` |
-| `tooltip.js` | Tooltip system (mobile + desktop) | `tooltip` |
-
----
-
-## Core
-
-<details>
-<summary><strong>app.js</strong></summary>
-
-Entry point. Initializes modules and loads chart.
-
-- Builds layout  
-- Loads user config  
-- Initializes chart, sidebar, tools, search  
-- Polls for new candles  
-
-</details>
-
-<details>
-<summary><strong>apiClient.js</strong></summary>
-
-API wrapper with caching + offline handling.
-
-**Main:**
-- `_chartData(sym, int, opts)` → fetch candles (cached)
-- `_searchAPI(q)` → symbol search
-- `_checkUpdatesAPI(sym, int, since)` → incremental updates
-- `_userConfig()` → user config
-
-**Also:**
-- Streaming / polling support  
-- API key handling  
-- Timezone integration  
-- Cache coordination with `cache.js`  
-
-</details>
-
-
-<details>
-<summary><strong>autofetch.js</strong></summary>
-
-Auto-fetches older data on scroll.
-
-- Watches visible range  
-- Calls `chart._extendBefore()` when near start  
-- Stops when no more data  
-
-</details>
-
-<details>
-<summary><strong>chart.js</strong></summary>
-
-Core chart logic (data + rendering).
-
-**Main:**
-- `load(sym, int)`
-- `_extendBefore(n)` / `_extendAfter(n)`
-- `_appendCandles(candles)`
-
-**Controls:**
-- `_setMode`
-- `_setField`
-- `_setVolMode`
-
-**Events:**
-- `load`
-- `dataChanged`
-- `barsChanged`
-- `trade`
-
-</details>
-
-<details>
-<summary><strong>sidebar.js</strong></summary>
-
-Sidebar controller (UI + actions).
-
-- Timeframe switching  
-- Data controls (extend / trim)  
-- Export (CSV, JSON, TXT)  
-- Saved assets + streams  
-- Toggles editor + settings  
-
-</details>
-
-<details>
-<summary><strong>settings.js</strong></summary>
-
-Settings + preferences.
-
-- Theme, chart mode, volume  
-- Timezone handling  
-- Autofetch, tooltips, sidebar behavior  
-- API key + manual config  
-
-</details>
-
-<details>
-<summary><strong>tools.js</strong></summary>
-
-Chart drawing + interaction system for annotations on the chart.
-
-**Core:**
-- `Tools` → main controller for toolbar, drawing, and interactions
-- `toolsVisibility` → global visibility state manager
-
-**Features:**
-- Drawing tools: brush, trendline, Fibonacci, measure
-- Interaction modes: cursor, crosshair, select, draw modes
-- Shape editing: move, resize, delete
-- Canvas overlay rendering (high-DPI)
-- Pointer-based interaction system
-
-**UI:**
-- Tool grouping (cursor/draw/utility groups)
-- Mobile + desktop adaptive tool behavior
-- Popout tool menus
-
-**Draw Types:**
-- Brush (freehand)
-- Trend line
-- Measure (distance + % change)
-- Fibonacci retracement
-
-**System:**
-- Canvas overlay synced with chart
-- Hit-testing for selection
-- Drag + edit support
-- Real-time rendering loop
-- Chart-aware coordinate mapping
-
-</details>
-
----
-
-## Editor System
-
-<details>
-<summary><strong>editor.js</strong></summary>
-
-Full indicator editor + execution engine.
-
-**Features:**
-- Code editor with IndexedDB snippets
-- Async indicator runtime
-- Plot system:
-  - `plot`, `plotHist`, `plotBand`, `plotDot`
-  - `plotArea`, `plotCandle`, `plotLabel`
-- Trade system:
-  - `buy(time, price)`
-  - `sell(time, price)`
-
-**Backtesting:**
-- `await backtest({ strategy, params })`
-- Progress UI + cancellation (AbortController)
-
-**UI:**
-- Snippet manager (save/load/delete)
-- Indicator list with live editing
-- Help/docs panel (cached)
-- Share + explore integration
-
-</details>
-
-<details>
-<summary><strong>backtester.js</strong></summary>
-
-High-performance strategy optimizer using Web Workers.
-
-**Core:**
-- `runBacktest({ bars, params, strategy })`
-- `countCombinations(params)`
-
-**Features:**
-- Parallel worker pool (up to 8)
-- Dynamic batching (`BATCH_SIZE`)
-- Transferable objects (`Float64Array`)
-- Strategy compiled via `new Function`
-
-**Scoring:**
-- Profit-based evaluation
-- Penalizes low trade counts
-
-</details>
-
-<details>
-<summary><strong>editorFullscreen.js</strong></summary>
-
-Fullscreen code editor overlay.
-
-**Features:**
-- Syntax highlighting (regex-based)
-- Line numbers
-- Auto-indent + bracket pairing
-- Tab / shift-tab handling
-- Scroll sync (overlay system)
-
-**API:**
-- `openFullscreen({ code, name, onChange, onClose })`
-
-</details>
-
-<details>
-<summary><strong>editorShare.js</strong></summary>
-
-Public indicator sharing + discovery system.
-
-**Features:**
-- Upload indicators with metadata
-- Canvas screenshot capture
-- Public feed browsing
-- Load shared indicators into editor
-
-**API:**
-- `createShareModal()`
-- `createExplorePanel()`
-- `fetchPublicIndicators()`
-- `loadPublicIndicator(id)`
-
-</details>
-
----
-
-## Utilities
-
-<details>
-<summary><strong>cache.js</strong></summary>
-
-IndexedDB caching system for charts + search.
-
-- Stores candles + search results  
-- Expiry-based invalidation  
-- Write queue per key (race-safe)  
-- Candle normalization + deduplication  
-- Range filtering (p1/p2/limit)  
-
-</details>
-
-<details>
-<summary><strong>detector.js</strong></summary>
-
-Device/browser detection utilities.
-
-- `isIOS`
-- `isMac`
-- `isAndroid`
-- `isMobile`
-- `isFirefox`
-- `isChrome`
-- `isSafari`
-
-</details>
-
-<details>
-<summary><strong>export.js</strong></summary>
-
-Export system for chart data.
-
-**Formats:**
-- CSV
-- JSON
-- TXT
-- Table overlay UI
-
-**Features:**
-- Indicator merging into dataset
-- Dynamic column generation
-- Time formatting (ISO / datetime / unix)
-
-</details>
-
-<details>
-<summary><strong>message.js</strong></summary>
-
-UI messaging system.
-
-- Toast notifications
-- Confirm dialogs
-- Error handling (`deny`)
-- DOM overlay system
-
-</details>
-
-<details>
-<summary><strong>network.js</strong></summary>
-
-Online/offline state tracking.
-
-- `isOnline()`
-- Event-based listeners for state changes
-
-</details>
-
-<details>
-<summary><strong>search.js</strong></summary>
-
-Symbol search + URL routing.
-
-- Debounced search input
-- Keyboard navigation
-- Symbol selection + chart load
-- URL sync (`?sym&interval`)
-
-</details>
-
-<details>
-<summary><strong>storage.js</strong></summary>
-
-LocalStorage wrapper.
-
-- Typed getters/setters
-- Default fallbacks
-- Stores:
-  - theme
-  - chart settings
-  - API keys
-  - UI preferences
-
-</details>
-
-<details>
-<summary><strong>svg.js</strong></summary>
-
-SVG icon system (sprite-based).
-
-- Injects SVG sprite once
-- Reusable `<use>` icons
-- Large icon set (tools, cursor, charts, UI)
-
-</details>
-
-<details>
-<summary><strong>timezone.js</strong></summary>
-
-Timezone utilities.
-
-- Convert UNIX timestamps between zones
-- ISO formatting per timezone
-- Offset calculations
-
-</details>
-
-<details>
-<summary><strong>tooltip.js</strong></summary>
-
-Tooltip system (mobile + desktop).
-
-- Hover tooltips (desktop)
-- Touch tracking tooltips (mobile)
-- Auto-clamping to viewport
-- Storage toggle support
-
-</details>
+```
+
+## Description
+
+Chartyfi is a charting application using Tradingview's lightweight charts, sourcing yahoo finance data, utilizing data analysis cycle.tools endpoints, and connecting to NVDIA's LLM's for indicator generation from natural language and additional AI app features
+
+## External API Endpoints
+
+| Service | Endpoint | Purpose |
+|---------|----------|---------|
+| NVIDIA NIM | `https://integrate.api.nvidia.com/v1/chat/completions` | Streams LLM responses for AI-powered indicator generation and analysis. |
+| cycle.tools | `https://api.cycle.tools/api/cycles/CycleScanner` | Performs cycle analysis on historical price data. |
+| cycle.tools | `https://api.cycle.tools/api/CycleConsensus/calculate` | Calculates cycle consensus from historical price data. |
+| cycle.tools | `https://api.cycle.tools/api/Stream/SubmitStreamData` | Uploads market data to Live Pulse Streams. |
+| Yahoo Finance | `https://query1.finance.yahoo.com/v1/finance/search?q={query}` | Searches for stocks, ETFs, indices, currencies, and other financial instruments. |
+| Yahoo Finance | `https://query2.finance.yahoo.com/v8/finance/chart/{symbol}` | Retrieves historical OHLCV price data. |
+| Yahoo Finance | `https://query2.finance.yahoo.com/ws/insights/v1/finance/insights?symbol={symbol}` | Retrieves analyst insights and research data. |
+| Yahoo Finance | `https://query1.finance.yahoo.com/v6/finance/quote/marketSummary` | Retrieves market summary information for major indices and markets. |
+| Yahoo Finance | `https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved` | Retrieves predefined stock screeners, including top gainers, losers, and most active stocks. |
+| Yahoo Finance | `https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US` | Retrieves the latest news headlines for a symbol via RSS. |
+
+## Tree
+
+```
+chartyfi/
+├── README.md
+├── index.html
+├── manifest.webmanifest
+├── register.js
+├── sw.js
+│
+├── api/
+│   ├── _link.php
+│   ├── api_ai.php
+│   ├── api_cycle.tools.php
+│   ├── api_editor.php
+│   ├── api_insights.php
+│   ├── api_market.php
+│   ├── api_news.php
+│   ├── api_screener.php
+│   ├── api.php
+│   ├── apidata.php
+│   │
+│   ├── cron/
+│   │   ├── cronCycleStream.php
+│   │   └── cronSymbolStore.php
+│   │
+│   └── data/
+│       ├── api.json
+│       ├── config.php
+│       ├── editorHelp.json
+│       ├── instructconfig.php
+│       ├── modelconfig.php
+│       │
+│       ├── cache/
+│       │   └── screener.json
+│       │
+│       ├── indicators/
+│       │   ├── *.jpg
+│       │   └── *.json
+│       │
+│       └── instructions/
+│           ├── indicators.txt
+│           └── ratings.txt
+│
+└── assets/
+    ├── css/
+    │   ├── font.css
+    │   └── style.css
+    │
+    └── scripts/
+        ├── api.js
+        ├── apiClient.js
+        ├── app.bundled.js
+        ├── app.js
+        ├── appGuard.js
+        ├── authPage.js
+        ├── autoPoll.js
+        ├── autofetch.js
+        ├── backtester.js
+        ├── cache.js
+        ├── chart.js
+        ├── cycleApp.js
+        ├── cycleConsensus.js
+        ├── dataintegrity.js
+        ├── detector.js
+        ├── editor.js
+        ├── editorAi.js
+        ├── editorFullscreen.js
+        ├── editorParam.js
+        ├── editorShare.js
+        ├── emptyState.js
+        ├── export.js
+        ├── import.js
+        ├── insights.js
+        ├── marketSummary.js
+        ├── message.js
+        ├── miniApps.js
+        ├── models.js
+        ├── network.js
+        ├── news.js
+        ├── paneManager.js
+        ├── screenshot.js
+        ├── screener.js
+        ├── search.js
+        ├── settings.js
+        ├── sidebar.js
+        ├── spinner.js
+        ├── storage.js
+        ├── svg.js
+        ├── timezone.js
+        ├── tools.js
+        ├── tooltip.js
+        ├── urlState.js
+        ├── watchlist.js
+        │
+        └── libs/
+            └── lightweight-charts.standalone.production.js
+```
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0 (GPLv3)**.
+
+You may use, modify, and distribute this software, but **any derivative work
+must also be licensed under GPLv3 and remain open-source**.
+
+See the [LICENSE file](https://github.com/composedbymax/openrouter-chatbot/blob/main/LICENSE) for full details.
