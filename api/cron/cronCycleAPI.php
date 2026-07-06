@@ -1,5 +1,5 @@
 <?php
-require __DIR__.'/data.php';
+require __DIR__ . '/../apidata.php';
 echo "[".date('Y-m-d H:i:s')."] cronCycleAPI starting\n";
 $streams=$pdo->query(
   "SELECT id,user,encrypted_api_key,stream_id,symbol,`interval`,field,last_sent_timestamp,stream_timezone FROM cycle_streams"

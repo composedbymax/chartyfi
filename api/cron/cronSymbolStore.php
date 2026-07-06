@@ -1,5 +1,5 @@
 <?php
-require __DIR__.'/data.php';
+require __DIR__ . '/../apidata.php';
 echo "[".date('Y-m-d H:i:s')."] cronSymbolStore starting\n";
 $pairs=$pdo->query(
   "SELECT DISTINCT symbol,`interval` FROM tracked_assets WHERE auto_update_enabled=1"

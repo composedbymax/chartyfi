@@ -1,10 +1,10 @@
 {
-  "CFG": { "api": "api/api.php",           "auth": false },
-  "YFS": { "api": "api/yfiScreener.php",   "auth": false },
-  "EDS": { "api": "api/editorShare.php",   "auth": false },
-  "ARI": { "api": "api/ai.php",            "auth": false },
-  "MKS": { "api": "api/marketSummary.php", "auth": false },
-  "INS": { "api": "api/insights.php",      "auth": false },
-  "NWS": { "api": "api/news.php",          "auth": true  },
-  "CIC": { "api": "api/cycle.php",         "auth": false }
+  "CFG": { "api": "api/api.php",             "auth": false },
+  "EDS": { "api": "api/api_editor.php",      "auth": false },
+  "ARI": { "api": "api/api_ai.php",          "auth": false },
+  "YFS": { "api": "api/api_screener.php",    "auth": false },
+  "CIC": { "api": "api/api_cycle.tools.php", "auth": false },
+  "MKS": { "api": "api/api_market.php",      "auth": false },
+  "INS": { "api": "api/api_insights.php",    "auth": true  },
+  "NWS": { "api": "api/api_news.php",        "auth": true  }
 }

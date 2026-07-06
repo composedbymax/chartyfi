@@ -10,7 +10,7 @@ header('Cache-Control: no-cache');
 header("Cross-Origin-Opener-Policy: same-origin");
 header("X-Frame-Options: DENY");
 header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none';");
-require __DIR__.'/data.php';
+require __DIR__.'/apidata.php';
 function ok($d){echo json_encode($d);exit;}
 function err($m,$c=400){http_response_code($c);ok(['error'=>$m]);}
 function needLogin(){global $user;if(!$user)err('Login required',401);}
