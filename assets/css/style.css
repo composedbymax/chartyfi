@@ -723,7 +723,11 @@ td[colspan="3"] > div[style*="z-index: 50"] {background-color: var(--bg6) !impor
 .cic-spectrum-line{stroke:var(--accent);stroke-width:1.5;fill:none}
 .cic-peak-line{stroke:var(--text3);stroke-width:1;stroke-dasharray:2,2}
 .cic-peak-list{display:flex;flex-direction:column;gap:2px;overflow-x:hidden}
-.cic-peak-row,.cic-peak-head{display:grid;grid-template-columns:14px 14px 32px 20px 44px 48px minmax(140px,1fr);align-items:center;gap:8px}
+.cic-peak-row,.cic-peak-head{display:grid;grid-template-columns:14px 14px 32px 20px 34px 44px 48px minmax(140px,1fr);align-items:center;gap:8px}
+.cic-peak-row.no-ai,.cic-peak-head.no-ai{grid-template-columns:14px 14px 32px 34px 44px 48px minmax(140px,1fr)}
+.cic-peak-row.no-stab,.cic-peak-head.no-stab{grid-template-columns:14px 14px 32px 20px 44px 48px minmax(140px,1fr)}
+.cic-peak-row.no-ai.no-stab,.cic-peak-head.no-ai.no-stab{grid-template-columns:14px 14px 32px 44px 48px minmax(140px,1fr)}
+.cic-peak-stab{font-size:11px;font-weight:700;color:var(--accent)}
 .cic-peak-row{font-size:12px;padding:4px 2px;border-radius:var(--radius)}
 .cic-peak-row:hover{background:var(--bg3)}
 .cic-peak-head{color:var(--text3);font-size:11px;font-weight:600;padding:0 2px}

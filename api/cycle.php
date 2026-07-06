@@ -25,14 +25,6 @@ switch ($action) {
             exit;
         }
         break;
-    case 'peaks':
-        $path = '/api/cycles/CycleSpectrumPeakFinder';
-        if (!is_array($payload) || !isset($payload['spectrum'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Invalid payload for peak finder']);
-            exit;
-        }
-        break;
     case 'consensus':
         $path = '/api/CycleConsensus/calculate';
         if (!is_array($payload) || count($payload) < 100) {

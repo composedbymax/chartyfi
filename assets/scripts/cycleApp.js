@@ -92,7 +92,8 @@ export class CycleApp {
     this._result=null;
     this._peaks=null;
     this._scannedBarCount=0;
-    this._dominantSet=new Set();
+    this._hasAI=false;
+    this._hasStab=false;
     this._group=null;
     this._stratGroup=null;
     this._busy=false;
@@ -110,11 +111,13 @@ export class CycleApp {
       epf:false,
       savgolSmoothing:false,
       sortByStrength:true,
+      useStability:true,
+      dominantPeakFinder:true,
     };
     this._onDataChanged=()=>{
       if(this._group){this._pom.removeGroup(this._group.id);this._group=null;}
       if(this._stratGroup){this._pom.removeGroup(this._stratGroup.id);this._stratGroup=null;}
-      this._result=null;this._peaks=null;this._scannedBarCount=0;this._dominantSet=new Set();
+      this._result=null;this._peaks=null;this._scannedBarCount=0;this._hasAI=false;this._hasStab=false;
       this._render();
     };
     this.chart._chartOn('dataChanged',this._onDataChanged);
@@ -138,11 +141,12 @@ export class CycleApp {
     if(res.error){deny(res.error);this._render();return;}
     this._result=res;
     this._scannedBarCount=values.length;
-    this._peaks=(res.peaks||[]).map((p,i)=>({...p,_sel:false,_colorIdx:i%PALETTE.length}));
-    this._dominantSet=new Set();
+    this._peaks=(res.peaks||[]).map((p,i)=>({...p,_sel:p.dominantRank>=1,_colorIdx:i%PALETTE.length}));
+    this._hasAI=this._peaks.some(p=>p.dominantRank>=1);
+    this._hasStab=this._peaks.some(p=>p.stabilityScore>0);
     toast(`Found ${this._peaks.length} cycle${this._peaks.length===1?'':'s'}`,'success');
+    this._replot();
     this._render();
-    this._runPeakFinder();
   }
   async _runPeakFinder(){
     if(!this._result?.spectrum) return;
@@ -280,12 +284,15 @@ export class CycleApp {
   _peaksListHTML(){
     return this._peaks.map((p,i)=>{
       const phaseCls=(p.phaseStatus||'').toLowerCase();
-      const rank=p._aiRank!=null?`<span class="cic-peak-ai-rank">${p._aiRank}</span>`:`<span class="cic-peak-ai-rank"></span>`;
-      return `<div class="cic-peak-row" data-i="${i}">
+      const ai=this._hasAI?`<span class="cic-peak-ai-rank">${p.dominantRank>=1?p.dominantRank:''}</span>`:'';
+      const stab=this._hasStab?`<span>${p.stabilityScore>0?p.stabilityScore.toFixed(2):''}</span>`:'';
+      const rowCls=`cic-peak-row${this._hasAI?'':' no-ai'}${this._hasStab?'':' no-stab'}`;
+      return `<div class="${rowCls}" data-i="${i}">
         <input type="checkbox" class="cic-peak-chk" ${p._sel?'checked':''}>
         <span class="cic-color-dot cic-c${p._colorIdx}"></span>
         <span class="cic-peak-len">${Math.round(p.cycleLength)}</span>
-        ${rank}
+        ${ai}
+        ${stab}
         <span class="cic-peak-strength">${Math.round((p.strength||0)*100)}%</span>
         <span class="cic-peak-bartels">${p.bartelsValue!=null?p.bartelsValue.toFixed(1):'-'}</span>
         <span class="cic-peak-phase ${phaseCls}">${p.phaseStatus||''}</span>
@@ -365,8 +372,8 @@ export class CycleApp {
         const lbl=document.createElement('div');lbl.className='sb-label';lbl.textContent='Detected Cycles';
         wrap.appendChild(lbl);
         const head=document.createElement('div');
-        head.className='cic-peak-row cic-peak-head';
-        head.innerHTML=`<span></span><span></span><span>Len</span><span>AI</span><span>Str</span><span>Bartels</span><span>Phase</span>`;
+        head.className=`cic-peak-row cic-peak-head${this._hasAI?'':' no-ai'}${this._hasStab?'':' no-stab'}`;
+        head.innerHTML=`<span></span><span></span><span>Len</span>${this._hasAI?'<span>AI</span>':''}${this._hasStab?'<span>Stab</span>':''}<span>Str</span><span>Bartels</span><span>Phase</span>`;
         wrap.appendChild(head);
         const list=document.createElement('div');
         list.className='cic-peak-list';
