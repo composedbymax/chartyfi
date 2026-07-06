@@ -1,4 +1,4 @@
-const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,tools_bar:true,theme:null,chart_mode:null,chart_field:null,chart_vol:null,autofetch:false,link:null,cycles_api_key:null,chart_timezone:'UTC',ai_preferred_model:null,ai_model_list:[]};
+const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,tools_bar:true,theme:null,chart_mode:null,chart_field:null,chart_vol:null,autofetch:false,link:null,cycles_api_key:null,chart_timezone:'UTC',ai_preferred_model:null,ai_model_list:[],watchlist:[]};
 function read(key){
   const v=localStorage.getItem(key);
   if(v===null||v==='null') return DEFAULTS[key]??null;
@@ -42,4 +42,6 @@ export const storage={
   getModelList:()=>read('ai_model_list'),
   setModelList:v=>write('ai_model_list',v),
   clearModelList:()=>write('ai_model_list',null),
+  getWatchlist:()=>read('watchlist'),
+  setWatchlist:v=>write('watchlist',v),
 };

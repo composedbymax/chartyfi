@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'wl_v1';
+import { storage } from './storage.js';
 export class Watchlist {
   static config = {
     title:       'Watchlist',
@@ -17,29 +17,22 @@ export class Watchlist {
     this.chart._chartOn('dataset-loaded', this._onLoad);
     this._render();
   }
-  _getList() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-    catch { return []; }
-  }
-  _setList(list) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  }
   _add() {
     const sym = this.chart._currentSymbol;
     const int = this.chart._currentInterval;
     if (!sym) return;
-    const list = this._getList();
+    const list = storage.getWatchlist();
     if (list.some(e => e.sym === sym && e.int === int)) return;
     list.push({ sym, int, name: this.chart._currentName || sym });
-    this._setList(list);
+    storage.setWatchlist(list);
     this._render();
   }
   _remove(sym, int) {
-    this._setList(this._getList().filter(e => !(e.sym === sym && e.int === int)));
+    storage.setWatchlist(storage.getWatchlist().filter(e => !(e.sym === sym && e.int === int)));
     this._render();
   }
   _render() {
-    const list         = this._getList();
+    const list         = storage.getWatchlist();
     const curSym       = this.chart._currentSymbol;
     const curInt       = this.chart._currentInterval;
     const alreadySaved = curSym && list.some(e => e.sym === curSym && e.int === curInt);
