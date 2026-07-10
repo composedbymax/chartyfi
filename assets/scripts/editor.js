@@ -597,6 +597,7 @@ export class Editor{
     const plotArea   = (label, data, opts = {}) => plotFns.push({ type: 'area',   label, data, opts });
     const plotCandle = (label, data, opts = {}) => plotFns.push({ type: 'candle', label, data, opts });
     const plotLabel  = (label, data, opts = {}) => plotFns.push({ type: 'label',  label, data, opts });
+    const plotCloud  = (label, data, opts = {}) => plotFns.push({ type: 'cloud',  label, data, opts });
     const buy        = (time, price) => normTrade('buy',  time, price);
     const sell       = (time, price) => normTrade('sell', time, price);
     const backtest = (opts) => {
@@ -613,10 +614,10 @@ export class Editor{
     try {
       const fn = new AsyncFunction(
         'bars', 'plot', 'plotHist', 'plotBand', 'plotDot', 'plotArea', 'plotCandle',
-        'plotLabel', 'buy', 'sell', 'backtest', 'calcFee',
+        'plotLabel', 'plotCloud', 'buy', 'sell', 'backtest', 'calcFee',
         this._code
       );
-      await fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, buy, sell, backtest, calcFee);
+      await fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, plotCloud, buy, sell, backtest, calcFee);
     } catch (err) {
       if (err?.name === 'AbortError') throw err;
       if (!silent) deny('Error: ' + err.message);

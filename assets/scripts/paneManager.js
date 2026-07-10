@@ -1,4 +1,5 @@
 import {deny} from './message.js';
+import {CloudSeries} from './cloudSeries.js';
 const _registry=new WeakMap();
 function _reg(chart,group){
   if(!_registry.has(chart))_registry.set(chart,new Set());
@@ -60,6 +61,17 @@ function _createSeries(lwChart,plotFns,groups,silent,chart){
       }else if(pf.type==='area'){
         s=lwChart.addSeries(LightweightCharts.AreaSeries,{lineColor:pf.opts.color||'#a78bfa',topColor:pf.opts.topColor||'rgba(167,139,250,0.35)',bottomColor:pf.opts.bottomColor||'rgba(167,139,250,0.02)',lineWidth:pf.opts.lineWidth||2,title:pf.label},pane);
         s.setData(pf.data);
+      }else if(pf.type==='cloud'){
+        const upC=pf.opts.upColor||'rgba(34,197,94,0.35)';
+        const downC=pf.opts.downColor||'rgba(239,68,68,0.35)';
+        const view=new CloudSeries();
+        s=lwChart.addCustomSeries(view,{upColor:upC,downColor:downC,title:pf.label},pane);
+        s.setData(pf.data.map(d=>({
+          time:d.time,
+          upper:d.upper,
+          lower:d.lower,
+          color:d.color||(d.upper>=d.lower?upC:downC)
+        })));
       }else if(pf.type==='candle'){
         s=lwChart.addSeries(LightweightCharts.CandlestickSeries,{upColor:pf.opts.upColor||'#22c55e',downColor:pf.opts.downColor||'#ef4444',borderUpColor:pf.opts.upColor||'#22c55e',borderDownColor:pf.opts.downColor||'#ef4444',wickUpColor:pf.opts.upColor||'#22c55e',wickDownColor:pf.opts.downColor||'#ef4444',title:pf.label},pane);
         s.setData(pf.data);
