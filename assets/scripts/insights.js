@@ -1,8 +1,6 @@
 import {attachSpinner} from './spinner.js';
-
 const CACHE_PREFIX = 'ins_cache_';
 const SUMMARY_THRESHOLD = 600;
-
 export class Insights {
     static config = {
         title: 'Insights',
@@ -12,7 +10,6 @@ export class Insights {
         suspendIndicators: false,
         persistent: false
     };
-
     constructor(chart, api) {
         this.chart = chart;
         this.api = api;
@@ -32,20 +29,16 @@ export class Insights {
         this.chart._chartOn('dataset-loaded', this._onLoad);
         this._render();
     }
-
     _cacheKey(sym) { return CACHE_PREFIX + sym.toUpperCase(); }
-
     _readCache(sym) {
         try {
             const raw = sessionStorage.getItem(this._cacheKey(sym));
             return raw ? JSON.parse(raw) : null;
         } catch { return null; }
     }
-
     _writeCache(sym, data) {
         try { sessionStorage.setItem(this._cacheKey(sym), JSON.stringify(data)); } catch {}
     }
-
     async _fetch(sym) {
         if (this._controller) this._controller.abort();
         this._controller = new AbortController();
@@ -62,7 +55,6 @@ export class Insights {
             return null;
         }
     }
-
     async _getData(sym) {
         const cached = this._readCache(sym);
         if (cached) {
@@ -76,12 +68,10 @@ export class Insights {
         if (data && !data.error) this._writeCache(sym, data);
         return data;
     }
-
     _hasRealData(obj, excludeKeys = ['provider']) {
         if (!obj) return false;
         return Object.keys(obj).some(k => !excludeKeys.includes(k) && obj[k] != null);
     }
-
     async _render() {
         const sym = this.chart._currentSymbol;
         if (!sym) {
@@ -125,7 +115,6 @@ export class Insights {
         wrap.className = 'ins-wrap';
         const info = r.instrumentInfo || {};
         const snap = r.companySnapshot || {};
-
         if (flags.hasTE || flags.hasKT || flags.hasVal || flags.hasRec) {
             const grid = document.createElement('div');
             grid.className = 'ins-grid';
@@ -135,13 +124,10 @@ export class Insights {
             if (flags.hasRec) grid.appendChild(this._recommendationCard(info.recommendation));
             wrap.appendChild(grid);
         }
-
         if (flags.hasSnap) wrap.appendChild(this._snapshotCard(snap));
         if (flags.hasReports) wrap.appendChild(this._reportsSection(r.reports));
-
         this.content.appendChild(wrap);
     }
-
     _card(title, provider) {
         const card = document.createElement('div');
         card.className = 'ins-card';
@@ -160,7 +146,6 @@ export class Insights {
         card.appendChild(hdr);
         return card;
     }
-
     _technicalCard(te) {
         const card = this._card('Technical Events', te.provider);
         card.className += ' ins-card--full';
@@ -185,7 +170,6 @@ export class Insights {
         card.appendChild(list);
         return card;
     }
-
     _keyTechCard(kt) {
         const card = this._card('Key Technicals', kt.provider);
         card.className += ' ins-card--full';
@@ -209,7 +193,6 @@ export class Insights {
         card.appendChild(grid);
         return card;
     }
-
     _valuationCard(val) {
         const card = this._card('Valuation', val.provider);
         const list = document.createElement('div');
@@ -231,7 +214,6 @@ export class Insights {
         card.appendChild(list);
         return card;
     }
-
     _recommendationCard(rec) {
         const card = this._card('Analyst Rating', rec.provider);
         const wrap = document.createElement('div');
@@ -250,7 +232,6 @@ export class Insights {
         card.appendChild(wrap);
         return card;
     }
-
     _snapshotCard(snap) {
         const sectorLabel = snap.sectorInfo ? snap.sectorInfo + ' Sector' : null;
         const card = this._card('Company Snapshot', sectorLabel);
@@ -291,7 +272,6 @@ export class Insights {
         card.appendChild(bars);
         return card;
     }
-
     _reportsSection(reports) {
         const section = document.createElement('div');
         section.className = 'ins-reports';
@@ -343,7 +323,6 @@ export class Insights {
         });
         return section;
     }
-
     destroy() {
         this._destroyed = true;
         if (this._controller) this._controller.abort();

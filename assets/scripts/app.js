@@ -39,7 +39,8 @@ document.getElementById('app').innerHTML = `
   <aside id="sidebar"><div id="sb-inner"></div></aside>
 </div>`;
 async function main() {
-  await initApiLink();
+  const apiReady = await initApiLink();
+  if (!apiReady) {initEmptyState(document.getElementById('chart-wrap'), null, true, true); return;}
   initMessage();
   const api = new ApiClient(window.CFG.api);
   const config = window.userLoggedIn ? await api._userConfig().catch(() => ({})) : {};

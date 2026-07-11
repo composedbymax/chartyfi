@@ -1,4 +1,5 @@
 import {Watchlist}      from './watchlist.js';
+import {Correlation}    from './correlation.js';
 import {Screener}       from './screener.js';
 import {DataIntegrity}  from './dataintegrity.js';
 import {CycleApp}       from './cycleApp.js';
@@ -9,6 +10,7 @@ import {CycleConsensus} from './cycleConsensus.js';
 import {authModal}      from './authPage.js';
 const APPS = [
   [Watchlist],
+  [Correlation],
   [Screener],
   [DataIntegrity],
   [MarketSummary],
