@@ -2,7 +2,7 @@ import { storage } from './storage.js';
 export class Watchlist {
   static config = {
     title:       'Watchlist',
-    description: 'Save and quickly load symbol / timeframe pairs.',
+    description: 'Save and quickly load symbol / timeframe pairs',
   };
   constructor(chart, api) {
     this.chart      = chart;

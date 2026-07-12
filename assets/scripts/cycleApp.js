@@ -6,7 +6,7 @@ const PALETTE = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#a78bfa','#06b6d4','#e
 const DTYPES  = [[0,'HP Filter'],[1,'Boosted HP'],[2,'Spline'],[3,'Polynomial'],[4,'One-Sided HP'],[9,'None']];
 async function _callCIC(action, payload, params={}){
   const api_key=storage.getApiKey();
-  if(!api_key) return {error:'No API key set. Please configure one in Settings.'};
+  if(!api_key) return {error:'No API key set. Please configure one in Settings'};
   try{
     const res=await fetch(window.CIC.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,api_key,params,payload}),});
     const data=await res.json().catch(()=>null);
@@ -80,7 +80,7 @@ function _buildStrategyPoints(cycleValues, prices, times, histLen){
 export class CycleApp {
   static config = {
     title: 'Cycle Spectrum',
-    description: 'Scan the dominant market cycles and plot them on the chart, individually or as a composite.',
+    description: 'Scan the dominant market cycles and plot them on the chart, individually or as a composite',
     width: 380,
     persistent: true,
   };

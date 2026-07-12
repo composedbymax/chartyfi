@@ -1,9 +1,13 @@
 import { storage } from './storage.js';
 import { toast } from './message.js';
+import { attachSpinner } from './spinner.js';
+const SPARK_POINTS = 30;
+const DAY = 86400;
+const CALENDAR_BUFFER = 1.6;
 export class Correlation {
   static config = {
     title: 'Correlation Matrix',
-    description: 'Compute a correlation matrix across your watchlist symbols.',
+    description: 'Compute a correlation matrix across your watchlist symbols',
     width: '100vw',
     suspendIndicators: false,
     persistent: false,
@@ -17,7 +21,8 @@ export class Correlation {
     this._loading = false;
     this._series = null;
     this._matrix = null;
-    this._render();
+    if (storage.getWatchlist().length >= 2) this._run(this._bars);
+    else this._render();
   }
   async _run(bars) {
     const list = storage.getWatchlist();
@@ -26,34 +31,46 @@ export class Correlation {
     this._loading = true;
     this._render();
     const anchor = Math.floor(Date.now() / 1000);
+    const fetchBars = Math.ceil((bars + SPARK_POINTS - 1) * CALENDAR_BUFFER);
     const series = await Promise.all(list.map(async e => {
-      const res = await this.api._chartData(e.sym, e.int, { bars, direction: 'before', anchor });
-      if (res.error) toast(`${e.sym} ${e.int}: ${res.error}`, 'error');
+      const res = await this.api._chartData(e.sym, '1d', { bars: fetchBars, direction: 'before', anchor });
+      if (res.error) toast(`${e.sym} 1D: ${res.error}`, 'error');
       const map = new Map();
-      (res.candles || []).forEach(c => map.set(c.time, c.close));
-      return { sym: e.sym, int: e.int, map };
+      (res.candles || []).forEach(c => map.set(Math.floor(c.time / DAY), c.close));
+      return { sym: e.sym, map };
     }));
     this._series = series;
-    this._matrix = series.map(a => series.map(b => a === b ? 1 : this._correlate(a, b)));
+    this._matrix = series.map(a => series.map(b => this._rollingCorrelate(a, b, this._bars)));
     this._loading = false;
     this._render();
   }
-  _correlate(a, b) {
-    const xs = [], ys = [];
-    for (const [t, v] of a.map) {
-      if (b.map.has(t)) { xs.push(v); ys.push(b.map.get(t)); }
+  _rollingCorrelate(a, b, win) {
+    const times = [...a.map.keys()].filter(t => b.map.has(t)).sort((x, y) => x - y);
+    const n = times.length;
+    if (n < win) return [];
+    const xs = times.map(t => a.map.get(t));
+    const ys = times.map(t => b.map.get(t));
+    let sx = 0, sy = 0, sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < win; i++) { sx += xs[i]; sy += ys[i]; sxy += xs[i] * ys[i]; sxx += xs[i] * xs[i]; syy += ys[i] * ys[i]; }
+    const calc = () => {
+      const num = win * sxy - sx * sy;
+      const den = Math.sqrt(win * sxx - sx * sx) * Math.sqrt(win * syy - sy * sy);
+      return den ? num / den : null;
+    };
+    const out = [calc()];
+    for (let end = win; end < n; end++) {
+      const outI = end - win;
+      sx += xs[end] - xs[outI]; sy += ys[end] - ys[outI];
+      sxy += xs[end] * ys[end] - xs[outI] * ys[outI];
+      sxx += xs[end] * xs[end] - xs[outI] * xs[outI];
+      syy += ys[end] * ys[end] - ys[outI] * ys[outI];
+      out.push(calc());
     }
-    const n = xs.length;
-    if (n < 2) return null;
-    const mx = xs.reduce((s, v) => s + v, 0) / n;
-    const my = ys.reduce((s, v) => s + v, 0) / n;
-    let num = 0, dx = 0, dy = 0;
-    for (let i = 0; i < n; i++) {
-      const a1 = xs[i] - mx, b1 = ys[i] - my;
-      num += a1 * b1; dx += a1 * a1; dy += b1 * b1;
-    }
-    const den = Math.sqrt(dx * dy);
-    return den ? num / den : null;
+    return out;
+  }
+  _lastValue(values) {
+    for (let i = values.length - 1; i >= 0; i--) { if (values[i] != null) return values[i]; }
+    return null;
   }
   _cellClass(v) {
     if (v == null) return 'corr-na';
@@ -62,6 +79,14 @@ export class Correlation {
     if (v > -0.3) return 'corr-neutral';
     if (v > -0.7) return 'corr-neg';
     return 'corr-strong-neg';
+  }
+  _sparkSVG(values) {
+    const w = 100, h = 32, pad = 3;
+    let last = 0;
+    const norm = values.map(v => { if (v != null) last = v; return last; });
+    const step = norm.length > 1 ? w / (norm.length - 1) : 0;
+    const pts = norm.map((v, i) => `${(i * step).toFixed(1)},${(h / 2 - v * (h / 2 - pad)).toFixed(1)}`).join(' ');
+    return `<svg class="spark-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><line x1="0" y1="${h / 2}" x2="${w}" y2="${h / 2}" class="spark-zero"></line><polyline points="${pts}" class="spark-line"></polyline></svg>`;
   }
   _buildTable() {
     const wrap = document.createElement('div');
@@ -73,7 +98,7 @@ export class Correlation {
     this._series.forEach(s => {
       const th = document.createElement('th');
       th.textContent = s.sym;
-      th.title = `${s.sym} ${s.int}`;
+      th.title = `${s.sym} · Daily`;
       head.appendChild(th);
     });
     table.appendChild(head);
@@ -81,12 +106,14 @@ export class Correlation {
       const tr = document.createElement('tr');
       const rh = document.createElement('th');
       rh.textContent = row.sym;
-      rh.title = `${row.sym} ${row.int}`;
+      rh.title = `${row.sym} · Daily`;
       tr.appendChild(rh);
-      this._matrix[i].forEach(v => {
+      this._matrix[i].forEach(values => {
         const td = document.createElement('td');
-        td.className = `corr-cell ${this._cellClass(v)}`;
-        td.textContent = v == null ? '—' : v.toFixed(2);
+        const last = this._lastValue(values);
+        td.className = `corr-cell ${values.length ? this._cellClass(last) : 'corr-na'}`;
+        if (values.length) td.innerHTML = `<div class="corr-cell-inner">${this._sparkSVG(values)}<span class="corr-val">${last == null ? 'n/a' : last.toFixed(2)}</span></div>`;
+        else td.textContent = '—';
         tr.appendChild(td);
       });
       table.appendChild(tr);
@@ -104,7 +131,7 @@ export class Correlation {
         <label for="corr-bars">Bars</label>
         <input type="number" id="corr-bars" value="${this._bars}" min="10" max="2000">
       </div>
-      <button class="btn-primary corr-run-btn" id="corr-run">${this._loading ? 'Computing…' : 'Compute'}</button>
+      <button class="btn-primary corr-run-btn" id="corr-run">${this._loading ? 'Computing…' : 'Re-compute'}</button>
     `;
     this.el.appendChild(top);
     const barsIn = top.querySelector('#corr-bars');
@@ -124,16 +151,9 @@ export class Correlation {
     }
     if (this._loading) {
       const load = document.createElement('div');
-      load.className = 'corr-empty';
-      load.textContent = 'Computing correlation matrix…';
+      load.className = 'corr-loading';
       this.el.appendChild(load);
-      return;
-    }
-    if (!this._matrix) {
-      const hint = document.createElement('div');
-      hint.className = 'corr-empty';
-      hint.textContent = 'Press Compute to build the correlation matrix.';
-      this.el.appendChild(hint);
+      attachSpinner(load, { size: 40, color: 'var(--accent)' }).show();
       return;
     }
     this.el.appendChild(this._buildTable());
