@@ -34,7 +34,7 @@ document.getElementById('app').innerHTML = `
   </div>
 </header>
 <div id="body-wrap">
-  <aside id="tools-wrap"><div id="tools-inner"></div></aside>
+  <aside id="tools-wrap" class="hidden"><div id="tools-inner"></div></aside>
   <div id="chart-wrap"></div>
   <aside id="sidebar"><div id="sb-inner"></div></aside>
 </div>`;

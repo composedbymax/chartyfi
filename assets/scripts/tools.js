@@ -6,10 +6,13 @@ import {captureScreenshot} from './screenshot.js'
 import {confirm} from './message.js';
 const LW=()=>window.LightweightCharts||{};
 let _toolsVisible=true;
+let _locked=false;
 const _listeners=new Set();
 export const toolsVisibility={
   get:()=>_toolsVisible,
-  set:v=>{const n=!!v;if(n===_toolsVisible)return;_toolsVisible=n;_listeners.forEach(fn=>fn(n));},
+  set:v=>{const n=!!v;if(_locked&&n)return;if(n===_toolsVisible)return;_toolsVisible=n;_listeners.forEach(fn=>fn(n));},
+  lock:()=>{_locked=true;},
+  unlock:()=>{_locked=false;},
   on:fn=>{_listeners.add(fn);fn(_toolsVisible);return ()=>_listeners.delete(fn);}
 };
 export class Tools{
