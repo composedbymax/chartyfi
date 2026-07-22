@@ -29,6 +29,7 @@ register_shutdown_function(function(){
 });
 $config=require __DIR__.'/data/modelconfig.php';
 $models=$config['models']??[];
+$instrConfig=require __DIR__.'/data/instructconfig.php';
 $clientStopped = function () {
   return connection_aborted();
 };
@@ -50,7 +51,10 @@ if(!is_array($in)){
 }
 $action=$in['action']??($_GET['action']??'');
 if($action==='list'){
-  echo json_encode(['models'=>array_keys($models)],JSON_UNESCAPED_SLASHES);
+  echo json_encode([
+    'models'=>array_keys($models),
+    'tools'=>array_keys($instrConfig)
+  ],JSON_UNESCAPED_SLASHES);
   exit;
 }
 if(!$models){
@@ -63,7 +67,6 @@ $messages=is_array($in['messages']??null)
   : [];
 $instructionTypes=is_array($in['instructionTypes']??null)?$in['instructionTypes']:[];
 if($instructionTypes){
-    $instrConfig=require __DIR__.'/data/instructconfig.php';
     $parts=[];
     foreach($instructionTypes as $type){
         if(isset($instrConfig[$type])&&is_file($instrConfig[$type])){
