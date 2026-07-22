@@ -1,47 +1,74 @@
-const DEFAULTS={toasts:true,tooltips:true,sidebar_sticky:false,tools_bar:true,theme:null,chart_mode:null,chart_field:null,chart_vol:null,autofetch:false,link:null,cycles_api_key:null,chart_timezone:'UTC',ai_preferred_model:null,ai_model_list:[],watchlist:[]};
-function read(key){
-  const v=localStorage.getItem(key);
-  if(v===null||v==='null') return DEFAULTS[key]??null;
-  if(v==='true') return true;
-  if(v==='false') return false;
-  if(v[0]==='{' || v[0]==='['){try{return JSON.parse(v)}catch{}}
+const DEFAULTS = {
+  toasts: true,
+  tooltips: true,
+  sidebar_sticky: false,
+  tools_bar: true,
+  theme: null,
+  chart_mode: null,
+  chart_field: null,
+  chart_vol: null,
+  autofetch: false,
+  link: null,
+  cycles_api_key: null,
+  chart_timezone: "UTC",
+  ai_preferred_model: null,
+  ai_model_list: [],
+  watchlist: [],
+  bars_count: 200,
+  exp_timefmt: "unix",
+};
+function read(key) {
+  const v = localStorage.getItem(key);
+  if (v === null || v === "null") return DEFAULTS[key] ?? null;
+  if (v === "true") return true;
+  if (v === "false") return false;
+  if (v[0] === "{" || v[0] === "[") {
+    try {
+      return JSON.parse(v);
+    } catch {}
+  }
   return v;
 }
-function write(key,val){
-  if(val===null||val===undefined) localStorage.removeItem(key);
-  else if(typeof val==='object') localStorage.setItem(key,JSON.stringify(val));
-  else localStorage.setItem(key,String(val));
+function write(key, val) {
+  if (val === null || val === undefined) localStorage.removeItem(key);
+  else if (typeof val === "object")
+    localStorage.setItem(key, JSON.stringify(val));
+  else localStorage.setItem(key, String(val));
 }
-export const storage={
-  getToasts:()=>read('toasts'),
-  setToasts:v=>write('toasts',v),
-  getTooltips:()=>read('tooltips'),
-  setTooltips:v=>write('tooltips',v),
-  getSidebarSticky:()=>read('sidebar_sticky'),
-  setSidebarSticky:v=>write('sidebar_sticky',v),
-  getTools:()=>read('tools_bar'),
-  setTools:v=>write('tools_bar',v),
-  getAutofetch:()=>read('autofetch'),
-  setAutofetch:v=>write('autofetch',v),
-  getTheme:()=>read('theme'),
-  setTheme:v=>write('theme',v),
-  getChartMode:()=>read('chart_mode'),
-  setChartMode:v=>write('chart_mode',v),
-  getChartField:()=>read('chart_field'),
-  setChartField:v=>write('chart_field',v),
-  getChartVol:()=>read('chart_vol'),
-  setChartVol:v=>write('chart_vol',v),
-  getLink:()=>read('link'),
-  setLink:v=>write('link',v),
-  getApiKey:()=>read('cycles_api_key'),
-  setApiKey:v=>write('cycles_api_key',v),
-  getChartTz:()=>read('chart_timezone'),
-  setChartTz:v=>write('chart_timezone',v),
-  getPreferredModel:()=>read('ai_preferred_model'),
-  setPreferredModel:v=>write('ai_preferred_model',v),
-  getModelList:()=>read('ai_model_list'),
-  setModelList:v=>write('ai_model_list',v),
-  clearModelList:()=>write('ai_model_list',null),
-  getWatchlist:()=>read('watchlist'),
-  setWatchlist:v=>write('watchlist',v),
+export const storage = {
+  getToasts: () => read("toasts"),
+  setToasts: (v) => write("toasts", v),
+  getTooltips: () => read("tooltips"),
+  setTooltips: (v) => write("tooltips", v),
+  getSidebarSticky: () => read("sidebar_sticky"),
+  setSidebarSticky: (v) => write("sidebar_sticky", v),
+  getTools: () => read("tools_bar"),
+  setTools: (v) => write("tools_bar", v),
+  getAutofetch: () => read("autofetch"),
+  setAutofetch: (v) => write("autofetch", v),
+  getTheme: () => read("theme"),
+  setTheme: (v) => write("theme", v),
+  getChartMode: () => read("chart_mode"),
+  setChartMode: (v) => write("chart_mode", v),
+  getChartField: () => read("chart_field"),
+  setChartField: (v) => write("chart_field", v),
+  getChartVol: () => read("chart_vol"),
+  setChartVol: (v) => write("chart_vol", v),
+  getLink: () => read("link"),
+  setLink: (v) => write("link", v),
+  getApiKey: () => read("cycles_api_key"),
+  setApiKey: (v) => write("cycles_api_key", v),
+  getChartTz: () => read("chart_timezone"),
+  setChartTz: (v) => write("chart_timezone", v),
+  getPreferredModel: () => read("ai_preferred_model"),
+  setPreferredModel: (v) => write("ai_preferred_model", v),
+  getModelList: () => read("ai_model_list"),
+  setModelList: (v) => write("ai_model_list", v),
+  clearModelList: () => write("ai_model_list", null),
+  getWatchlist: () => read("watchlist"),
+  setWatchlist: (v) => write("watchlist", v),
+  getBarsCount: () => read("bars_count"),
+  setBarsCount: (v) => write("bars_count", v),
+  getExpTimefmt: () => read("exp_timefmt"),
+  setExpTimefmt: (v) => write("exp_timefmt", v),
 };

@@ -679,6 +679,11 @@ td[colspan="3"] > div[style*="z-index: 50"] {background-color: var(--bg6) !impor
 .wl-row--active{background: var(--accent-hl);border-left-color: var(--accent);}
 .wl-sym{font-family: var(--fnt);font-size: 13px;color: var(--text);font-weight: 600;}
 .wl-row--active .wl-sym{color: var(--accent);}
+.wl-row{cursor:grab;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-y;}
+.wl-row--dragging{cursor:grabbing;background:var(--accent-hl);border-left-color:var(--accent);}
+.wl-row--dragging .wl-sym{color:var(--accent);}
+.wl-row--dragging .wl-int{background:var(--accent-hl);color:var(--accent);}
+.wl-drop-indicator{height:2px;margin:-1px 0;background:var(--accent);border-radius:1px;box-shadow:0 0 6px var(--accent-hl);pointer-events:none;}
 .wl-int{font-family: var(--fnt);font-size: 11px;color: var(--text2);background: var(--bg5);padding: 2px 6px;border-radius: var(--radius);}
 .wl-rm{padding: 10px 12px;background: none;border: none;color: var(--text3);font-size: 11px;cursor: pointer;transition: color 0.12s;line-height: 1;}
 .wl-rm:hover{color: var(--red);}
@@ -833,7 +838,7 @@ td[colspan="3"] > div[style*="z-index: 50"] {background-color: var(--bg6) !impor
 .ins-expand-btn:hover{color:var(--text)}
 
 .corr-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden}
-.corr-top{display:flex;align-items:center;gap:10px;padding:0 12px 8px}
+.corr-top{display:flex;align-items:center;gap:10px;padding:2px 12px}
 .corr-top .ctrl-row{flex:1}
 .corr-run-btn{flex-shrink:0}
 .corr-empty{padding:16px 12px;font-size:16px;color:var(--red);text-align:center}

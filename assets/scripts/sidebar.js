@@ -33,6 +33,7 @@ export class Sidebar {
     this._restoreChartPrefs();
     this._exporter=new Exporter(chart);
     this._exporter.timezone=this._chartTz;
+    this._exporter.timeFmt=storage.getExpTimefmt();
     this.chart._chartOn('barsChanged',({count})=>this._updateBarCount(count));
     this.chart._chartOn('load',({int})=>{
       if(this._datasetMode){this._datasetMode=false;this._renderSidebar();}
@@ -230,7 +231,7 @@ export class Sidebar {
     wrap.innerHTML=`
       <div class="ctrl-row">
         <label for="bars-count">Bars</label>
-        <input type="number" id="bars-count" value="200" min="1" max="2000">
+        <input type="number" id="bars-count" value="${storage.getBarsCount()}" min="1" max="2000">
       </div>
       <div class="data-action-grid">
         <span class="data-grid-hdr">Start</span>
@@ -260,12 +261,14 @@ export class Sidebar {
       <div class="ctrl-row data-row">
         <span class="data-label">Import</span>
       </div>`;
+    wrap.querySelector('#exp-timefmt').value=storage.getExpTimefmt();
     const getBars=()=>+wrap.querySelector('#bars-count').value||200;
+    wrap.querySelector('#bars-count').onchange=e=>storage.setBarsCount(+e.target.value||200);
     wrap.querySelector('#btn-extend-before').onclick=()=>this.chart._extendBefore(getBars());
     wrap.querySelector('#btn-extend-after').onclick=()=>this.chart._extendAfter(getBars());
     wrap.querySelector('#btn-trim-before').onclick=()=>this.chart._trimBefore(getBars());
     wrap.querySelector('#btn-trim-after').onclick=()=>this.chart._trimAfter(getBars());
-    wrap.querySelector('#exp-timefmt').onchange=e=>{this._exporter.timeFmt=e.target.value};
+    wrap.querySelector('#exp-timefmt').onchange=e=>{this._exporter.timeFmt=e.target.value;storage.setExpTimefmt(e.target.value)};
     wrap.querySelector('#exp-csv').onclick=()=>this._exporter._exportCSV();
     wrap.querySelector('#exp-json').onclick=()=>this._exporter._exportJSON();
     wrap.querySelector('#exp-txt').onclick=()=>this._exporter._exportTXT();
