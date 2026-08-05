@@ -1,22 +1,6 @@
 import { storage } from './storage.js';
 import { attachSpinner } from './spinner.js';
 import { settingsIcon } from './svg.js';
-const CC_STEP_KEY = 'cc_bar_step';
-const CC_AI_KEY = 'cc_ai_enabled';
-const DEFAULT_STEP = 200;
-function getStep() {
-  const n = parseInt(localStorage.getItem(CC_STEP_KEY), 10);
-  return Number.isFinite(n) && n > 0 ? n : DEFAULT_STEP;
-}
-function saveStep(n) {
-  localStorage.setItem(CC_STEP_KEY, String(n));
-}
-function getAI() {
-  return localStorage.getItem(CC_AI_KEY) === '1';
-}
-function saveAI(v) {
-  localStorage.setItem(CC_AI_KEY, v ? '1' : '0');
-}
 function scoreClass(score) {
   if (score >= 25)  return 'cc-score-bull';
   if (score <= -25) return 'cc-score-bear';
@@ -65,7 +49,7 @@ export class CycleConsensus {
     offsetRow.innerHTML = `
       <label class="cc-settings-label" for="cc-bar-offset">Bar Offset</label>
       <div class="cc-settings-control">
-        <input class="cc-settings-input" id="cc-bar-offset" name="barOffset" type="number" min="10" step="10" value="${getStep()}">
+        <input class="cc-settings-input" id="cc-bar-offset" name="barOffset" type="number" min="10" step="10" value="${storage.getBarsCount()}">
         <button class="cc-settings-apply">Apply</button>
       </div>
     `;
@@ -77,12 +61,12 @@ export class CycleConsensus {
     aiRow.innerHTML = `
       <label class="cc-settings-label" for="cc-ai-toggle">AI Analysis</label>
       <label class="cc-toggle">
-        <input type="checkbox" id="cc-ai-toggle"${getAI() ? ' checked' : ''}>
+        <input type="checkbox" id="cc-ai-toggle"${storage.getAiEnabled() ? ' checked' : ''}>
         <span class="cc-toggle-track"></span>
       </label>
     `;
     this._aiToggle = aiRow.querySelector('#cc-ai-toggle');
-    this._aiToggle.addEventListener('change', () => { saveAI(this._aiToggle.checked); this._load(); });
+    this._aiToggle.addEventListener('change', () => { storage.setAiEnabled(this._aiToggle.checked); this._load(); });
     this._settingsPanel.appendChild(offsetRow);
     this._settingsPanel.appendChild(aiRow);
     this.el.appendChild(this._settingsPanel);
@@ -100,8 +84,8 @@ export class CycleConsensus {
     this._settingsPanel.hidden = !this._settingsOpen;
     this._settingsBtn.classList.toggle('active', this._settingsOpen);
     if (this._settingsOpen) {
-      this._stepInput.value = getStep();
-      this._aiToggle.checked = getAI();
+      this._stepInput.value = storage.getBarsCount();
+      this._aiToggle.checked = storage.getAiEnabled();
       this._stepInput.focus();
       this._stepInput.select();
     }
@@ -109,7 +93,7 @@ export class CycleConsensus {
   _applySettings() {
     const val = parseInt(this._stepInput.value, 10);
     if (Number.isFinite(val) && val > 0) {
-      saveStep(val);
+      storage.setBarsCount(val);
       this._toggleSettings();
       this._load();
     }
@@ -131,13 +115,13 @@ export class CycleConsensus {
       return;
     }
     const allPoints = extractDatapoints(data);
-    const step      = getStep();
+    const step      = storage.getBarsCount();
     const baseBars  = allPoints.length;
     const counts    = [Math.max(100, baseBars - step), baseBars, baseBars + step];
     try {
       const results = await Promise.all(counts.map(n => this._fetchConsensus(apiKey, allPoints, n)));
       if (this._destroyed) return;
-      if (getAI()) {
+      if (storage.getAiEnabled()) {
         await this._loadAI(results, counts, sym);
       } else {
         this.spinner.hide();

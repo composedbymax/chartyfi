@@ -1,4 +1,6 @@
 export const initAPI = 'api/_link.php';
+export const authAPI = '/_assets/auth/check.js.php';
+export const dataEditorHelp = '././api/data/editorHelp.json';
 export async function initApiLink() {
   try {
     const res = await fetch(initAPI);

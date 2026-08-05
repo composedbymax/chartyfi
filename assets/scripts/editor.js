@@ -7,11 +7,11 @@ import {openFullscreen} from './editorFullscreen.js';
 import {attachSpinner} from './spinner.js';
 import {PaneManager} from './paneManager.js';
 import {createParamBtn} from './editorParam.js';
+import {dataEditorHelp} from './api.js';
 const DB_NAME='indicator-snippets';
 const DB_VER=1;
 const STORE='snippets';
 const HELP_CACHE_KEY='editor-help-content';
-const HELP_JSON_URL='././api/data/editorHelp.json';
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 function openDB(){
   return new Promise((res,rej)=>{
@@ -66,7 +66,7 @@ async function deleteSnippet(id){
 async function fetchHelpContent(){
   const cached=sessionStorage.getItem(HELP_CACHE_KEY);
   if(cached) return cached;
-  const res=await fetch(HELP_JSON_URL);
+  const res=await fetch(dataEditorHelp);
   if(!res.ok) throw new Error(`Failed to load help (${res.status})`);
   const json=await res.json();
   const html=String(json.html??'');

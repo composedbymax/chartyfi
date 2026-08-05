@@ -54,7 +54,7 @@ export class Settings {
     const userDiv=this._el('div');
     userDiv.innerHTML=window.userLoggedIn
       ?`<div class="user-info"><span class="name">${window.userName||'User'}</span><span class="role-badge">${window.userRole||'basic'}</span></div>`
-      :`<div class="setting-row"><a class="sign-in-link" href="/auth?redirect=/chartyfi/">Sign in</a> to enable auto-updates & streams</div>`;
+      :`<div class="setting-row"><a class="sign-in-link" href="/auth?redirect=/chartyfi/">Sign in</a>to enable advanced features</div>`;
     wrap.append(userDiv,this._el('div','sb-divider'));
     if (!window.userLoggedIn) {userDiv.querySelector('.sign-in-link')?.addEventListener('click', () => setGuardBypass(true));}
     this._renderToggleSection(wrap);

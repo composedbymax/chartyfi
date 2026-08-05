@@ -22,8 +22,9 @@ function curlGet($url){
     return $res;
 }
 function clean($str){return trim($str??'');}
-$symbol=clean($_GET['symbol']??'');
-$offset=(int)($_GET['offset']??0);
+$body=json_decode(file_get_contents('php://input'), true) ?? [];
+$symbol=clean($body['symbol']??'');
+$offset=(int)($body['offset']??0);
 $limit=10;
 if($symbol===''){echo json_encode([]);exit;}
 $bare=preg_replace('/^[^:]+:/','',$symbol);

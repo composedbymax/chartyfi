@@ -14,6 +14,8 @@ import {initGuard} from './appGuard.js';
 import {initModels} from './models.js';
 import {initPolling} from './autoPoll.js';
 import {initApiLink} from './api.js';
+import {initAuthPoll} from './authPoll.js';
+initAuthPoll();
 initGuard();
 const _t = storage.getTheme();
 if (_t) document.documentElement.setAttribute('data-theme', _t);

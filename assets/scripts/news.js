@@ -35,8 +35,8 @@ export class News {
     if(!sym) return null;
     try {
       const r=await fetch(
-        `${this._apiBase()}?symbol=${encodeURIComponent(sym)}&offset=${offset}`,
-        { signal:this._controller.signal }
+        this._apiBase(),
+        {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({symbol:sym,offset}), signal:this._controller.signal}
       );
       return await r.json();
     }catch(e){
