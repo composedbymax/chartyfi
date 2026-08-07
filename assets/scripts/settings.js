@@ -103,7 +103,7 @@ export class Settings {
               <label for="mp-field" class="sr-only">Field</label>
               <select id="mp-field">${['close','open','high','low'].map(f=>`<option value="${f}">${f}</option>`).join('')}</select>
             </div>
-            <button class="btn-primary btn-mt" id="mp-btn">Post Current Chart Data</button>
+            <button type="button" class="btn-primary btn-mt" id="mp-btn">Post Current Chart Data</button>
           </div>
         </div>
       </form>

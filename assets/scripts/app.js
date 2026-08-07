@@ -15,6 +15,8 @@ import {initModels} from './models.js';
 import {initPolling} from './autoPoll.js';
 import {initApiLink} from './api.js';
 import {initAuthPoll} from './authPoll.js';
+import {acceptTerms} from './appTerms.js';
+acceptTerms();
 initAuthPoll();
 initGuard();
 const _t = storage.getTheme();

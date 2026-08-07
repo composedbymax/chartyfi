@@ -1,4 +1,7 @@
 const DEFAULTS = {
+  accept_terms: false,
+  terms_visited: false,
+  privacy_visited: false,
   toasts: true,
   tooltips: true,
   sidebar_sticky: false,
@@ -37,6 +40,12 @@ function write(key, val) {
   else localStorage.setItem(key, String(val));
 }
 export const storage = {
+  getAcceptTerms: () => read("accept_terms"),
+  setAcceptTerms: (v) => write("accept_terms", v),
+  getTermsVisited: () => read("terms_visited"),
+  setTermsVisited: (v) => write("terms_visited", v),
+  getPrivacyVisited: () => read("privacy_visited"),
+  setPrivacyVisited: (v) => write("privacy_visited", v),
   getToasts: () => read("toasts"),
   setToasts: (v) => write("toasts", v),
   getTooltips: () => read("tooltips"),

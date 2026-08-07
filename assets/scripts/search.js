@@ -36,9 +36,9 @@ export class Search{
     this.res.innerHTML='<div class="search-item">Searching…</div>';
     this.res.classList.add('open');
     const d=await this.api._searchAPI(q);
-    if(d.error) return this._showMessage('Search failed','var(--red)');
+    if(d.error) return this._showMessage('Search failed','msg-error');
     const items=(d.results||[]).slice(0,10);
-    if(!items.length) return this._showMessage('No results','var(--text3)');
+    if(!items.length) return this._showMessage('No results','msg-empty');
     this.res.innerHTML=items.map(r=>`
       <div class="search-item" data-sym="${r.symbol}" data-name="${r.longname||r.shortname||r.symbol}" data-type="${r.typeDisp||r.quoteType||''}">
         <span class="si-sym">${r.symbol}</span>
@@ -50,8 +50,8 @@ export class Search{
       el.addEventListener('mouseenter',()=>this._setFocus(i));
     });
   }
-  _showMessage(msg,color){
-    this.res.innerHTML=`<div class="search-item" style="color:${color}">${msg}</div>`;
+  _showMessage(msg, cls){
+    this.res.innerHTML = `<div class="search-item ${cls}">${msg}</div>`;
   }
   _setFocus(idx,items=[...this.res.querySelectorAll('.search-item')]){
     if(!items.length) return;
