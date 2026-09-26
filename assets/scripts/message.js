@@ -28,6 +28,7 @@ export function toast(msg, type='info', ms=3200, persistent=false) {
 }
 export function confirm(msg) {
   return new Promise(resolve=>{
+    const prevFocus=document.activeElement;
     const ov=document.createElement('div');
     ov.id='dialog-overlay';
     ov.dataset.sidebarPersist = '';
@@ -38,9 +39,23 @@ export function confirm(msg) {
         <button class="btn-confirm">Confirm</button>
       </div>
     </div>`;
-    ov.querySelector('.btn-cancel').onclick=()=>{ov.remove();resolve(false)};
-    ov.querySelector('.btn-confirm').onclick=()=>{ov.remove();resolve(true)};
+    const cancelBtn=ov.querySelector('.btn-cancel');
+    const confirmBtn=ov.querySelector('.btn-confirm');
+    const close=result=>{
+      ov.removeEventListener('keydown',onKeydown);
+      ov.remove();
+      if(prevFocus && prevFocus.focus) prevFocus.focus();
+      resolve(result);
+    };
+    const onKeydown=e=>{
+      if(e.key==='Enter'){e.preventDefault();close(true)}
+      else if(e.key==='Escape'){e.preventDefault();close(false)}
+    };
+    cancelBtn.onclick=()=>close(false);
+    confirmBtn.onclick=()=>close(true);
+    ov.addEventListener('keydown',onKeydown);
     document.body.appendChild(ov);
+    cancelBtn.focus();
   });
 }
 export function deny(msg) {toast(msg,'error');}
