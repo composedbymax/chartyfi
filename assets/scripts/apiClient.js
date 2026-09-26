@@ -27,7 +27,7 @@ export class ApiClient{
   async _chartData(sym,int,p1,p2,limit,initial=false){
     const opts=typeof p1==='object'&&p1!==null?{...p1}:{p1,p2,limit,initial}
     if(opts.initial==null)opts.initial=initial
-    const cached=await getCachedChart(sym,int,opts)
+    const cached = opts.noCache ? null : await getCachedChart(sym,int,opts)
     if(cached){
       if(opts.initial)this._backfillToNow(sym,int).catch(()=>{})
       return cached

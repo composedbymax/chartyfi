@@ -33,7 +33,7 @@ export class Correlation {
     const anchor = Math.floor(Date.now() / 1000);
     const fetchBars = Math.ceil((bars + SPARK_POINTS - 1) * CALENDAR_BUFFER);
     const series = await Promise.all(list.map(async e => {
-      const res = await this.api._chartData(e.sym, '1d', { bars: fetchBars, direction: 'before', anchor });
+      const res = await this.api._chartData(e.sym, '1d', { bars: fetchBars, direction: 'before', anchor, noCache: true });
       if (res.error) toast(`${e.sym} 1D: ${res.error}`, 'error');
       const map = new Map();
       (res.candles || []).forEach(c => map.set(Math.floor(c.time / DAY), c.close));
