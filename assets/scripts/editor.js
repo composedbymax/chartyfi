@@ -8,60 +8,29 @@ import {attachSpinner} from './spinner.js';
 import {PaneManager} from './paneManager.js';
 import {createParamBtn} from './editorParam.js';
 import {dataEditorHelp} from './api.js';
-const DB_NAME='indicator-snippets';
-const DB_VER=1;
-const STORE='snippets';
+import {storage} from './storage.js';
 const HELP_CACHE_KEY='editor-help-content';
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-function openDB(){
-  return new Promise((res,rej)=>{
-    const req=indexedDB.open(DB_NAME,DB_VER);
-    req.onupgradeneeded=e=>{
-      const db=e.target.result;
-      if(!db.objectStoreNames.contains(STORE)){
-        const s=db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
-        s.createIndex('name','name',{unique:false});
-      }
-    };
-    req.onsuccess=e=>res(e.target.result);
-    req.onerror=e=>rej(e.target.error);
-  });
+function listSnippets(){
+  return storage.getSnippets()||[];
 }
-async function listSnippets(){
-  const db=await openDB();
-  return new Promise((res,rej)=>{
-    const tx=db.transaction(STORE,'readonly');
-    const req=tx.objectStore(STORE).getAll();
-    req.onsuccess=e=>res(e.target.result||[]);
-    req.onerror=e=>rej(e.target.error);
-  });
+function saveSnippet(name,code){
+  const items=storage.getSnippets()||[];
+  const id=Date.now();
+  items.push({id,name,code,updatedAt:Date.now()});
+  storage.setSnippets(items);
+  return id;
 }
-async function saveSnippet(name,code){
-  const db=await openDB();
-  return new Promise((res,rej)=>{
-    const tx=db.transaction(STORE,'readwrite');
-    const req=tx.objectStore(STORE).add({name,code,updatedAt:Date.now()});
-    req.onsuccess=e=>res(e.target.result);
-    req.onerror=e=>rej(e.target.error);
-  });
+function updateSnippet(id,name,code){
+  const items=storage.getSnippets()||[];
+  const idx=items.findIndex(s=>s.id===id);
+  if(idx===-1) return;
+  items[idx]={id,name,code,updatedAt:Date.now()};
+  storage.setSnippets(items);
 }
-async function updateSnippet(id,name,code){
-  const db=await openDB();
-  return new Promise((res,rej)=>{
-    const tx=db.transaction(STORE,'readwrite');
-    const req=tx.objectStore(STORE).put({id,name,code,updatedAt:Date.now()});
-    req.onsuccess=e=>res(e.target.result);
-    req.onerror=e=>rej(e.target.error);
-  });
-}
-async function deleteSnippet(id){
-  const db=await openDB();
-  return new Promise((res,rej)=>{
-    const tx=db.transaction(STORE,'readwrite');
-    const req=tx.objectStore(STORE).delete(id);
-    req.onsuccess=()=>res();
-    req.onerror=e=>rej(e.target.error);
-  });
+function deleteSnippet(id){
+  const items=storage.getSnippets()||[];
+  storage.setSnippets(items.filter(s=>s.id!==id));
 }
 async function fetchHelpContent(){
   const cached=sessionStorage.getItem(HELP_CACHE_KEY);
@@ -255,6 +224,7 @@ export class Editor{
     this._editingGroupId = g.id;
     this._snippetName = g.name;
     this._code = g.code || '';
+    this._snippetId = null;
     const ta = this.el.querySelector('#ed-code');
     const nameIn = this.el.querySelector('#ed-name');
     if (ta) ta.value = this._code;
@@ -279,10 +249,10 @@ export class Editor{
       if(last){ this._editingGroupId=last.id; this._renderIndicatorList(); }
     });
   }
-  async _populateSnippets(){
+  _populateSnippets(){
     const sel=this.el.querySelector('#ed-snippets');
     if(!sel) return;
-    const items=await listSnippets().catch(()=>[]);
+    const items=listSnippets();
     sel.innerHTML='<option value="">— Load snippet —</option>';
     items.forEach(s=>{
       const o=document.createElement('option');
@@ -315,17 +285,17 @@ export class Editor{
       this.el.querySelector('#ed-snippets').value = '';
       this._renderIndicatorList();
     };
-    this.el.querySelector('#ed-save').onclick = async () => {
+    this.el.querySelector('#ed-save').onclick = () => {
       const name = this._snippetName.trim() || 'Untitled';
       try {
         if (this._snippetId) {
-          await updateSnippet(this._snippetId, name, this._code);
+          updateSnippet(this._snippetId, name, this._code);
           toast('Snippet updated', 'success');
         } else {
-          this._snippetId = await saveSnippet(name, this._code);
+          this._snippetId = saveSnippet(name, this._code);
           toast('Snippet saved', 'success');
         }
-        await this._populateSnippets();
+        this._populateSnippets();
       } catch (e) {
         deny('Failed to save snippet: ' + e.message);
       }
@@ -335,36 +305,31 @@ export class Editor{
       const ok = await confirm(`Delete "${this._snippetName}"?`);
       if (!ok) return;
       try {
-        await deleteSnippet(this._snippetId);
+        deleteSnippet(this._snippetId);
         this._snippetId = null; this._code = ''; this._snippetName = 'Untitled';
         ta.value = '';
         this.el.querySelector('#ed-name').value = 'Untitled';
-        await this._populateSnippets();
+        this._populateSnippets();
         toast('Snippet deleted', 'info');
       } catch (e) {
         deny('Failed to delete snippet: ' + e.message);
       }
     };
-    this.el.querySelector('#ed-snippets').onchange = async e => {
+    this.el.querySelector('#ed-snippets').onchange = e => {
       const id = parseInt(e.target.value);
       if (!id) return;
       if(this._busyCount>0){deny('Editor is currently executing');e.target.value='';return;}
       try {
-        const db = await openDB();
-        const tx = db.transaction(STORE, 'readonly');
-        const req = tx.objectStore(STORE).get(id);
-        req.onsuccess = ev => {
-          const s = ev.target.result;
-          if (!s) return;
-          this._snippetId = s.id;
-          this._snippetName = s.name;
-          this._code = s.code;
-          ta.value = s.code;
-          this.el.querySelector('#ed-name').value = s.name;
-          toast(`Loaded "${s.name}"`, 'info');
-          this._run().then(()=>{const groups=this._pom.getGroups();const last=groups[groups.length-1];if (last){this._editingGroupId=last.id;this._renderIndicatorList();}});
-        };
-        req.onerror = () => deny('Failed to load snippet');
+        const items=listSnippets();
+        const s=items.find(x=>x.id===id);
+        if (!s) return;
+        this._snippetId = s.id;
+        this._snippetName = s.name;
+        this._code = s.code;
+        ta.value = s.code;
+        this.el.querySelector('#ed-name').value = s.name;
+        toast(`Loaded "${s.name}"`, 'info');
+        this._run().then(()=>{const groups=this._pom.getGroups();const last=groups[groups.length-1];if (last){this._editingGroupId=last.id;this._renderIndicatorList();}});
       } catch (e) {
         deny('Failed to load snippet: ' + e.message);
       }
@@ -600,6 +565,7 @@ export class Editor{
     const plotCloud  = (label, data, opts = {}) => plotFns.push({ type: 'cloud',  label, data, opts });
     const buy        = (time, price) => normTrade('buy',  time, price);
     const sell       = (time, price) => normTrade('sell', time, price);
+    const log        = (message) => toast(String(message).slice(0, 500), 'info');
     const backtest = (opts) => {
       return runBacktest({
         ...opts,
@@ -614,10 +580,10 @@ export class Editor{
     try {
       const fn = new AsyncFunction(
         'bars', 'plot', 'plotHist', 'plotBand', 'plotDot', 'plotArea', 'plotCandle',
-        'plotLabel', 'plotCloud', 'buy', 'sell', 'backtest', 'calcFee',
+        'plotLabel', 'plotCloud', 'buy', 'sell', 'backtest', 'calcFee', 'log',
         this._code
       );
-      await fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, plotCloud, buy, sell, backtest, calcFee);
+      await fn(bars, plot, plotHist, plotBand, plotDot, plotArea, plotCandle, plotLabel, plotCloud, buy, sell, backtest, calcFee, log);
     } catch (err) {
       if (err?.name === 'AbortError') throw err;
       if (!silent) deny('Error: ' + err.message);

@@ -20,6 +20,7 @@ const DEFAULTS = {
   watchlist: [],
   bars_count: 200,
   exp_timefmt: "unix",
+  indicator_snippets: [],
 };
 function read(key) {
   const v = localStorage.getItem(key);
@@ -79,8 +80,10 @@ export const storage = {
   setAiEnabled: (v) => write("ai_enabled", v),
   getWatchlist: () => read("watchlist"),
   setWatchlist: (v) => write("watchlist", v),
-  getBarsCount: () => read("bars_count"),
-  setBarsCount: (v) => write("bars_count", v),
+  getBarsCount: () => Number(read("bars_count")) || 200,
+  setBarsCount: (v) => write("bars_count", Number(v) || 200),
   getExpTimefmt: () => read("exp_timefmt"),
   setExpTimefmt: (v) => write("exp_timefmt", v),
+  getSnippets: () => read("indicator_snippets"),
+  setSnippets: (v) => write("indicator_snippets", v),
 };
