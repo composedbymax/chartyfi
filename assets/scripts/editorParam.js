@@ -11,21 +11,104 @@ function findBacktestSpan(code) {
   if (end === -1) return null;
   return {start: m.index + m[0].length - 1, end};
 }
+function skipWsAndComments(s, i) {
+  const n = s.length;
+  while (i < n) {
+    if (/\s/.test(s[i])) { i++; continue; }
+    if (s[i] === '/' && s[i + 1] === '/') {
+      while (i < n && s[i] !== '\n') i++;
+      continue;
+    }
+    if (s[i] === '/' && s[i + 1] === '*') {
+      i += 2;
+      while (i < n && !(s[i] === '*' && s[i + 1] === '/')) i++;
+      i += 2;
+      continue;
+    }
+    break;
+  }
+  return i;
+}
+function splitParamsBody(inner) {
+  const n = inner.length;
+  const entries = [];
+  let i = skipWsAndComments(inner, 0);
+  const preamble = inner.slice(0, i);
+  while (i < n) {
+    const keyM = /^(\w+)\s*:\s*/.exec(inner.slice(i));
+    if (!keyM) break;
+    const key = keyM[1];
+    const vStart = i + keyM[0].length;
+    let j = vStart, depth = 0, inStr = false, strChar = '';
+    for (; j < n; j++) {
+      const c = inner[j];
+      if (inStr) {
+        if (c === '\\') { j++; continue; }
+        if (c === strChar) inStr = false;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') { inStr = true; strChar = c; continue; }
+      if (c === '{' || c === '[' || c === '(') depth++;
+      else if (c === '}' || c === ']' || c === ')') {
+        if (depth === 0) break;
+        depth--;
+      } else if (c === ',' && depth === 0) break;
+    }
+    entries.push({key, rawValue: inner.slice(vStart, j).trim()});
+    i = j;
+    if (inner[i] === ',') i++;
+    i = skipWsAndComments(inner, i);
+  }
+  return {preamble, entries};
+}
+function parseRangeSpec(rawValue) {
+  const m = /^\{([^}]*)\}$/.exec(rawValue);
+  if (!m) return null;
+  const b = m[1];
+  const minM = b.match(/min\s*:\s*([-\d.]+)/);
+  const maxM = b.match(/max\s*:\s*([-\d.]+)/);
+  const stepM = b.match(/step\s*:\s*([-\d.]+)/);
+  if (!minM || !maxM || !stepM) return null;
+  return {min: parseFloat(minM[1]), max: parseFloat(maxM[1]), step: parseFloat(stepM[1])};
+}
+function parseArraySpec(rawValue) {
+  const m = /^\[([^\]]*)\]$/.exec(rawValue.trim());
+  if (!m) return null;
+  const body = m[1].trim();
+  if (!body) return {values: []};
+  const parts = body.split(',').map(s => s.trim()).filter(s => s.length);
+  const values = [];
+  for (const p of parts) {
+    if (!/^-?\d+(\.\d+)?$/.test(p)) return null;
+    values.push(parseFloat(p));
+  }
+  return {values};
+}
 function parseBacktest(code) {
   const span = findBacktestSpan(code);
   if (!span) return null;
   const obj = code.slice(span.start, span.end + 1);
   const paramsM = obj.match(/params\s*:\s*\{(?:[^{}]|\{[^{}]*\})*\}/);
   const params = {};
+  let paramsPreamble = '';
+  let paramsOrder = [];
   if (paramsM) {
     const inner = paramsM[0].replace(/^params\s*:\s*\{/, '').replace(/\}$/, '');
-    for (const m of inner.matchAll(/(\w+)\s*:\s*\{([^}]*)\}/g)) {
-      const b = m[2];
-      params[m[1]] = {
-        min: parseFloat(b.match(/min\s*:\s*([-\d.]+)/)?.[1] ?? 'NaN'),
-        max: parseFloat(b.match(/max\s*:\s*([-\d.]+)/)?.[1] ?? 'NaN'),
-        step: parseFloat(b.match(/step\s*:\s*([-\d.]+)/)?.[1] ?? 'NaN'),
-      };
+    const {preamble, entries} = splitParamsBody(inner);
+    paramsPreamble = preamble;
+    for (const {key, rawValue} of entries) {
+      paramsOrder.push(key);
+      const range = parseRangeSpec(rawValue);
+      if (range) {
+        params[key] = {editable: true, ...range};
+        continue;
+      }
+      const arr = parseArraySpec(rawValue);
+      if (arr) {
+        params[key] = {editable: false, isArray: true, values: arr.values, raw: rawValue};
+        continue;
+      }
+      params[key] = {editable: false, raw: rawValue};
     }
   }
   const feesM = obj.match(/fees\s*:\s*\{[^{}]*\}/);
@@ -42,11 +125,19 @@ function parseBacktest(code) {
     if (mx !== undefined) fees.max = parseFloat(mx);
   }
   const workers = parseInt(obj.match(/workers\s*:\s*(\d+)/)?.[1] ?? '4');
-  return {params, fees, workers, span};
+  return {params, paramsPreamble, paramsOrder, fees, workers, span};
 }
-function buildParamsStr(params) {
-  const lines = Object.entries(params).map(([k, v]) => `    ${k}:{min:${v.min},max:${v.max},step:${v.step}}`);
-  return `params:{\n${lines.join(',\n')}\n  }`;
+function buildParamsStr(params, paramsPreamble, paramsOrder) {
+  const keys = paramsOrder && paramsOrder.length ? paramsOrder : Object.keys(params);
+  const lines = keys.map(k => {
+    const v = params[k];
+    if (!v) return null;
+    if (v.editable) return `    ${k}:{min:${v.min},max:${v.max},step:${v.step}}`;
+    if (v.isArray) return `    ${k}:[${v.values.join(',')}]`;
+    return `    ${k}:${v.raw}`;
+  }).filter(Boolean);
+  const pre = paramsPreamble && paramsPreamble.trim() ? paramsPreamble.replace(/\n?\s*$/, '\n') : '\n';
+  return `params:{${pre}${lines.join(',\n')}\n  }`;
 }
 function buildFeesStr(fees) {
   let s = `fees:{\n    type:'${fees.type}',\n    value:${fees.value}`;
@@ -55,9 +146,9 @@ function buildFeesStr(fees) {
   return s + '\n  }';
 }
 function applyChanges(code, parsed, newParams, newFees, newWorkers) {
-  const {span} = parsed;
+  const {span, paramsPreamble, paramsOrder} = parsed;
   let obj = code.slice(span.start, span.end + 1);
-  obj = obj.replace(/params\s*:\s*\{(?:[^{}]|\{[^{}]*\})*\}/, buildParamsStr(newParams));
+  obj = obj.replace(/params\s*:\s*\{(?:[^{}]|\{[^{}]*\})*\}/, buildParamsStr(newParams, paramsPreamble, paramsOrder));
   const hasFeesRx = /fees\s*:\s*\{[^{}]*\}/;
   if (newFees) {
     if (hasFeesRx.test(obj)) {
@@ -313,6 +404,30 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
     paramsLbl.className = 'ep-sec-label';
     paramsLbl.textContent = 'Params';
     paramsSec.appendChild(paramsLbl);
+    const arrayInputs = {};
+    const arrayEntries = Object.entries(params).filter(([, val]) => val.isArray);
+    if (arrayEntries.length) {
+      const arraysWrap = document.createElement('div');
+      arraysWrap.className = 'ep-arrays';
+      for (const [name, val] of arrayEntries) {
+        const field = document.createElement('label');
+        field.className = 'ep-array-field';
+        const lbl = document.createElement('span');
+        lbl.className = 'ep-param-name';
+        lbl.textContent = name;
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'ep-input ep-array-input';
+        inp.value = val.values.join(', ');
+        inp.id = `bt-${name}-array`;
+        inp.name = `bt_${name}_array`;
+        inp.placeholder = 'comma-separated values';
+        arrayInputs[name] = inp;
+        field.append(lbl, inp);
+        arraysWrap.appendChild(field);
+      }
+      paramsSec.appendChild(arraysWrap);
+    }
     const table = document.createElement('div');
     table.className = 'ep-table';
     const hdr = document.createElement('div');
@@ -321,6 +436,7 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
     table.appendChild(hdr);
     const paramInputs = {};
     for (const [name, val] of Object.entries(params)) {
+      if (!val.editable) continue;
       const row = document.createElement('div');
       row.className = 'ep-row';
       const nameLbl = document.createElement('span');
@@ -346,8 +462,17 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
     body.appendChild(paramsSec);
     getNewParams = () => {
       const r = {};
-      for (const [name, inputs] of Object.entries(paramInputs)) {
+      for (const [name, val] of Object.entries(params)) {
+        if (val.isArray) {
+          const raw = arrayInputs[name].value;
+          const values = raw.split(',').map(s => s.trim()).filter(s => s.length).map(s => parseFloat(s)).filter(n => !isNaN(n));
+          r[name] = {editable: false, isArray: true, values, raw: val.raw};
+          continue;
+        }
+        if (!val.editable) { r[name] = val; continue; }
+        const inputs = paramInputs[name];
         r[name] = {
+          editable: true,
           min: parseFloat(inputs.min.value),
           max: parseFloat(inputs.max.value),
           step: parseFloat(inputs.step.value),
@@ -429,7 +554,7 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
     const workersField = document.createElement('label');
     workersField.className = 'ep-field';
     const workersSpan = document.createElement('span');
-    workersSpan.textContent = 'Workers (1–8)';
+    workersSpan.textContent = 'Workers (1-8)';
     workersInp = document.createElement('input');
     workersInp.type = 'number';
     workersInp.className = 'ep-input';
