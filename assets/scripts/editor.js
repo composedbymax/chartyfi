@@ -147,16 +147,16 @@ export class Editor{
     this._rendered = true;
     this.el.innerHTML = '';
     const toolbar = document.createElement('div');
-    toolbar.className = 'ed-toolbar';
+    toolbar.className = 'flex-column gap-6 p-4-12-12 flex-shrink-0';
     toolbar.innerHTML = `
-      <div class="ed-top-row">
-        <input class="ed-name-in" id="ed-name" value="${this._snippetName}" placeholder="Snippet name">
+      <div class="flex-center gap-6 min-w-0 no-wrap">
+        <input class="flex-1 h-28 text-12 min-w-0 p-4-6" id="ed-name" value="${this._snippetName}" placeholder="Snippet name">
         <button class="icon-btn ed-help-btn" id="ed-help-toggle" title="Help / Docs">?</button>
         <button class="btn-sm ed-share-btn" id="ed-share">Share</button>
         <button class="btn-sm ed-explore-btn" id="ed-explore">Explore</button>
       </div>
-      <div class="ed-bottom-row">
-        <select id="ed-snippets" class="ed-select"><option value="">— Load snippet —</option></select>
+      <div class="flex-center gap-6 min-w-0 no-wrap">
+        <select id="ed-snippets" class="flex-1 h-28 text-12 min-w-0"><option value="">— Load snippet —</option></select>
         <button class="btn-sm" id="ed-new">New</button>
         <button class="btn-sm" id="ed-save">Save</button>
         <button class="btn-sm danger" id="ed-delete">Del</button>
@@ -174,9 +174,9 @@ export class Editor{
     const codeArea = document.createElement('div');
     codeArea.className = 'ed-code-area';
     const taWrap = document.createElement('div');
-    taWrap.className = 'ed-code-wrap';
+    taWrap.className = 'relative min-h-0 flex-1 flex-column';
     const ta = document.createElement('textarea');
-    ta.className = 'ed-textarea';
+    ta.className = 'flex-1 w-full resize-0 focus-border bg-2 rounded text-primary mono text-12 lh-16 p-24-10-10 tab-2 min-h-0 prewrap-breakall outline-0 overflow-y-auto overflow-x-hidden';
     ta.id = 'ed-code';
     ta.spellcheck = false;
     ta.value = this._code;
@@ -190,9 +190,9 @@ export class Editor{
     codeArea.appendChild(taWrap);
     this.el.appendChild(codeArea);
     const runRow = document.createElement('div');
-    runRow.className = 'ed-run-row';
+    runRow.className = 'flex-center gap-6 p-8-12 flex-shrink-0';
     runRow.innerHTML = `
-      <button class="btn-primary ed-run-btn" id="ed-run">&#x25B6;&#xFE0E Run</button>
+      <button class="btn-primary flex-1 fw-600" id="ed-run">&#x25B6;&#xFE0E Run</button>
       <button class="btn-sm" id="ed-update">↺ Update</button>
       <button class="btn-sm" id="ed-clear">Clear All</button>`;
     tooltip(runRow.querySelector('#ed-run'), 'Run indicator');
@@ -365,9 +365,8 @@ export class Editor{
     el.classList.add('has-items');
     el.innerHTML='';
     const hdr=document.createElement('div');
-    hdr.className='ed-indlist-hdr';
+    hdr.className='mb-8 p-4-12-2 text-10 fw-600 tracking-wider uppercase text-muted';
     const caret=document.createElement('span');
-    caret.className='ed-indlist-caret';
     caret.setAttribute('aria-label','Toggle indicator list');
     caret.innerHTML=this._indicatorListCollapsed?'&#9654;':'&#9660;';
     const hdrLabel=document.createElement('span');
@@ -394,7 +393,7 @@ export class Editor{
       lbl.textContent=g.name;
       lbl.title=g.name;
       const editBtn=document.createElement('button');
-      editBtn.className='icon-btn ed-indicator-edit';
+      editBtn.className='icon-btn hov-brighten';
       editBtn.title=`Load "${g.name}" into editor`;
       editBtn.appendChild(codeIcon({width:14,height:14}));
       editBtn.onclick = e => {
@@ -402,11 +401,8 @@ export class Editor{
         this._selectGroup(g);
         toast(`Editing "${g.name}"`, 'info');
       };
-      const badge=document.createElement('span');
-      badge.className='ed-ind-badge';
-      badge.textContent=g.series.length;
       const rmBtn=document.createElement('button');
-      rmBtn.className='icon-btn ed-indicator-rm';
+      rmBtn.className='icon-btn';
       rmBtn.innerHTML='&times;';
       rmBtn.title=`Remove "${g.name}"`;
       rmBtn.onclick=e=>{e.stopPropagation();this._removeGroup(g.id)};
@@ -444,7 +440,7 @@ export class Editor{
         }
       );
       paramsBtn.addEventListener('click', () => this._selectGroup(g), true);
-      row.append(swatch,lbl,paramsBtn,editBtn,badge,rmBtn);
+      row.append(swatch,lbl,paramsBtn,editBtn,rmBtn);
       el.appendChild(row);
       rows.push(row);
     });

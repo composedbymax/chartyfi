@@ -31,14 +31,14 @@ export class Settings {
       box.appendChild(s);
     });
     const input=Object.assign(this._el('input'),{type:'checkbox',checked,onchange:()=>onChange(input.checked)});
-    item.append(this._el('span','setting-toggle-name',name),input,box);
+    item.append(this._el('span','text-12 text-secondary flex-1',name),input,box);
     tooltip(item,tip);
     return item;
   }
   _renderToggleSection(container){
     const stored=storage.getTheme();
     const isLight=stored==='light'||(stored===null&&window.matchMedia('(prefers-color-scheme: light)').matches);
-    const grid=this._el('div','setting-toggle-grid');
+    const grid=this._el('div','grid grid-col-1-1 gap-8 p-0-12-12');
     [
       ['Toasts',    storage.getToasts(),          '✓', '✕', 'Show toast notifications',                  v=>storage.setToasts(v)],
       ['Tooltips',  storage.getTooltips(),         '?', '✕', 'Show hover tooltips',                       v=>storage.setTooltips(v)],
@@ -50,60 +50,60 @@ export class Settings {
     container.append(this._el('div','sb-label','Preferences'),grid,this._el('div','sb-divider'));
   }
   _renderSettingsUI(container,chartTz){
-    const wrap=this._el('div','settings-panel');
+    const wrap=this._el('div','flex-column');
     const userDiv=this._el('div');
     userDiv.innerHTML=window.userLoggedIn
-      ?`<div class="user-info"><span class="name">${window.userName||'User'}</span><span class="role-badge">${window.userRole||'basic'}</span></div>`
-      :`<div class="setting-row"><a class="sign-in-link" href="/auth?redirect=/chartyfi/">Sign in</a>to enable advanced features</div>`;
+      ?`<div class="flex-center-space gap-8 p-6-12 text-13"><span class="fw-500">${window.userName||'User'}</span><span class="text-10 bg-4 rounded p-2-7 text-secondary">${window.userRole||'basic'}</span></div>`
+      :`<div class="flex-column gap-8 p-8"><a class="link" href="/auth?redirect=/chartyfi/">Sign in</a>to enable advanced features</div>`;
     wrap.append(userDiv,this._el('div','sb-divider'));
-    if (!window.userLoggedIn) {userDiv.querySelector('.sign-in-link')?.addEventListener('click', () => setGuardBypass(true));}
+    if (!window.userLoggedIn) {userDiv.querySelector('.link')?.addEventListener('click', () => setGuardBypass(true));}
     this._renderToggleSection(wrap);
     const localOpt=this._localTz!=='UTC'
       ?`<option value="${this._localTz}"${chartTz===this._localTz?' selected':''}>${this._localTz}</option>`:'';
     const toggleBtns=(items,active,attr)=>
       items.map(i=>`<button class="toggle-btn${i===active?' active':''}" ${attr}="${i}">${i}</button>`).join('');
-    const box=this._el('div','setting-box');
+    const box=this._el('div','p-0-6 gap-10');
     box.innerHTML=`
-      <div class="setting-row">
-        <label for="chart-tz-select">Chart Timezone</label>
+      <div class="flex-column gap-8 p-8">
+        <label for="chart-tz-select" class="text-11 text-muted fw-600">Chart Timezone</label>
         <select id="chart-tz-select"><option value="UTC"${chartTz==='UTC'?' selected':''}>UTC</option>${localOpt}</select>
       </div>
-      <div class="setting-row">
-        <fieldset class="fieldset-reset">
-          <legend class="setting-row-legend">Chart Mode</legend>
-          <div class="toggle-group">${toggleBtns(['candle','line'],this.chart.mode,'data-mode')}</div>
+      <div class="flex-column gap-8 p-8">
+        <fieldset class="reset">
+          <legend class="text-11 text-muted fw-600">Chart Mode</legend>
+          <div class="flex gap-4">${toggleBtns(['candle','line'],this.chart.mode,'data-mode')}</div>
         </fieldset>
       </div>
-      <div class="setting-row value-field-row${this.chart.mode==='candle'?' hidden':''}">
-        <fieldset class="fieldset-reset">
-          <legend class="setting-row-legend">Value Field</legend>
-          <div class="toggle-group">${toggleBtns(['open','high','low','close'],this.chart.field,'data-field')}</div>
+      <div class="flex-column gap-8 p-8 value-field-row${this.chart.mode==='candle'?' hidden':''}">
+        <fieldset class="reset">
+          <legend class="text-11 text-muted fw-600">Value Field</legend>
+          <div class="flex gap-4">${toggleBtns(['open','high','low','close'],this.chart.field,'data-field')}</div>
         </fieldset>
       </div>
-      <div class="setting-row">
-        <fieldset class="fieldset-reset">
-          <legend class="setting-row-legend">Volume</legend>
-          <div class="toggle-group">${toggleBtns(['off','overlay','pane'],this.chart.volMode,'data-vol')}</div>
+      <div class="flex-column gap-8 p-8">
+        <fieldset class="reset">
+          <legend class="text-11 text-muted fw-600">Volume</legend>
+          <div class="flex gap-4">${toggleBtns(['off','overlay','pane'],this.chart.volMode,'data-vol')}</div>
         </fieldset>
       </div>
-      <div class="setting-row">
-        <label for="ai-model-select">LLM Model</label>
+      <div class="flex-column gap-8 p-8">
+        <label for="ai-model-select" class="text-11 text-muted fw-600">LLM Model</label>
         <select id="ai-model-select">${storage.getModelList().map(m=>`<option value="${m}"${m===storage.getPreferredModel()?' selected':''}>${m}</option>`).join('')}</select>
       </div>
       <form id="manual-post-form" onsubmit="return false;">
-        <div class="setting-row">
-          <label for="api-key-in">Cycles API Key</label>
+        <div class="flex-column gap-8 p-8">
+          <label for="api-key-in" class="text-11 text-muted fw-600">Cycles API Key</label>
           <input type="password" id="api-key-in" placeholder="Paste key to save…" autocomplete="off">
         </div>
-        <div class="setting-row">
-          <label for="mp-sid">Manual Post to Cycles</label>
-          <div class="manual-post-wrap">
-            <div class="row">
-              <input type="text" id="mp-sid" placeholder="Stream ID">
+        <div class="flex-column gap-8 p-8">
+          <label for="mp-sid" class="text-11 text-muted fw-600">Manual Post to Cycles</label>
+          <div class="flex-column gap-5">
+            <div class="flex gap-5">
+              <input type="text" id="mp-sid" class="flex-1" placeholder="Stream ID">
               <label for="mp-field" class="sr-only">Field</label>
-              <select id="mp-field">${['close','open','high','low'].map(f=>`<option value="${f}">${f}</option>`).join('')}</select>
+              <select id="mp-field" class="w-54 flex-shrink-0">${['close','open','high','low'].map(f=>`<option value="${f}">${f}</option>`).join('')}</select>
             </div>
-            <button type="button" class="btn-primary btn-mt" id="mp-btn">Post Current Chart Data</button>
+            <button type="button" class="btn-primary mt-2" id="mp-btn">Post Current Chart Data</button>
           </div>
         </div>
       </form>

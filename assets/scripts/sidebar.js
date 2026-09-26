@@ -124,9 +124,9 @@ export class Sidebar {
     if(this._activeApp) title=this._activeApp.constructor.config?.title||'App';
     const inSub=this.showSettings||this.showEditor||this.showMiniApps||this._activeApp;
     const row=Object.assign(document.createElement('div'),{
-      className:'sb-section sb-top-row',
-      innerHTML:`<span class="sb-menu-title">${title}</span>
-        <div class="sb-top-btns">
+      className:'p-0-12 mb-4 flex-0-auto flex flex-shrink-0 space-btwn items-center p-10-12-16',
+      innerHTML:`<span class="fw-800 text-15 text-accent">${title}</span>
+        <div class="flex-center gap-2">
           ${inSub
             ?`<button class="icon-btn" id="sb-back">←</button>`
             :`<button class="icon-btn" id="sb-miniapps-toggle"></button>
@@ -174,7 +174,7 @@ export class Sidebar {
   }
   _renderEditor(){
     const editorEl=this._editor.el;
-    editorEl.className='ed-container';
+    editorEl.className='flex-column flex-1 overflow-hidden min-h-0 relative';
     this.el.appendChild(editorEl);
     this._editor._render();
   }
@@ -189,13 +189,13 @@ export class Sidebar {
   _renderMiniAppList(){
     const apps=this._miniApps.getApps();
     const wrap=document.createElement('div');
-    wrap.className='ma-list';
+    wrap.className='flex-column gap-6 p-4-12-12';
     apps.forEach(AppClass=>{
       const cfg=AppClass.config||{};
       const card=document.createElement('div');
-      card.className='ma-card';
-      card.innerHTML=`<div class="ma-card-title">${cfg.title||AppClass.name}</div>
-        <div class="ma-card-desc">${cfg.description||''}</div>`;
+      card.className='hov-bg-border p-12 cursor-pointer rounded';
+      card.innerHTML=`<div class="text-13 fw-600 text-primary mb-4">${cfg.title||AppClass.name}</div>
+        <div class="text-11 text-muted leading-loose">${cfg.description||''}</div>`;
       card.onclick=()=>this._miniApps.open(AppClass,this);
       wrap.appendChild(card);
     });
@@ -203,13 +203,12 @@ export class Sidebar {
   }
   _renderApp(){
     if(!this._activeApp) return;
-    this._activeApp.el.className='da-wrap';
     this.el.appendChild(this._activeApp.el);
   }
   _renderTimeframes(){
     const lbl=document.createElement('div');lbl.className='sb-label';lbl.textContent='Timeframe';
     this.el.appendChild(lbl);
-    const grid=document.createElement('div');grid.className='tf-grid';
+    const grid=document.createElement('div');grid.className='grid grid-colr-4-1 gap-4 p-0-12-12';
     grid.innerHTML=INTERVALS.map(i=>`<button class="tf-btn${this.chart._currentInterval===i?' active':''}" data-int="${i}">${i}</button>`).join('');
     grid.querySelectorAll('.tf-btn').forEach(b=>{
       b.onclick = () => {
@@ -227,39 +226,39 @@ export class Sidebar {
   _renderDataControls(){
     const lbl=document.createElement('div');lbl.className='sb-label';lbl.textContent='Data';
     this.el.appendChild(lbl);
-    const wrap=document.createElement('div');wrap.className='data-ctrl';
+    const wrap=document.createElement('div');wrap.className='flex-column gap-6 p-0-12-12';
     wrap.innerHTML=`
-      <div class="ctrl-row">
-        <label for="bars-count">Bars</label>
-        <input type="number" id="bars-count" value="${storage.getBarsCount()}" min="1" max="2000">
+      <div class="flex-center gap-6">
+        <label class="text-13 text-secondary flex-1" for="bars-count">Bars</label>
+        <input class="text-12 p-4-6 h-28 w-72" type="number" id="bars-count" value="${storage.getBarsCount()}" min="1" max="2000">
       </div>
-      <div class="data-action-grid">
-        <span class="data-grid-hdr">Start</span>
-        <span class="data-grid-hdr">End</span>
-        <button id="btn-extend-before">← Extend</button>
-        <button id="btn-extend-after">Extend →</button>
-        <button id="btn-trim-before">Trim →</button>
-        <button id="btn-trim-after">← Trim</button>
+      <div class="grid grid-col-1-1 gap-4 p-4-0-2">
+        <span class="text-11 fw-600 text-muted text-center p-4-0">Start</span>
+        <span class="text-11 fw-600 text-muted text-center p-4-0">End</span>
+        <button class="h-28 text-12 bg-4 hov-text2-border rounded" id="btn-extend-before">← Extend</button>
+        <button class="h-28 text-12 bg-4 hov-text2-border rounded" id="btn-extend-after">Extend →</button>
+        <button class="h-28 text-12 bg-4 hov-text2-border rounded" id="btn-trim-before">Trim →</button>
+        <button class="h-28 text-12 bg-4 hov-text2-border rounded" id="btn-trim-after">← Trim</button>
       </div>
-      <div class="ctrl-row bar-count-row">
+      <div class="flex-center gap-6 justify-center text-11 text-muted pt-2">
         <span id="sb-bar-count">Bars loaded: ${this.chart._getBarCount().toLocaleString()}</span>
       </div>
-      <div class="ctrl-row data-row">
-        <span class="data-label">Export</span>
-        <select id="exp-timefmt" class="export-timefmt-select">
+      <div class="flex-center gap-6 flex-wrap gap-4">
+        <span class="text-11 text-muted fw-600 w-full">Export</span>
+        <select id="exp-timefmt" class="h-28 text-12 flex-1">
           <option value="unix">Unix</option>
           <option value="iso">ISO</option>
           <option value="datetime">Datetime</option>
         </select>
       </div>
-      <div class="ctrl-row data-row">
-        <button class="btn-sm" id="exp-csv">CSV</button>
-        <button class="btn-sm" id="exp-json">JSON</button>
-        <button class="btn-sm" id="exp-txt">TXT</button>
-        <button class="btn-sm" id="exp-table">Table</button>
+      <div class="flex-center gap-6 flex-wrap gap-4">
+        <button class="btn-sm h-28" id="exp-csv">CSV</button>
+        <button class="btn-sm h-28" id="exp-json">JSON</button>
+        <button class="btn-sm h-28" id="exp-txt">TXT</button>
+        <button class="btn-sm h-28" id="exp-table">Table</button>
       </div>
-      <div class="ctrl-row data-row">
-        <span class="data-label">Import</span>
+      <div class="flex-center gap-6 flex-wrap gap-4">
+        <span class="text-11 text-muted fw-600 w-full">Import</span>
       </div>`;
     wrap.querySelector('#exp-timefmt').value=storage.getExpTimefmt();
     const getBars=()=>+wrap.querySelector('#bars-count').value||200;
@@ -287,7 +286,7 @@ export class Sidebar {
     const lbl=this._collapsible('Saved Assets',true);
     const body=document.createElement('div');body.className='sb-collapsible';
     this.el.appendChild(lbl);this.el.appendChild(body);
-    if(!tracked.length){const e=document.createElement('div');e.className='sb-empty';e.textContent='No tracked assets.';body.appendChild(e);return}
+    if(!tracked.length){const e=document.createElement('div');e.className='p-8-12 text-12 text-muted';e.textContent='No tracked assets';body.appendChild(e);return}
     tracked.forEach(t=>{
       const stream=streams.find(s=>s.symbol===t.symbol&&s.interval===t.interval);
       body.appendChild(this._assetCard(t,stream));
@@ -342,7 +341,7 @@ export class Sidebar {
         toast('Stream removed','success');this._renderSidebar();
       };
     }else{
-      sd.innerHTML=`<button class="btn-sm add-stream-btn btn-full-width">+ Add Stream</button>`;
+      sd.innerHTML=`<button class="btn-sm add-stream-btn w-full">+ Add Stream</button>`;
       sd.querySelector('.add-stream-btn').onclick=()=>this._showAddStreamForm(t,sd,card);
     }
     card.appendChild(sd);
@@ -353,21 +352,21 @@ export class Sidebar {
     const sidId=`${uid}-sid`;
     const fieldId=`${uid}-field`;
     const tzId=`${uid}-tz`;
-    sd.innerHTML=`<div class="add-stream-form">
-      <div class="row">
+    sd.innerHTML=`<div class="flex-column gap-5 w-full">
+     <div class="flex-center gap-6 p-4-0 w-full">
         <label for="${sidId}" class="sr-only">Stream ID</label>
-        <input type="text" id="${sidId}" placeholder="Stream ID">
+        <input type="text" id="${sidId}" class="flex-1 min-w-0" placeholder="Stream ID">
         <label for="${fieldId}" class="sr-only">Field</label>
         <select id="${fieldId}">${['close','open','high','low'].map(f=>`<option value="${f}">${f}</option>`).join('')}</select>
       </div>
-      <div class="row">
+      <div class="flex-center gap-6 p-4-0">
         <label for="${tzId}" class="sr-only">Stream Timezone</label>
         <select id="${tzId}" class="stream-tz-select">
           <option value="UTC">UTC</option>
           ${this._localTz!=='UTC'?`<option value="${this._localTz}">${this._localTz}</option>`:''}
         </select>
       </div>
-      <div class="row row-end">
+      <div class="flex-center gap-6 p-4-0 justify-end">
         <button class="btn-sm" id="asf-cancel">Cancel</button>
         <button class="btn-primary" id="asf-save">Save</button>
       </div>

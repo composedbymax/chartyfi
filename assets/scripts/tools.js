@@ -70,9 +70,9 @@ export class Tools{
     this._groupPopouts={};
     this.inner.innerHTML='';
     const panel=document.createElement('div');
-    panel.className='tools-panel';
+    panel.className='flex-column min-h-0 h-full';
     const list=document.createElement('div');
-    list.className='tools-list';
+    list.className='flex-column gap-6 p-0-6';
     const seen=new Set();
     this.tools.forEach(tool=>{
       if(tool.group){

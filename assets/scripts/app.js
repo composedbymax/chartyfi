@@ -23,14 +23,14 @@ const _t = storage.getTheme();
 if (_t) document.documentElement.setAttribute('data-theme', _t);
 document.getElementById('app').innerHTML = `
 <header id="hdr">
-  <div class="hdr-l">
+  <div class="flex items-center gap-10 min-w-0">
     <button class="icon-btn" id="sb-toggle" title="Menu">☰</button>
     <div id="asset-label">
       <span id="asset-name"></span>
       <span id="asset-sym"></span>
     </div>
   </div>
-  <div class="hdr-r">
+  <div class="flex items-center gap-10 flex-shrink-0">
     <div id="search-wrap">
       <input id="search-in" type="text" placeholder="Search symbol…" autocomplete="off" spellcheck="false">
       <div id="search-res"></div>
@@ -68,22 +68,24 @@ async function main() {
     label.dataset.name = name || sym;
     tooltip(label, name || sym);
   }
-  chart._chartOn('load', async ({ sym, int, name }) => {
-    if (name) {
+  chart._chartOn('load', async ({ sym, int, name, type }) => {
+    if (name && type) {
       updateHeader(sym, int, name);
       toast(`${name} loaded`, 'success');
       return;
     }
-    updateHeader(sym, int, sym);
+    updateHeader(sym, int, name || sym);
     try {
       const d = await api._searchAPI(sym);
       const match = (d.results || []).find(r => r.symbol === sym);
-      const resolved = match?.longname || match?.shortname || sym;
+      const resolved = name || match?.longname || match?.shortname || sym;
+      const resolvedType = type || match?.typeDisp || match?.quoteType || null;
       chart._currentName = resolved;
+      chart._currentType = resolvedType;
       updateHeader(sym, int, resolved);
       toast(`${resolved} loaded`, 'success');
     } catch {
-      toast(`${sym} loaded`, 'success');
+      toast(`${name || sym} loaded`, 'success');
     }
   });
   chart._chartOn('dataset-loaded',({int}) => {

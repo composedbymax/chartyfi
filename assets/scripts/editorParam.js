@@ -244,31 +244,31 @@ const HAS_WIDTH = new Set(['line','area','dot','hist','band','candle']);
 const HAS_STYLE = new Set(['line','area']);
 function buildPlotRow(def, idx, onChange) {
   const row = document.createElement('div');
-  row.className = 'ep-plot-row';
+  row.className = 'flex-center gap-6 p-4-0 border-t';
   const opts = def.opts || {};
   const vis = document.createElement('input');
   vis.type = 'checkbox';
-  vis.className = 'ep-plot-vis';
+  vis.className = 'flex-shrink-0';
   vis.checked = def.visible !== false;
   vis.id = `ep-plot-${idx}-visible`;
   vis.name = `ep_plot_${idx}_visible`;
   vis.onchange = () => onChange({visible: vis.checked});
   const nameWrap = document.createElement('div');
-  nameWrap.className = 'ep-plot-name-wrap';
+  nameWrap.className = 'flex items-center gap-5 flex-1 min-w-0';
   const lbl = document.createElement('span');
-  lbl.className = 'ep-plot-lbl';
+  lbl.className = 'text-12 text-secondary text-ellipsis';
   lbl.textContent = def.label || `(${def.type})`;
   lbl.title = def.label || '';
   const typeBadge = document.createElement('span');
-  typeBadge.className = 'ep-plot-type-badge';
+  typeBadge.className = 'badge-dim rounded flex-shrink-0 p-0-4';
   typeBadge.textContent = def.type;
   nameWrap.append(lbl, typeBadge);
   const controls = document.createElement('div');
-  controls.className = 'ep-plot-controls';
+  controls.className = 'flex items-center gap-4 flex-shrink-0';
   if (HAS_COLOR.has(def.type) || def.type === 'label') {
     const c = document.createElement('input');
     c.type = 'color';
-    c.className = 'ep-color-in';
+    c.className = 'color-swatch-input';
     c.value = opts.color || '#ffffff';
     c.id = `ep-plot-${idx}-color`;
     c.name = `ep_plot_${idx}_color`;
@@ -278,7 +278,7 @@ function buildPlotRow(def, idx, onChange) {
     for (const key of ['upColor', 'downColor']) {
       const c = document.createElement('input');
       c.type = 'color';
-      c.className = 'ep-color-in';
+      c.className = 'color-swatch-input';
       c.value = opts[key] || (key === 'upColor' ? '#22c55e' : '#ef4444');
       c.dataset.colorKey = key;
       c.id = `ep-plot-${idx}-${key}`;
@@ -294,7 +294,7 @@ function buildPlotRow(def, idx, onChange) {
   if (HAS_WIDTH.has(def.type)) {
     const w = document.createElement('input');
     w.type = 'number';
-    w.className = 'ep-input ep-width-in';
+    w.className = 'field p-0-6 h-28 w-42';
     w.min = 1;
     w.max = 10;
     w.value = opts.lineWidth ?? 1;
@@ -305,7 +305,7 @@ function buildPlotRow(def, idx, onChange) {
   }
   if (HAS_STYLE.has(def.type)) {
     const s = document.createElement('select');
-    s.className = 'ep-select ep-style-sel';
+    s.className = 'h-28 text-11 w-72';
     s.id = `ep-plot-${idx}-line-style`;
     s.name = `ep_plot_${idx}_line_style`;
     for (const [val, name] of LINE_STYLES) {
@@ -320,7 +320,7 @@ function buildPlotRow(def, idx, onChange) {
   }
   if (opts.pane !== undefined) {
     const p = document.createElement('span');
-    p.className = 'ep-plot-pane-badge';
+    p.className = 'badge-dim rounded p-0-4';
     p.textContent = `P${opts.pane}`;
     controls.appendChild(p);
   }
@@ -329,7 +329,7 @@ function buildPlotRow(def, idx, onChange) {
 }
 export function createParamBtn(code, plotDefs, onSave, onPlotChange, onCodeChange) {
   const btn = document.createElement('button');
-  btn.className = 'icon-btn ed-indicator-params';
+  btn.className = 'icon-btn hov-brighten';
   btn.name = 'backtest_params_btn';
   btn.appendChild(paramsIcon({width: 14, height: 14}));
   tooltip(btn, 'Settings');
@@ -341,13 +341,13 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
   const hasBt = !!(parsed && Object.keys(parsed.params).length);
   const overlay = document.createElement('div');
   overlay.dataset.sidebarPersist = '';
-  overlay.className = 'ep-overlay';
+  overlay.className = 'modal-overlay shadow';
   const panel = document.createElement('div');
-  panel.className = 'ep-panel';
+  panel.className = 'modal-panel';
   const head = document.createElement('div');
-  head.className = 'ep-head';
+  head.className = 'flex items-center justify-between p-10-12 border-b flex-shrink-0';
   const title = document.createElement('span');
-  title.className = 'ep-title';
+  title.className = 'text-13 fw-700 text-primary';
   title.textContent = 'Indicator Settings';
   const closeBtn = document.createElement('button');
   closeBtn.className = 'icon-btn';
@@ -368,16 +368,16 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
   };
   head.append(title, closeBtn);
   const body = document.createElement('div');
-  body.className = 'ep-body';
+  body.className = 'flex flex-col overflow-y-auto flex-1';
   let plotsChanged = false;
   const originalPlotDefs = plotDefs
   ? plotDefs.map(d => ({ visible: d.visible, opts: { ...(d.opts || {}) } }))
   : [];
   if (plotDefs && plotDefs.length) {
     const plotsSec = document.createElement('div');
-    plotsSec.className = 'ep-section';
+    plotsSec.className = 'p-10-12 border-b';
     const plotsLbl = document.createElement('div');
-    plotsLbl.className = 'ep-sec-label';
+    plotsLbl.className = 'text-11 fw-700 text-muted uppercase tracking-wider mb-8';
     plotsLbl.textContent = 'Plots';
     plotsSec.appendChild(plotsLbl);
     plotDefs.forEach((def, idx) => {
@@ -399,25 +399,25 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
   if (hasBt) {
     const {params, fees, workers} = parsed;
     const paramsSec = document.createElement('div');
-    paramsSec.className = 'ep-section';
+    paramsSec.className = 'p-10-12 border-b';
     const paramsLbl = document.createElement('div');
-    paramsLbl.className = 'ep-sec-label';
+    paramsLbl.className = 'text-11 fw-700 text-muted uppercase tracking-wider mb-8';
     paramsLbl.textContent = 'Params';
     paramsSec.appendChild(paramsLbl);
     const arrayInputs = {};
     const arrayEntries = Object.entries(params).filter(([, val]) => val.isArray);
     if (arrayEntries.length) {
       const arraysWrap = document.createElement('div');
-      arraysWrap.className = 'ep-arrays';
+      arraysWrap.className = 'flex flex-col gap-8 mb-8';
       for (const [name, val] of arrayEntries) {
         const field = document.createElement('label');
-        field.className = 'ep-array-field';
+        field.className = 'flex flex-col gap-4';
         const lbl = document.createElement('span');
-        lbl.className = 'ep-param-name';
+        lbl.className = 'text-12 text-secondary mono text-ellipsis';
         lbl.textContent = name;
         const inp = document.createElement('input');
         inp.type = 'text';
-        inp.className = 'ep-input ep-array-input';
+        inp.className = 'field p-4-6 h-28 w-full mono';
         inp.value = val.values.join(', ');
         inp.id = `bt-${name}-array`;
         inp.name = `bt_${name}_array`;
@@ -429,25 +429,25 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
       paramsSec.appendChild(arraysWrap);
     }
     const table = document.createElement('div');
-    table.className = 'ep-table';
+    table.className = 'flex flex-col gap-4';
     const hdr = document.createElement('div');
-    hdr.className = 'ep-row ep-row--hdr';
+    hdr.className = 'form-grid-4 form-grid-4-hdr';
     hdr.innerHTML = '<span></span><span>Min</span><span>Max</span><span>Step</span>';
     table.appendChild(hdr);
     const paramInputs = {};
     for (const [name, val] of Object.entries(params)) {
       if (!val.editable) continue;
       const row = document.createElement('div');
-      row.className = 'ep-row';
+      row.className = 'form-grid-4';
       const nameLbl = document.createElement('span');
-      nameLbl.className = 'ep-param-name';
+      nameLbl.className = 'text-12 text-secondary mono text-ellipsis';
       nameLbl.textContent = name;
       row.appendChild(nameLbl);
       const inputs = {};
       for (const field of ['min', 'max', 'step']) {
         const inp = document.createElement('input');
         inp.type = 'number';
-        inp.className = 'ep-input';
+        inp.className = 'field p-4-6 h-28 w-full';
         inp.value = isNaN(val[field]) ? '' : val[field];
         inp.step = 'any';
         inp.id = `bt-${name}-${field}`;
@@ -482,19 +482,18 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
     };
     if (fees) {
       const feesSec = document.createElement('div');
-      feesSec.className = 'ep-section';
+      feesSec.className = 'p-10-12 border-b';
       const feesLbl = document.createElement('div');
-      feesLbl.className = 'ep-sec-label';
+      feesLbl.className = 'text-11 fw-700 text-muted uppercase tracking-wider mb-8';
       feesLbl.textContent = 'Fees';
       feesSec.appendChild(feesLbl);
       const feesGrid = document.createElement('div');
-      feesGrid.className = 'ep-fees-grid';
+      feesGrid.className = 'flex flex-col gap-8';
       const typeField = document.createElement('label');
-      typeField.className = 'ep-field';
+      typeField.className = 'form-field-row';
       const typeSpan = document.createElement('span');
       typeSpan.textContent = 'Type';
       const typeSelect = document.createElement('select');
-      typeSelect.className = 'ep-select';
       typeSelect.id = 'bt-fees-type';
       typeSelect.name = 'bt_fees_type';
       const isNoFees = fees.type === 'fixed' && fees.value === 0;
@@ -511,12 +510,12 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
       const feesRows = {};
       for (const [key, lbl, ph] of [['value','Value ($)','0.1'],['min','Min ($)','optional'],['max','Max ($)','optional']]) {
         const wrap = document.createElement('label');
-        wrap.className = 'ep-field';
+        wrap.className = 'form-field-row';
         const s = document.createElement('span');
         s.textContent = lbl;
         const inp = document.createElement('input');
         inp.type = 'number';
-        inp.className = 'ep-input';
+        inp.className = 'field p-4-6 h-28';
         inp.step = 'any';
         inp.placeholder = ph;
         inp.id = `bt-fees-${key}`;
@@ -550,14 +549,14 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
       };
     }
     const workersSec = document.createElement('div');
-    workersSec.className = 'ep-section';
+    workersSec.className = 'p-10-12';
     const workersField = document.createElement('label');
-    workersField.className = 'ep-field';
+    workersField.className = 'form-field-row';
     const workersSpan = document.createElement('span');
-    workersSpan.textContent = 'Workers (1-8)';
+    workersSpan.textContent = 'Workers (1–8)';
     workersInp = document.createElement('input');
     workersInp.type = 'number';
-    workersInp.className = 'ep-input';
+    workersInp.className = 'field p-4-6 h-28';
     workersInp.min = 1;
     workersInp.max = 8;
     workersInp.value = workers;
@@ -568,7 +567,7 @@ function openParamModal(code, plotDefs, onSave, onPlotChange, onCodeChange) {
     body.appendChild(workersSec);
   }
   const foot = document.createElement('div');
-  foot.className = 'ep-foot';
+  foot.className = 'flex justify-end gap-8 p-10-12 border-t flex-shrink-0';
   if (hasBt) {
     const saveBtn = document.createElement('button');
     saveBtn.className = 'btn-primary';

@@ -5,48 +5,56 @@ const $=(tag,className='',text='')=>{
   if(text!==undefined) el.textContent=text;
   return el;
 };
-function mount(root){if(!root.isConnected) document.body.append(root);}
-export function createAuthModal(){
-  const root=$('div','auth-modal hidden');
-  root.dataset.sidebarPersist = '';
-  const panel=$('div','auth-panel');
-  const head=$('div','auth-head');
-  const title=$('div','auth-title','User required');
-  const close=$('button','btn-sm','Close');
-  const body=$('div','auth-body');
-  const copy=$('div','auth-copy','Sign in to unlock upgraded features.');
-  const chart=$('div','auth-chart');
-  const rows=[
-    'Find relevant news for any asset',
-    'Auto-update intraday assets to preserve history',
-    'Stream assets to the Cycles app',
-    'Share indicators publicly',
-    'Generate & revise indicator code with AI'
-  ];
-  rows.forEach(t=>{
-    const row=$('div','auth-row');
-    const mark=$('div','auth-mark','✓');
-    const label=$('div','auth-row-label',t);
-    row.append(mark,label);
+const ROWS=[
+  'Find relevant news for any asset',
+  'Auto-update intraday assets to preserve history',
+  'Stream assets to the Cycles app',
+  'Share assets to the Cycles app',
+  'Share indicators publicly',
+  'Generate & revise indicator code with AI'
+];
+function build(closeModal){
+  const root=$('div','modal-overlay');
+  root.dataset.sidebarPersist='';
+  const panel=$('div','modal-panel');
+  const head=$('div','flex items-center justify-between gap-8 p-10-12 border-b');
+  const title=$('div','text-13 fw-700','User required');
+  const close=$('button','page-btn','Close');
+  const body=$('div','flex flex-col gap-12 p-12');
+  const copy=$('div','text-13 text-secondary','Sign in to unlock upgraded features.');
+  const chart=$('div','flex flex-col gap-8');
+  ROWS.forEach(t=>{
+    const row=$('div','flex items-center gap-8 p-10-12 border-soft rounded bg');
+    row.append(
+      $('div','text-secondary flex-shrink-0','✓'),
+      $('div','text-12 text-secondary flex-1',t)
+    );
     chart.append(row);
   });
-  const link=$('a','btn-primary auth-link','Sign in');
-  const setLink=()=>{link.href='/auth/?redirect='+encodeURIComponent(location.pathname);};
-  setLink();
+  const link=$('a','btn-block-accent','Sign in');
+  link.href='/auth/?redirect='+encodeURIComponent(location.pathname);
   body.append(copy,chart,link);
   head.append(title,close);
   panel.append(head,body);
   root.append(panel);
-  const open=()=>{
-    setLink();
-    mount(root);
-    root.classList.remove('hidden');
-    setGuardBypass(true);
-  };
-  const closeModal=()=>{root.classList.add('hidden');setGuardBypass(false);};
   close.onclick=closeModal;
   root.onclick=e=>{if(e.target===root) closeModal();};
-  mount(root);
-  return {root,open,close:closeModal};
+  return root;
 }
+
+export function createAuthModal(){
+  let root=null;
+  const closeModal=()=>{
+    if(root){root.remove();root=null;}
+    setGuardBypass(false);
+  };
+  const open=()=>{
+    if(root) return;
+    root=build(closeModal);
+    document.body.append(root);
+    setGuardBypass(true);
+  };
+  return {open,close:closeModal};
+}
+
 export const authModal=createAuthModal();

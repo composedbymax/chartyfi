@@ -1,4 +1,5 @@
 import { toolsVisibility } from './tools.js';
+import { storage } from './storage.js';
 import {setGuardBypass} from './appGuard.js';
 import {initAPI} from './api.js';
 export function initEmptyState(container, chart, willLoad, offline = false) {
@@ -27,7 +28,7 @@ export function initEmptyState(container, chart, willLoad, offline = false) {
     window.addEventListener('beforeunload', () => clearInterval(timer), { once: true });
     return;
   }
-  const dismiss = () => { toolsVisibility.unlock(); toolsVisibility.set(true); el.remove(); };
+  const dismiss = () => { toolsVisibility.unlock(); toolsVisibility.set(storage.getTools()); el.remove(); };
   chart._chartOn('load', dismiss);
   chart._chartOn('dataset-loaded', dismiss);
 }

@@ -1,6 +1,8 @@
 import {deny} from './message.js';
 import {CloudSeries} from './cloudSeries.js';
+import {attachMainLegend,syncGroupLegends,removeGroupLegends,clearPomLegends} from './legends.js';
 const _registry=new WeakMap();
+const _mainLegendDone=new WeakMap();
 function _reg(chart,group){
   if(!_registry.has(chart))_registry.set(chart,new Set());
   _registry.get(chart).add(group);
@@ -95,10 +97,17 @@ export class PaneManager{
     this._counter=0;
     this._suspended=false;
     this._suspendedVolMode=null;
+    if(!_mainLegendDone.get(chart)){
+      _mainLegendDone.set(chart,true);
+      attachMainLegend(chart,chart._main);
+      chart._chartOn('dataChanged',()=>{
+        if(chart._main) attachMainLegend(chart,chart._main);
+      });
+    }
   }
   getGroups(){return this._groups;}
   getAllPlotFns(){return this._groups.flatMap(g=>g.plotFns||[]);}
-  addGroup(plotFns,name,code,color,silent=false){
+  addGroup(plotFns,name,code,color,silent=false,legendOptions={}){
     const{series,_paneBase,_panesUsed}=_createSeries(this._chart._chart,plotFns,this._groups,silent,this._chart);
     if(!series.length) return null;
     const id=++this._counter;
@@ -106,6 +115,12 @@ export class PaneManager{
     this._groups.push(group);
     _reg(this._chart,group);
     this._chart._setIndicators(this.getAllPlotFns(), this);
+    syncGroupLegends(this._chart,this,group,{
+      onRemove:legendOptions.onRemove||(()=>this.removeGroup(group.id)),
+      removable:legendOptions.removable!==false,
+      skipMainPane:legendOptions.skipMainPane,
+      orderBase:group.id,
+    });
     return group;
   }
   removeGroup(id){
@@ -115,6 +130,7 @@ export class PaneManager{
     g.series.forEach(s=>{try{this._chart._chart.removeSeries(s)}catch(e){}});
     _unreg(this._chart,g);
     this._groups.splice(idx,1);
+    removeGroupLegends(this._chart,this,id);
     this._chart._setIndicators(this.getAllPlotFns(), this);
     this._chart._forceResize();
     return g;
@@ -125,6 +141,7 @@ export class PaneManager{
       _unreg(this._chart,g);
     });
     this._groups=[];
+    clearPomLegends(this._chart,this);
     this._chart._clearIndicators(this);
     this._chart._forceResize();
   }
@@ -138,6 +155,7 @@ export class PaneManager{
       g.series=[];
       _unreg(this._chart,g);
     });
+    clearPomLegends(this._chart,this);
     this._chart._forceResize();
   }
   restoreAll(){
@@ -153,6 +171,10 @@ export class PaneManager{
       g._panesUsed=_panesUsed;
       _reg(this._chart,g);
       restored.push(g);
+      syncGroupLegends(this._chart,this,g,{
+        onRemove:()=>this.removeGroup(g.id),
+        orderBase:g.id,
+      });
     }
     this._chart._forceResize();
   }

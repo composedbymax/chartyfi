@@ -29,7 +29,7 @@ export class Watchlist {
     if (!sym) return;
     const list = storage.getWatchlist();
     if (list.some(e => e.sym === sym && e.int === int)) return;
-    list.push({ sym, int, name: this.chart._currentName || sym });
+    list.push({ sym, int, name: this.chart._currentName || sym, type: this.chart._currentType || null });
     storage.setWatchlist(list);
     this._render();
   }
@@ -47,9 +47,9 @@ export class Watchlist {
     this.el.innerHTML = '';
     this._listEl = null;
     const top = document.createElement('div');
-    top.className = 'wl-top';
+    top.className = 'p-header border-b mt--8';
     const addBtn     = document.createElement('button');
-    addBtn.className = 'wl-add-btn';
+    addBtn.className = 'btn-block-accent';
     addBtn.disabled  = !canAdd;
     if (!curSym)           addBtn.textContent = '+ Add Current';
     else if (alreadySaved) addBtn.textContent = `✓ ${displayName}  ${curInt}  saved`;
@@ -57,40 +57,37 @@ export class Watchlist {
     addBtn.onclick = () => this._add();
     top.appendChild(addBtn);
     this.el.appendChild(top);
-    const hr = document.createElement('div');
-    hr.className = 'wl-divider';
-    this.el.appendChild(hr);
     if (!list.length) {
       const empty = document.createElement('div');
-      empty.className = 'wl-empty';
+      empty.className = 'empty-note';
       empty.textContent = 'No entries yet. Load a chart and press + Add.';
       this.el.appendChild(empty);
       return;
     }
     const ul = document.createElement('div');
-    ul.className = 'wl-list';
+    ul.className = 'flex flex-col';
     this._listEl = ul;
-    list.forEach(({ sym, int, name }, i) => {
+    list.forEach(({ sym, int, name, type }, i) => {
       const active  = sym === curSym && int === curInt;
       const row     = document.createElement('div');
-      row.className = 'wl-row' + (active ? ' wl-row--active' : '');
+      row.className = 'result-row row-draggable' + (active ? ' row-active' : '');
       row.dataset.idx = i;
       const loadBtn     = document.createElement('button');
-      loadBtn.className = 'wl-load';
+      loadBtn.className = 'flex-1 flex flex-col gap-2 p-6-12 text-left cursor-pointer';
       loadBtn.innerHTML = `
-        <div class="wl-load-top">
-          <span class="wl-sym">${sym}</span>
-          <span class="wl-int">${int}</span>
+        <div class="flex items-center gap-8">
+          <span class="text-13 fw-600 text-primary font-sans">${sym}</span>
+          <span class="text-11 text-secondary bg-2 rounded p-1-2">${int}</span>
         </div>
-        ${name && name !== sym ? `<div class="wl-name">${name}</div>` : ''}
+        ${name && name !== sym ? `<div class="text-11 text-secondary clamp-cell">${name}</div>` : ''}
       `;
       loadBtn.onclick = () => {
         if (this._justDragged) { this._justDragged = false; return; }
-        this.chart.load(sym, int, name);
+        this.chart.load(sym, int, name, type);
         this._render();
       };
       const rmBtn       = document.createElement('button');
-      rmBtn.className   = 'wl-rm';
+      rmBtn.className   = 'icon-btn-muted';
       rmBtn.textContent = '✕';
       rmBtn.onclick     = () => this._remove(sym, int);
       row.appendChild(loadBtn);
@@ -104,7 +101,7 @@ export class Watchlist {
     row.addEventListener('pointerdown', e => this._onPointerDown(e, row));
   }
   _onPointerDown(e, row) {
-    if (e.target.closest('.wl-rm')) return;
+    if (e.target.closest('.icon-btn-muted')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (this._drag) this._teardownSession(this._drag);
     const session = {
@@ -131,11 +128,11 @@ export class Watchlist {
     session.engaged = true;
     session.timer   = null;
     const { row } = session;
-    row.classList.add('wl-row--dragging');
+    row.classList.add('row-dragging');
     row.style.touchAction = 'none';
     try { row.setPointerCapture(session.pointerId); } catch {}
     session.indicator = document.createElement('div');
-    session.indicator.className = 'wl-drop-indicator';
+    session.indicator.className = 'drop-indicator';
     if (navigator.vibrate) { try { navigator.vibrate(12); } catch {} }
   }
   _onPointerMove(e, session) {
@@ -154,7 +151,7 @@ export class Watchlist {
     e.preventDefault();
     const ul = this._listEl;
     if (!ul) return;
-    const rows = [...ul.querySelectorAll('.wl-row')].filter(r => r !== session.row);
+    const rows = [...ul.querySelectorAll('.result-row')].filter(r => r !== session.row);
     let pos = rows.length;
     for (let j = 0; j < rows.length; j++) {
       const rect = rows[j].getBoundingClientRect();
@@ -189,7 +186,7 @@ export class Watchlist {
     session.row.removeEventListener('pointermove', session.moveHandler);
     session.row.removeEventListener('pointerup', session.upHandler);
     session.row.removeEventListener('pointercancel', session.cancelHandler);
-    session.row.classList.remove('wl-row--dragging');
+    session.row.classList.remove('row-dragging');
     session.row.style.touchAction = '';
     try { session.row.releasePointerCapture(session.pointerId); } catch {}
     if (session.indicator && session.indicator.parentNode) session.indicator.remove();

@@ -27,7 +27,7 @@ const postForm=async(action,body)=>{
   fd.set('action',action);
   if(!(body instanceof FormData)) for(const [k,v] of Object.entries(body||{})) fd.set(k,v);
   return apiReq(url,{method:'POST',body:fd});
-};
+}
 async function request(action,{method='GET',body=null}={}){
   const url=new URL(apiUrl(),location.href);
   const init={method,headers:{Accept:'application/json'}};
@@ -59,34 +59,34 @@ export async function saveSharedIndicator({name,description,code,image,isDark}){
   return postForm('save',{name:name||'Untitled',description:description||'',code:code||'',isDark:isDark?'yes':'no',image}).catch(e=>{throw e;});
 }
 export function createShareModal({getSource}={}){
-  const root=$('div','eds-share-modal hidden');
-  const panel=$('div','eds-share-panel');
-  const head=$('div','eds-share-head');
-  const title=$('div','eds-share-title','Share indicator');
+  const root=$('div','modal-overlay hidden');
+  const panel=$('div','modal-panel modal-panel-wide');
+  const head=$('div','flex items-center justify-between gap-8 p-10-12 border-b');
+  const title=$('div','text-13 fw-700','Share indicator');
   const close=$('button','btn-sm','Close');
-  const body=$('div','eds-share-body');
+  const body=$('div','flex flex-col gap-10 p-12');
   const mkField=(labelText,el,id)=>{
-    const wrap=$('div','eds-field');
-    const label=id?$('label','',labelText):$('div','eds-field-label',labelText);
+    const wrap=$('div','flex flex-col gap-6');
+    const label=id?$('label','text-11 text-muted fw-600',labelText):$('div','text-11 text-muted fw-600',labelText);
     if(id) label.htmlFor=id;
     wrap.append(label,el);
     return wrap;
   };
-  const nameIn=$('input','eds-share-input');
+  const nameIn=$('input','field w-full p-6-12 text-12');
   nameIn.id='eds-share-name';
   nameIn.name='name';
   nameIn.placeholder='Untitled';
   nameIn.autocomplete='off';
-  const descIn=$('textarea','eds-share-desc');
+  const descIn=$('textarea','field w-full p-6-12 text-12 resize-y');
   descIn.id='eds-share-description';
   descIn.name='description';
   descIn.rows=4;
   descIn.placeholder='Brief description';
   descIn.autocomplete='off';
-  const shotPrev=$('img','eds-share-shot');
+  const shotPrev=$('img','w-full max-h-260 object-cover border rounded');
   shotPrev.alt='Screenshot preview';
-  const status=$('div','eds-share-status');
-  const actions=$('div','eds-share-actions');
+  const status=$('div','text-12 text-secondary');
+  const actions=$('div','flex justify-end gap-8');
   const cancel=$('button','btn-sm','Cancel');
   const submit=$('button','btn-primary','Publish');
   actions.append(cancel,submit);
@@ -155,14 +155,14 @@ export function createShareModal({getSource}={}){
   return{root,open,close:closeModal};
 }
 function card(item,onLoad){
-  const wrap=$('div','eds-card');
-  const shot=$('img','eds-card-shot');
+  const wrap=$('div','media-card bg-3 border rounded');
+  const shot=$('img','media-card-image absolute inset-0 w-full h-full object-cover');
   shot.loading='lazy';
   shot.src=item.img||'';
   shot.alt=item.name||'Public indicator screenshot';
-  if((item.isDark==='yes')!==isDarkMode()) shot.style.filter='invert(1)';
-  const name=$('div','eds-card-name',item.name||'Untitled');
-  const load=$('button','btn-sm eds-card-load','Load');
+  if((item.isDark==='yes')!==isDarkMode()) shot.classList.add('invert-media');
+  const name=$('div','media-card-label',item.name||'Untitled');
+  const load=$('button','btn-sm media-card-action','Load');
   load.onclick=async()=>{
     load.disabled=true;
     load.textContent='Loading…';
@@ -179,12 +179,12 @@ function card(item,onLoad){
   return wrap;
 }
 export function createExplorePanel({onLoad}={}){
-  const root=$('div','ed-explore-panel hidden');
-  const head=$('div','ed-explore-head');
-  const title=$('div','ed-explore-title','Public indicators');
+  const root=$('div','absolute inset-0 z-2 flex flex-col bg overflow-hidden hidden');
+  const head=$('div','flex items-center justify-between gap-8 p-10-12 border-b bg-2');
+  const title=$('div','text-13 fw-700','Public indicators');
   const close=$('button','btn-sm','Close');
-  const list=$('div','ed-explore-list');
-  const foot=$('div','ed-explore-foot');
+  const list=$('div','flex flex-col flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-10-12 gap-10');
+  const foot=$('div','flex items-center justify-between gap-8 p-10-12 border-t bg-2');
   const back=$('button','btn-sm','← Back');
   const next=$('button','btn-primary','Next →');
   foot.append(back,next);

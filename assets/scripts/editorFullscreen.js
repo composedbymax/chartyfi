@@ -46,12 +46,12 @@ function writeClipboard(text) {
 }
 export function openFullscreen({ code, name, onChange, onClose }) {
   const overlay = document.createElement('div');
-  overlay.className = 'ef-overlay';
+  overlay.className = 'fixed-ins-0 z-13 flex-column bg';
   overlay.dataset.sidebarPersist = '';
   const header = document.createElement('div');
-  header.className = 'ef-header';
+  header.className = 'flex-center p-safe-12-0 h-44-safe border-b flex-shrink-0 bg-2 gap-8';
   const title = document.createElement('span');
-  title.className = 'ef-title';
+  title.className = 'text-13 fw-600 flex-1 text-primary text-ellipsis';
   title.textContent = name || 'Editor';
   const aiBtn = document.createElement('button');
   aiBtn.className = 'icon-btn ef-ai-btn';

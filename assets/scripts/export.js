@@ -4,12 +4,8 @@ export class Exporter {
     this.timeFmt = 'unix';
     this.timezone = 'UTC';
   }
-  _getData() {
-    return this._chart._getCurrentData();
-  }
-  _indicatorSeries() {
-    return typeof this._chart._getIndicators === 'function' ? this._chart._getIndicators() : [];
-  }
+  _getData() {return this._chart._getCurrentData();}
+  _indicatorSeries() {return typeof this._chart._getIndicators === 'function' ? this._chart._getIndicators() : [];}
   _baseCols() {
     const includeVol = this._chart.volMode === 'overlay' || this._chart.volMode === 'pane';
     if (this._chart.mode === 'line') {
@@ -104,8 +100,8 @@ export class Exporter {
         (s.data || []).forEach(p => {
           const r = getOrCreate(p.time);
           r[s.openCol]  = p.open  ?? null;
-          r[s.highCol]  = p.high  ?? null;
-          r[s.lowCol]   = p.low   ?? null;
+          r[s.highCol]   = p.high  ?? null;
+          r[s.lowCol]    = p.low   ?? null;
           r[s.closeCol] = p.close ?? null;
         });
       } else {
@@ -159,20 +155,21 @@ export class Exporter {
     const overlay = document.createElement('div');
     overlay.id = 'export-table-overlay';
     overlay.dataset.sidebarPersist = '';
+    overlay.className = 'modal-overlay z-13 p-12';
     const thead = layout.cols.map(c => `<th>${c}</th>`).join('');
     const tbody = rows.map(r => `<tr>${this._row(r, layout.cols).map(v => `<td>${v}</td>`).join('')}</tr>`).join('');
     overlay.innerHTML = `
-      <div id="export-table-wrap">
-        <div id="export-table-toolbar">
-          <span id="export-table-title">${this._chart._currentSymbol ?? 'No data'} ${this._chart._currentInterval} — ${rows.length} bars</span>
-          <div id="export-table-actions">
-            <button id="export-copy-btn">Copy</button>
-            <button id="export-close-btn">✕</button>
+      <div class="modal-panel modal-panel-xl">
+        <div class="flex items-center justify-between gap-8 p-10-12 border-b flex-shrink-0 bg-2">
+          <span class="text-13 fw-600 text-primary">${this._chart._currentSymbol ?? 'No data'} ${this._chart._currentInterval} — ${rows.length} bars</span>
+          <div class="flex gap-8">
+            <button class="btn-primary" id="export-copy-btn">Copy</button>
+            <button class="btn-sm" id="export-close-btn">✕</button>
           </div>
         </div>
-        <div id="export-table-scroll">
-          <table id="export-table">
-            <thead><tr>${thead}</tr></thead>
+        <div class="modal-scroll">
+          <table class="data-table table-collapse" id="export-table">
+            <thead class="sticky-top"><tr>${thead}</tr></thead>
             <tbody>${tbody}</tbody>
           </table>
         </div>

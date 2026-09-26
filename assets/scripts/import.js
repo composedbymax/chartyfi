@@ -113,11 +113,11 @@ export class Importer {
   constructor(chart) { this._chart=chart; }
     buildEl() {
     const wrap = document.createElement('div');
-    wrap.className = 'imp-wrap';
+    wrap.className = 'p-0';
     const zone = document.createElement('label');
-    zone.className = 'imp-dropzone';
+    zone.className = 'dropzone';
     zone.htmlFor = 'imp-file-input';
-    zone.innerHTML = `<span class="imp-icon">↑</span><span class="imp-text">Drop CSV or click to browse</span>`;
+    zone.innerHTML = `<span class="text-22 text-muted">↑</span><span class="text-12 text-muted text-center">Drop CSV or click to browse</span>`;
     const fileIn = Object.assign(document.createElement('input'), {type: 'file', id: 'imp-file-input', name: 'imp-file-input',accept: '.csv,.tsv,.txt', className: 'hidden'});
     this._fileInput = fileIn;
     zone.ondragover = e => { e.preventDefault(); zone.classList.add('drag-over'); };
@@ -146,16 +146,16 @@ export class Importer {
   }
   _showModal(parsed, mapping) {
     const overlay = document.createElement('div');
-    overlay.className = 'imp-modal-overlay';
+    overlay.className = 'fixed-ins-0 shadow z-15 flex-center-justify';
     overlay.dataset.sidebarPersist = '';
     const m = { ...mapping };
     if (m.open == null && m.price != null) m.close = m.price;
     const roles = ['time', 'open', 'high', 'low', 'close', 'volume'];
     const labels = { time: 'Time', open: 'Open', high: 'High', low: 'Low', close: 'Close', volume: 'Volume' };
     const rows = roles.map(r =>
-      `<div class="imp-map-row"><label class="imp-map-label" for="imp-map-${r}">${labels[r]}</label><select class="imp-map-sel" id="imp-map-${r}" name="imp-map-${r}" data-role="${r}">${['(none)', ...parsed.headers].map((h, i) => `<option value="${i - 1}"${i - 1 === (m[r] ?? -1) ? ' selected' : ''}>${h}</option>`).join('')}</select></div>`
+      `<div class="flex-center gap-8"><label class="text-12 text-muted fw-600 w-42 flex-shrink-0" for="imp-map-${r}">${labels[r]}</label><select class="flex-1 h-28 text-12" id="imp-map-${r}" name="imp-map-${r}" data-role="${r}">${['(none)', ...parsed.headers].map((h, i) => `<option value="${i - 1}"${i - 1 === (m[r] ?? -1) ? ' selected' : ''}>${h}</option>`).join('')}</select></div>`
     ).join('');
-    overlay.innerHTML = `<div class="imp-modal"><div class="imp-modal-head"><span class="imp-modal-title">Confirm Column Mapping</span><button class="icon-btn imp-modal-close">✕</button></div><div class="imp-modal-body">${rows}</div><div class="imp-modal-foot"><button class="btn-primary imp-modal-confirm">Import</button></div></div>`;
+    overlay.innerHTML = `<div class="bg-2 w-sm-modal border rounded overflow-hidden"><div class="flex-center-space p-10-12 border-b"><span class="text-13 fw-600">Confirm Column Mapping</span><button class="icon-btn imp-modal-close">✕</button></div><div class="flex-column gap-6 p-12">${rows}</div><div class="flex justify-end gap-8 p-10-12 border-t"><button class="btn-primary imp-modal-confirm">Import</button></div></div>`;
     document.body.appendChild(overlay);
     const close = () => {
       document.body.removeChild(overlay);
@@ -164,7 +164,7 @@ export class Importer {
     overlay.querySelector('.imp-modal-close').onclick = close;
     overlay.querySelector('.imp-modal-confirm').onclick = () => {
       const fm = { ...mapping };
-      overlay.querySelectorAll('.imp-map-sel').forEach(s => { fm[s.dataset.role] = Number(s.value) >= 0 ? Number(s.value) : null; });
+      overlay.querySelectorAll('select[data-role]').forEach(s => { fm[s.dataset.role] = Number(s.value) >= 0 ? Number(s.value) : null; });
       close();
       this._load(parsed, fm);
     };

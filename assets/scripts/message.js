@@ -3,6 +3,7 @@ let toastWrap;
 export function initMessage() {
   toastWrap=document.createElement('div');
   toastWrap.id='toast-container';
+  toastWrap.className='toast-container';
   document.body.appendChild(toastWrap);
 }
 export function toast(msg, type='info', ms=3200, persistent=false) {

@@ -10,7 +10,7 @@ function _chartOpts(){
 }
 export class Chart{
   constructor(container,api,timezone='UTC'){
-    this.container=container;this.api=api;this.sym=null;this._currentName=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._isDataset=false;this._datasetFull=[];this._savedPaneLayout=null;this._init();
+    this.container=container;this.api=api;this.sym=null;this._currentName=null;this._currentType=null;this.int='1d';this.mode='candle';this.field='close';this.volMode='overlay';this._data=[];this._p1=0;this._p2=0;this._chart=null;this._main=null;this._vol=null;this._listeners=[];this._timezone=timezone;this._tzOffsetMin=0;this._indicators=[];this._isDataset=false;this._datasetFull=[];this._savedPaneLayout=null;this._init();
   }
   _tzOffset(iana){if(!iana||iana==='UTC')return 0;try{return offsetMinutesForZone(iana)}catch(e){return 0}}
   _setTimezone(tz){this._timezone=tz;this._tzOffsetMin=this._tzOffset(tz);if(this._data.length)this._apply()}
@@ -65,10 +65,11 @@ export class Chart{
     this._emit('barsChanged',{count:clean.length});
     this._emit('dataChanged',{sym:this.sym,int:this.int,count:clean.length});
   }
-  async load(sym,int,name=null,p1,p2){
+  async load(sym,int,name=null,type=null,p1,p2){
     this._isDataset=false;
     this._datasetFull=[];
     this._currentName=name;
+    this._currentType=type;
     this.sym=sym;
     this.int=int||this.int;
     this._tzOffsetMin=this._tzOffset(this._timezone);
@@ -80,12 +81,13 @@ export class Chart{
     this._savePaneLayout();
     this._buildSeries();
     this._emit('dataChanged',{sym:this.sym,int:this.int,count:this._data.length});
-    this._emit('load',{sym,int:this.int,name:this._currentName,count:this._data.length});
+    this._emit('load',{sym,int:this.int,name:this._currentName,type:this._currentType,count:this._data.length});
     if(res.end_of_data&&res.loadedBars<INITIAL_LIMIT)toast(`${res.loadedBars} bars loaded. End of avaliable data`,'info',3000);
   }
   _loadDataset(candles,interval){
     this.sym=null;
     this._currentName=null;
+    this._currentType=null;
     this.int=interval||this.int;
     this._isDataset=true;
     this._datasetFull=[...candles];
@@ -167,6 +169,7 @@ export class Chart{
   _getIndicators(){return this._indicators.slice()}
   get _currentSymbol(){return this.sym}
   get _currentInterval(){return this.int}
+  get _currentAssetType(){return this._currentType}
   _getBarCount(){return this._data.length}
   _getLastTimestamp(){return this._data.length?this._data[this._data.length-1].time:0}
   _getCurrentData(){return this._tzOffsetMin===0?this._data:this._data.map(c=>({...c,time:this._st(c.time)}))}

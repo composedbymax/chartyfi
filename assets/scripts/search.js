@@ -16,14 +16,14 @@ export class Search{
     input.addEventListener('keydown',e=>{
       const items=[...this.res.querySelectorAll('.search-item')];
       switch(e.key){
-        case' Escape':this._hide();input.value='';break;
+        case'Escape':this._hide();input.value='';break;
         case'ArrowDown':e.preventDefault();this._setFocus(this._idx+1,items);break;
         case'ArrowUp':e.preventDefault();this._setFocus(this._idx-1,items);break;
         case'Enter':{
           e.preventDefault();
           const f=items[this._idx];
-          if(f){this._select(f.dataset.sym,f.dataset.name)}
-          else if(items.length){const t=items[0];this._select(t.dataset.sym,t.dataset.name)}
+          if(f){this._select(f.dataset.sym,f.dataset.name,f.dataset.type)}
+          else if(items.length){const t=items[0];this._select(t.dataset.sym,t.dataset.name,t.dataset.type)}
         }
       }
     });
@@ -46,7 +46,7 @@ export class Search{
         <span class="si-type">${r.typeDisp||r.quoteType||''}</span>
       </div>`).join('');
     this.res.querySelectorAll('.search-item').forEach((el,i)=>{
-      el.addEventListener('click',()=>this._select(el.dataset.sym,el.dataset.name));
+      el.addEventListener('click',()=>this._select(el.dataset.sym,el.dataset.name,el.dataset.type));
       el.addEventListener('mouseenter',()=>this._setFocus(i));
     });
   }
@@ -59,10 +59,10 @@ export class Search{
     items.forEach((el,i)=>el.classList.toggle('kb-focus',i===this._idx));
     items[this._idx]?.scrollIntoView({block:'nearest'});
   }
-  _select(sym,name){
+  _select(sym,name,type){
     this._hide();
     this.el.value='';
-    this.chart.load(sym,this.chart._currentInterval,name);
+    this.chart.load(sym,this.chart._currentInterval,name,type);
   }
   _hide(){
     this.res.classList.remove('open');

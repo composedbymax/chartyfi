@@ -16,7 +16,7 @@ export class Correlation {
     this.chart = chart;
     this.api = api;
     this.el = document.createElement('div');
-    this.el.className = 'corr-wrap';
+    this.el.className = 'flex flex-col h-full overflow-hidden';
     this._bars = 200;
     this._loading = false;
     this._series = null;
@@ -90,13 +90,14 @@ export class Correlation {
   }
   _buildTable() {
     const wrap = document.createElement('div');
-    wrap.className = 'corr-table-wrap';
+    wrap.className = 'm--9-0--24-0 flex-1 overflow-x-auto overflow-y-auto';
     const table = document.createElement('table');
-    table.className = 'corr-table';
+    table.className = 'w-full table-collapse text-12';
     const head = document.createElement('tr');
     head.appendChild(document.createElement('th'));
     this._series.forEach(s => {
       const th = document.createElement('th');
+      th.className = 'sticky-top p-4-6 text-11 fw-600 text-muted uppercase tracking-wide bg-3 border';
       th.textContent = s.sym;
       th.title = `${s.sym} · Daily`;
       head.appendChild(th);
@@ -105,14 +106,15 @@ export class Correlation {
     this._series.forEach((row, i) => {
       const tr = document.createElement('tr');
       const rh = document.createElement('th');
+      rh.className = 'sticky-top sticky-corner p-4-6 text-11 fw-600 text-muted uppercase tracking-wide bg-3 border';
       rh.textContent = row.sym;
       rh.title = `${row.sym} · Daily`;
       tr.appendChild(rh);
       this._matrix[i].forEach(values => {
         const td = document.createElement('td');
         const last = this._lastValue(values);
-        td.className = `corr-cell ${values.length ? this._cellClass(last) : 'corr-na'}`;
-        if (values.length) td.innerHTML = `<div class="corr-cell-inner">${this._sparkSVG(values)}<span class="corr-val">${last == null ? 'n/a' : last.toFixed(2)}</span></div>`;
+        td.className = `p-4-6 text-center fw-600 border ${values.length ? this._cellClass(last) : 'corr-na'}`;
+        if (values.length) td.innerHTML = `<div class="spark-cell flex items-center justify-center w-full">${this._sparkSVG(values)}<span class="relative z-1 shadow text-12 fw-700 p-1-2 rounded">${last == null ? 'n/a' : last.toFixed(2)}</span></div>`;
         else td.textContent = '—';
         tr.appendChild(td);
       });
@@ -125,13 +127,13 @@ export class Correlation {
     const list = storage.getWatchlist();
     this.el.innerHTML = '';
     const top = document.createElement('div');
-    top.className = 'corr-top';
+    top.className = 'flex items-center gap-10 p-0-12 pt-2 pb-2';
     top.innerHTML = `
-      <div class="ctrl-row">
+      <div class="flex-center gap-6 flex-1">
         <label for="corr-bars">Bars</label>
         <input type="number" id="corr-bars" value="${this._bars}" min="10" max="2000">
       </div>
-      <button class="btn-primary corr-run-btn" id="corr-run">${this._loading ? 'Computing…' : 'Re-compute'}</button>
+      <button class="btn-primary flex-shrink-0" id="corr-run">${this._loading ? 'Computing…' : 'Re-compute'}</button>
     `;
     this.el.appendChild(top);
     const barsIn = top.querySelector('#corr-bars');
@@ -144,14 +146,14 @@ export class Correlation {
     this.el.appendChild(d);
     if (list.length < 2) {
       const empty = document.createElement('div');
-      empty.className = 'corr-empty';
+      empty.className = 'empty-note empty-note--error';
       empty.textContent = 'Add at least 2 symbols to the Watchlist to compute correlations.';
       this.el.appendChild(empty);
       return;
     }
     if (this._loading) {
       const load = document.createElement('div');
-      load.className = 'corr-loading';
+      load.className = 'spinner-anchor min-h-160';
       this.el.appendChild(load);
       attachSpinner(load, { size: 40, color: 'var(--accent)' }).show();
       return;

@@ -1,25 +1,17 @@
 import {Watchlist}         from './watchlist.js';
 import {Correlation}       from './correlation.js';
-import {IndexConstituents} from './indexConstituents.js';
 import {Screener}          from './screener.js';
-import {DataIntegrity}     from './dataintegrity.js';
-import {CycleApp}          from './cycleApp.js';
-import {MarketSummary}     from './marketSummary.js';
-import {Insights}          from './insights.js';
 import {News}              from './news.js';
+import {CycleApp}          from './cycleApp.js';
 import {CycleConsensus}    from './cycleConsensus.js';
 import {authModal}         from './authPage.js';
 const APPS = [
   [Watchlist],
   [Correlation],
-  [IndexConstituents],
   [Screener],
-  [DataIntegrity],
-  [MarketSummary],
-  [Insights,      { authRequired: true }],
   [News,           { authRequired: true }],
   [CycleApp],
-  [CycleConsensus, { authRequired: true }],
+  [CycleConsensus],
 ];
 export class MiniApps {
   constructor(chart, api) {

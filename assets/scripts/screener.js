@@ -31,12 +31,12 @@ export class Screener {
     try { localStorage.setItem('scr_v1', JSON.stringify({ exp: this._midnight(), data })); } catch {}
   }
   _build() {
-    this.el.innerHTML = `<div class="scr-tabs"><button class="scr-tab active" data-tab="gainers">Gainers</button><button class="scr-tab" data-tab="losers">Losers</button><button class="scr-tab" data-tab="actives">Actives</button></div><div class="scr-body"></div>`;
+    this.el.innerHTML = `<div class="pill-tabs mt--8"><button class="pill-tab active" data-tab="gainers">Gainers</button><button class="pill-tab" data-tab="losers">Losers</button><button class="pill-tab" data-tab="actives">Actives</button></div><div class="scr-body spinner-anchor min-h-180"></div>`;
     this._body = this.el.querySelector('.scr-body');
-    this.el.querySelectorAll('.scr-tab').forEach(btn => {
+    this.el.querySelectorAll('.pill-tab').forEach(btn => {
       btn.onclick = () => {
         this._tab = btn.dataset.tab;
-        this.el.querySelectorAll('.scr-tab').forEach(b => b.classList.toggle('active', b === btn));
+        this.el.querySelectorAll('.pill-tab').forEach(b => b.classList.toggle('active', b === btn));
         this._renderList();
       };
     });
@@ -56,7 +56,7 @@ export class Screener {
       this._setCache(json);
       this._renderList();
     } catch (e) {
-      this._body.innerHTML = `<div class="scr-err">${e.message}</div>`;
+      this._body.innerHTML = `<div class="empty-note empty-note--error">${e.message}</div>`;
     } finally {
       if (this._spinner) { this._spinner.destroy(); this._spinner = null; }
     }
@@ -67,13 +67,13 @@ export class Screener {
     const shown = this._shown[this._tab];
     const frag = document.createDocumentFragment();
     const list = document.createElement('div');
-    list.className = 'scr-list';
+    list.className = 'flex-column';
     quotes.slice(0, shown).forEach(q => list.appendChild(this._row(q)));
     frag.appendChild(list);
     if (shown < quotes.length) {
       const rem = quotes.length - shown;
       const btn = document.createElement('button');
-      btn.className = 'scr-more';
+      btn.className = 'btn-block-plain';
       btn.textContent = `Load more (${rem} remaining)`;
       btn.onclick = () => { this._shown[this._tab] = shown + 20; this._renderList(); };
       frag.appendChild(btn);
@@ -85,12 +85,12 @@ export class Screener {
     const pct = q.regularMarketChangePercent ?? 0;
     const chg = q.regularMarketChange ?? 0;
     const pos = pct >= 0;
-    const cc = pos ? 'scr-pos' : 'scr-neg';
+    const cc = pos ? 'text-pos' : 'text-neg';
     const name = q.shortName || q.displayName || q.longName || q.symbol;
     const el = document.createElement('div');
-    el.className = 'scr-row';
-    el.innerHTML = `<div class="scr-row-top"><span class="scr-sym">${q.symbol}</span><span class="scr-pct ${cc}">${pos?'+':''}${pct.toFixed(2)}%</span></div><div class="scr-row-bot"><span class="scr-name">${q.shortName||q.displayName||q.longName||''}</span><span class="scr-price">${q.regularMarketPrice!=null?'$'+q.regularMarketPrice.toFixed(2):'--'}</span></div><div class="scr-row-meta"><span class="scr-vol">Vol ${this._fmtVol(q.regularMarketVolume)}</span><span class="scr-chg ${cc}">${pos?'+$':'-$'}${Math.abs(chg).toFixed(2)}</span></div>`;
-    el.onclick = () => this.chart.load(q.symbol, '1D', name);
+    el.className = 'stack-row';
+    el.innerHTML = `<div class="flex-center-space mb-2"><span class="text-12 fw-700 text-primary">${q.symbol}</span><span class="text-12 fw-600 ${cc}">${pos?'+':''}${pct.toFixed(2)}%</span></div><div class="flex-center-space mb-2"><span class="text-10 text-secondary clamp-cell">${q.shortName||q.displayName||q.longName||''}</span><span class="text-11 text-primary">${q.regularMarketPrice!=null?'$'+q.regularMarketPrice.toFixed(2):'--'}</span></div><div class="flex-center-space mb-2"><span class="text-10 text-muted">Vol ${this._fmtVol(q.regularMarketVolume)}</span><span class="text-10 ${cc}">${pos?'+$':'-$'}${Math.abs(chg).toFixed(2)}</span></div>`;
+    el.onclick = () => this.chart.load(q.symbol, '1D', name, q.quoteType || 'EQUITY');
     return el;
   }
   _fmtVol(v) {
