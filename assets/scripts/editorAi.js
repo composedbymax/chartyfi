@@ -3,36 +3,36 @@ import { storage } from "./storage.js";
 let _activeOverlay = null;
 let _chatMessages  = [];
 export function openAiChat({ getCode, onInsert }) {
-    if (_activeOverlay) { _activeOverlay.querySelector('.eai-input-ta')?.focus(); return; }
+    if (_activeOverlay) { _activeOverlay.querySelector('[data-role="input"]')?.focus(); return; }
     let sending = false;
     let abortController = null;
     const overlay = document.createElement('div');
-    overlay.className = 'eai-overlay';
+    overlay.className = 'fixed-ins-0 flex-center-justify z-15 shadow-2';
     overlay.dataset.sidebarPersist = '';
     overlay.innerHTML = `
-        <div class="eai-panel">
-            <div class="eai-header">
-                <span class="eai-title">Indicator Assistant</span>
-                <button class="icon-btn eai-close">&times;</button>
+        <div class="flex-column bg-2 border-soft rounded w-modal-md h-modal-md" data-role="panel">
+            <div class="flex items-center p-10-12 border-b gap-8 flex-shrink-0">
+                <span class="flex-1 text-13 fw-600 text-primary">Indicator Assistant</span>
+                <button class="icon-btn flex-shrink-0" data-role="close">&times;</button>
             </div>
-            <div class="eai-controls">
-                <button class="btn-sm eai-new-chat">New Chat</button>
+            <div class="flex items-center gap-8 p-8-12 border-b flex-shrink-0">
+                <button class="btn-sm" data-role="new-chat">New Chat</button>
             </div>
-            <div class="eai-messages"></div>
-            <div class="eai-input-row">
-                <textarea class="eai-input-ta" id="eai-input-ta" name="prompt"
+            <div class="relative flex-1 flex-column overflow-y-auto p-12 gap-12" data-role="messages"></div>
+            <div class="flex gap-8 p-10-12 border-t flex-shrink-0">
+                <textarea class="flex-1 min-w-0 rounded border-soft bg-3 text-primary p-8-12 mono h-34" id="eai-input-ta" name="prompt" data-role="input"
                     placeholder="Ask for a new indicator..."></textarea>
-                <button class="btn-primary eai-send-btn">Send</button>
+                <button class="btn-primary h-full stretch-self" data-role="send">Send</button>
             </div>
         </div>
     `;
     document.body.appendChild(overlay);
     _activeOverlay = overlay;
-    const closeBtn   = overlay.querySelector('.eai-close');
-    const newChatBtn = overlay.querySelector('.eai-new-chat');
-    const msgsEl     = overlay.querySelector('.eai-messages');
-    const inputTa    = overlay.querySelector('.eai-input-ta');
-    const sendBtn    = overlay.querySelector('.eai-send-btn');
+    const closeBtn   = overlay.querySelector('[data-role="close"]');
+    const newChatBtn = overlay.querySelector('[data-role="new-chat"]');
+    const msgsEl     = overlay.querySelector('[data-role="messages"]');
+    const inputTa    = overlay.querySelector('[data-role="input"]');
+    const sendBtn    = overlay.querySelector('[data-role="send"]');
     const INPUT_MAX_HEIGHT = 100;
     function resizeInput() {
         inputTa.style.height = 'auto';
@@ -58,14 +58,14 @@ export function openAiChat({ getCode, onInsert }) {
     }
     function buildIndicatorBlock(content) {
         const block = document.createElement('div');
-        block.className = 'eai-code-block';
+        block.className = 'border-soft rounded overflow-hidden w-full bg';
         const pre = document.createElement('pre');
-        pre.className = 'eai-code-pre';
+        pre.className = 'p-10-12 text-12 mono text-primary overflow-x-auto lh-16';
         pre.textContent = content;
         const actions = document.createElement('div');
-        actions.className = 'eai-code-actions';
+        actions.className = 'flex items-center gap-6 p-6-12 border-t bg-2';
         const addBtn = document.createElement('button');
-        addBtn.className = 'btn-primary eai-add-btn';
+        addBtn.className = 'btn-primary text-12 p-6-12';
         addBtn.textContent = '+ Add to Editor';
         addBtn.onclick = () => {
             onInsert(content);
@@ -74,7 +74,7 @@ export function openAiChat({ getCode, onInsert }) {
             setTimeout(() => { addBtn.textContent = '+ Add to Editor'; addBtn.disabled = false; }, 2000);
         };
         const copyBtn = document.createElement('button');
-        copyBtn.className = 'btn-sm eai-copy-btn';
+        copyBtn.className = 'btn-sm text-11 ml-auto';
         copyBtn.textContent = 'Copy';
         copyBtn.onclick = () => navigator.clipboard.writeText(content).then(() => {
             copyBtn.textContent = '✓';
@@ -88,14 +88,14 @@ export function openAiChat({ getCode, onInsert }) {
         parseContent(content).forEach(part => {
             if (part.type === 'text') {
                 const p = document.createElement('div');
-                p.className = 'eai-msg-text';
+                p.className = 'text-13 text-primary lh-16 prewrap-breakall bg-3 border-soft rounded p-8-12';
                 p.textContent = part.content;
                 row.appendChild(p);
             } else if (part.type === 'indicator') {
                 row.appendChild(buildIndicatorBlock(part.content));
             } else {
                 const pre = document.createElement('pre');
-                pre.className = 'eai-code-pre eai-code-pre--plain';
+                pre.className = 'p-10-12 text-12 mono text-primary overflow-x-auto lh-16 bg-3 border-soft rounded w-full';
                 pre.textContent = part.content;
                 row.appendChild(pre);
             }
@@ -103,22 +103,23 @@ export function openAiChat({ getCode, onInsert }) {
     }
     function buildMessage(role, content, reasoning) {
         const row = document.createElement('div');
-        row.className = `eai-msg eai-msg--${role}`;
+        row.className = `flex-column gap-6 w-full ${role === 'user' ? 'items-end' : 'items-start'}`;
+        row.dataset.role = role;
         if (role === 'user') {
             const p = document.createElement('div');
-            p.className = 'eai-msg-text';
+            p.className = 'text-13 text-primary lh-14 prewrap-breakall accent-hl border rounded-tail-r p-8-12 wm-88pc';
             p.textContent = content;
             row.appendChild(p);
         } else {
             if (reasoning) {
                 const rb = document.createElement('div');
-                rb.className = 'eai-reasoning';
+                rb.className = 'w-full border-soft rounded overflow-hidden bg';
                 const rt = document.createElement('button');
-                rt.className = 'eai-reasoning-toggle';
+                rt.className = 'flex items-center w-full p-5-10 bg-3 border-b text-secondary text-11 fw-600 tracking-wider uppercase text-left';
                 rt.type = 'button';
                 rt.textContent = '▼ Reasoning';
                 const rbody = document.createElement('div');
-                rbody.className = 'eai-reasoning-body';
+                rbody.className = 'p-8-12 text-11 font-italic text-secondary lh-17 prewrap-breakall max-h-180 overflow-y-auto';
                 rbody.textContent = reasoning;
                 rt.onclick = () => {
                     const collapsed = rbody.classList.toggle('hidden');
@@ -135,7 +136,7 @@ export function openAiChat({ getCode, onInsert }) {
         msgsEl.innerHTML = '';
         _chatMessages.forEach(msg => msgsEl.appendChild(buildMessage(msg.role, msg.content, msg.reasoning)));
         const ll = document.createElement('div');
-        ll.className = 'eai-loader-layer';
+        ll.className = 'flex justify-center p-8-0 mt-auto';
         msgsEl.appendChild(ll);
         return ll;
     }
@@ -169,18 +170,21 @@ export function openAiChat({ getCode, onInsert }) {
         spinner.show();
         msgsEl.scrollTop = msgsEl.scrollHeight;
         const assistantRow    = document.createElement('div');
-        assistantRow.className = 'eai-msg eai-msg--assistant';
+        assistantRow.className = 'flex-column gap-6 w-full items-start';
+        assistantRow.dataset.role = 'assistant';
         const reasoningBlock  = document.createElement('div');
-        reasoningBlock.className = 'eai-reasoning eai-reasoning--streaming hidden';
+        reasoningBlock.className = 'w-full border-soft rounded overflow-hidden bg hidden';
+        reasoningBlock.dataset.streaming = 'true';
         const reasoningToggle = document.createElement('button');
-        reasoningToggle.className   = 'eai-reasoning-toggle';
+        reasoningToggle.className   = 'flex items-center w-full p-5-10 bg-3 border-b text-secondary text-11 fw-600 tracking-wider uppercase text-left';
         reasoningToggle.type        = 'button';
         reasoningToggle.textContent = 'Thinking…';
         const reasoningBody = document.createElement('div');
-        reasoningBody.className = 'eai-reasoning-body';
+        reasoningBody.className = 'p-8-12 text-11 font-italic text-secondary lh-17 prewrap-breakall max-h-180 overflow-y-auto';
         reasoningBlock.append(reasoningToggle, reasoningBody);
         const streamText = document.createElement('div');
-        streamText.className = 'eai-msg-text eai-stream-text';
+        streamText.className = 'text-13 text-primary lh-16 prewrap-breakall bg-3 border-soft rounded p-8-12';
+        streamText.dataset.streaming = 'true';
         assistantRow.append(reasoningBlock, streamText);
         msgsEl.insertBefore(assistantRow, loaderLayer);
         let reasoningContent = '';
@@ -249,14 +253,14 @@ export function openAiChat({ getCode, onInsert }) {
                 assistantRow.remove();
                 _chatMessages.pop();
                 const err = document.createElement('div');
-                err.className = 'eai-error';
+                err.className = 'text-12 text-neg rounded p-8-12 border';
                 err.textContent = 'Error: ' + e.message;
                 msgsEl.insertBefore(err, loaderLayer);
             }
         }
         if (success) {
             if (reasoningContent) {
-                reasoningBlock.classList.remove('eai-reasoning--streaming');
+                delete reasoningBlock.dataset.streaming;
                 reasoningToggle.textContent = '▼ Reasoning';
                 reasoningToggle.onclick = () => {
                     const collapsed = reasoningBody.classList.toggle('hidden');

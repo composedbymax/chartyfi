@@ -157,20 +157,33 @@ function _makeLegendBox(color){
   box.className='absolute flex items-start gap-6 p-4-6 shadow blur-6 border-soft rounded pointer-auto wm-260';
   const dot=document.createElement('span');
   dot.className='dot-sm mt-3 flex-shrink-0';
-  dot.style.background=color||'var(--accent)';
+  dot.style.background=color||'var(--bg3)';
   box.appendChild(dot);
   const body=document.createElement('div');
   body.className='flex-column gap-1 min-w-0';
   box.appendChild(body);
-  return {box,body};
+  return {box,body,dot};
+}
+async function _isLive(st,token,sym){
+  if(!sym||!st._mainDot) return;
+  try{
+    const r=await fetch(window.LIV.api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:sym}),});
+    const j=await r.json();
+    if(st._loadToken!==token) return;
+    if(typeof j.live!=='boolean') return;
+    st._live=j.live;
+    if(st._mainDot) st._mainDot.style.background=j.live?'var(--green)':'var(--red)';
+  }catch(e){}
 }
 export function attachMainLegend(chart,mainSeries){
   const st=_ensureState(chart);
   if(st.mainLegend){st.mainLegend.remove();st.mainLegend=null;}
   st._mainSeries=mainSeries;
-  const {box,body}=_makeLegendBox(null);
+  const {box,body,dot}=_makeLegendBox(null);
+  st._mainDot=dot;
+  if(st._live!=null) dot.style.background=st._live?'var(--green)':'var(--red)';
   const row=document.createElement('div');
-  row.className='flex-center gap-6 text-11 leading-normal nowrap';
+  row.className='flex-center gap-6 text-11 lh-14 nowrap';
   const lbl=document.createElement('span');
   lbl.className='text-secondary text-ellipsis fw-600';
   lbl.textContent=st.mainLabel||'';
@@ -182,20 +195,38 @@ export function attachMainLegend(chart,mainSeries){
   st.overlay.appendChild(box);
   st.mainLegend=box;
   st._mainLabelEl=lbl;
-  const resolveName=(sym,int,name)=>{
-    setMainLegendText(chart,name||chart._currentName||sym||'');
-    if(!name){
-      queueMicrotask(()=>{
-        if(chart._currentName) setMainLegendText(chart,chart._currentName);
-      });
-    }
-  };
-  chart._chartOn('load',({sym,int,name})=>{
-    resolveName(sym,int,name);
-  });
-  chart._chartOn('dataset-loaded',()=>{
-    setMainLegendText(chart,'Dataset');
-  });
+  if(!st._mainListeners){
+    st._mainListeners=true;
+    chart._chartOn('load',({sym,int,name})=>{
+      const token=(st._loadToken||0)+1;
+      st._loadToken=token;
+      clearTimeout(st._nameTimer);
+      st._live=null;
+      if(st._mainDot) st._mainDot.style.background='var(--bg3)';
+      _isLive(st,token,sym);
+      const known=name||(chart._currentSymbol===sym&&chart._currentName&&chart._currentName!==sym?chart._currentName:null);
+      setMainLegendText(chart,known||sym||'');
+      if(known) return;
+      const started=Date.now();
+      const poll=()=>{
+        if(st._loadToken!==token) return;
+        const n=chart._currentName;
+        if(chart._currentSymbol===sym&&n&&n!==sym){
+          setMainLegendText(chart,n);
+          return;
+        }
+        if(Date.now()-started>8000) return;
+        st._nameTimer=setTimeout(poll,120);
+      };
+      st._nameTimer=setTimeout(poll,120);
+    });
+    chart._chartOn('dataset-loaded',()=>{
+      st._loadToken=(st._loadToken||0)+1;
+      clearTimeout(st._nameTimer);
+      if(st._mainDot) st._mainDot.style.background='var(--bg3)';
+      setMainLegendText(chart,'Dataset');
+    });
+  }
   _scheduleLayout(chart,st);
   return box;
 }
@@ -241,7 +272,7 @@ export function syncGroupLegends(chart,pom,group,opts={}){
     const color=items[0]?.pf.opts.color||group.color||'#a78bfa';
     const {box,body}=_makeLegendBox(color);
     const nameRow=document.createElement('div');
-    nameRow.className='flex-center gap-6 text-11 leading-normal nowrap';
+    nameRow.className='flex-center gap-6 text-11 lh-14 nowrap';
     const nameLbl=document.createElement('span');
     nameLbl.className='text-secondary text-ellipsis fw-600';
     nameLbl.textContent=items.length===1?(items[0].pf.label||group.name):group.name;
@@ -278,7 +309,7 @@ export function syncGroupLegends(chart,pom,group,opts={}){
       subWrap.className='flex-column gap-1 hidden';
       items.forEach(it=>{
         const r=document.createElement('div');
-        r.className='flex-center gap-6 text-11 leading-normal nowrap pl-8';
+        r.className='flex-center gap-6 text-11 lh-14 nowrap pl-8';
         const l=document.createElement('span');
         l.className='text-muted text-ellipsis fw-600';
         l.textContent=it.pf.type==='band'?(it.pf.label+(it.sub===0?' U':' L')):it.pf.label;

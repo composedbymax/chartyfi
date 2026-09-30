@@ -97,6 +97,7 @@ export class PaneManager{
     this._counter=0;
     this._suspended=false;
     this._suspendedVolMode=null;
+    this._onGroupRemoved=null;
     if(!_mainLegendDone.get(chart)){
       _mainLegendDone.set(chart,true);
       attachMainLegend(chart,chart._main);
@@ -106,6 +107,23 @@ export class PaneManager{
     }
   }
   getGroups(){return this._groups;}
+  onGroupRemoved(fn){this._onGroupRemoved=fn;}
+  _rebasePanes(){
+    let panes=[];
+    try{panes=this._chart._chart.panes?.()||[];}catch(e){}
+    const paneIndexOf=s=>{
+      try{return panes.findIndex(p=>p.getSeries().includes(s));}catch(e){return -1;}
+    };
+    this._groups.forEach(g=>{
+      if(g._paneBase==null) return;
+      let found=-1;
+      for(const s of g.series){
+        const i=paneIndexOf(s);
+        if(i>0&&(found===-1||i<found)) found=i;
+      }
+      if(found>0) g._paneBase=found;
+    });
+  }
   getAllPlotFns(){return this._groups.flatMap(g=>g.plotFns||[]);}
   addGroup(plotFns,name,code,color,silent=false,legendOptions={}){
     const{series,_paneBase,_panesUsed}=_createSeries(this._chart._chart,plotFns,this._groups,silent,this._chart);
@@ -133,6 +151,14 @@ export class PaneManager{
     removeGroupLegends(this._chart,this,id);
     this._chart._setIndicators(this.getAllPlotFns(), this);
     this._chart._forceResize();
+    this._rebasePanes();
+    this._groups.forEach(x=>{
+      syncGroupLegends(this._chart,this,x,{
+        onRemove:()=>this.removeGroup(x.id),
+        orderBase:x.id,
+      });
+    });
+    if(this._onGroupRemoved) this._onGroupRemoved(g);
     return g;
   }
   clearAll(){

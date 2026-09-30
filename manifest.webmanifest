@@ -1,6 +1,5 @@
 {
-  "name": "YFI Charting App",
-  "short_name": "Chartyfi",
+  "name": "CHARTYFI",
   "description": "Chartyfi is a charting app that uses TV lightweightcharts and Yahoo finance data",
   "start_url": "/chartyfi/",
   "scope": "/chartyfi/",

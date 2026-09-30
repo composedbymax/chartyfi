@@ -77,7 +77,7 @@ export class Watchlist {
       loadBtn.innerHTML = `
         <div class="flex items-center gap-8">
           <span class="text-13 fw-600 text-primary font-sans">${sym}</span>
-          <span class="text-11 text-secondary bg-2 rounded p-1-2">${int}</span>
+          <span class="text-11 text-secondary bg-2 rounded p-1-6">${int}</span>
         </div>
         ${name && name !== sym ? `<div class="text-11 text-secondary clamp-cell">${name}</div>` : ''}
       `;

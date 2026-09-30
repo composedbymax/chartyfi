@@ -90,13 +90,13 @@ export class News {
       a.href=n.link;
       a.target='_blank';
       a.rel='noopener noreferrer';
-      a.className='text-12 fw-600 text-accent leading-normal';
+      a.className='text-12 fw-600 text-accent lh-14';
       a.textContent=n.title;
       const meta=document.createElement('div');
       meta.className='text-10 text-muted mb-8';
       meta.textContent=`${n.source?n.source +'•':''}${n.pubDate}`;
       const desc=document.createElement('div');
-      desc.className='text-11 text-secondary leading-normal';
+      desc.className='text-11 text-secondary lh-14';
       desc.textContent=n.description||'';
       item.appendChild(a);
       item.appendChild(meta);

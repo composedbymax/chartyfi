@@ -53,6 +53,10 @@ export class Editor{
     this._helpLoaded = false;
     this._helpHtml = '';
     this._pom = new PaneManager(chart);
+    this._pom.onGroupRemoved(g => {
+      if (this._editingGroupId === g.id) this._editingGroupId = null;
+      this._renderIndicatorList();
+    });
     this._indicatorListCollapsed = false;
     this._editingGroupId = null;
     this._rendered = false;
@@ -349,8 +353,6 @@ export class Editor{
   _removeGroup(id){
     const g=this._pom.removeGroup(id);
     if(!g) return;
-    if(this._editingGroupId===id) this._editingGroupId=null;
-    this._renderIndicatorList();
     toast(`Removed "${g.name}"`,'info');
   }
   _renderIndicatorList(){
@@ -382,14 +384,14 @@ export class Editor{
     const rows=[];
     groups.forEach(g=>{
       const row=document.createElement('div');
-      row.className='ed-indicator-row';
-      if(g.id===this._editingGroupId) row.classList.add('ed-indicator-row--selected');
+      row.className='flex-center gap-6 p-3-12-3-10 min-w-0 hov-brighten-13';
+      if(g.id===this._editingGroupId) row.classList.add('accent-hl','outline-accent');
       if(this._indicatorListCollapsed) row.style.display='none';
       const swatch=document.createElement('span');
-      swatch.className='ed-ind-swatch';
+      swatch.className='dot-sm flex-shrink-0';
       swatch.style.background=g.color||'#a78bfa';
       const lbl=document.createElement('span');
-      lbl.className='ed-indicator-lbl';
+      lbl.className='flex-1 min-w-0 text-ellipsis text-12 text-secondary';
       lbl.textContent=g.name;
       lbl.title=g.name;
       const editBtn=document.createElement('button');
@@ -402,7 +404,7 @@ export class Editor{
         toast(`Editing "${g.name}"`, 'info');
       };
       const rmBtn=document.createElement('button');
-      rmBtn.className='icon-btn';
+      rmBtn.className='icon-btn text-22 hov-red';
       rmBtn.innerHTML='&times;';
       rmBtn.title=`Remove "${g.name}"`;
       rmBtn.onclick=e=>{e.stopPropagation();this._removeGroup(g.id)};

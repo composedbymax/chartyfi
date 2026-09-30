@@ -301,10 +301,10 @@ export class CycleApp {
       const ai=this._hasAI?`<span class="text-11 fw-700 text-accent">${p.dominantRank>=1?p.dominantRank:''}</span>`:'';
       const stab=this._hasStab?`<span class="text-secondary">${p.stabilityScore>0?p.stabilityScore.toFixed(2):''}</span>`:'';
       const gridCls=this._hasAI&&this._hasStab?'cyc-cols':!this._hasAI&&this._hasStab?'cyc-cols-noai':this._hasAI&&!this._hasStab?'cyc-cols-nostab':'cyc-cols-noaistab';
-      const rowCls=`grid items-center ${gridCls} gap-8 text-12 p-6-2 rounded hover-bg-1`;
+      const rowCls=`grid items-center ${gridCls} gap-8 text-12 p-6-2 rounded hov-bg-3`;
       return `<div class="${rowCls}" data-role="peak-row" data-i="${i}">
         <input type="checkbox" data-role="peak-chk" class="justify-start" ${p._sel?'checked':''}>
-        <span data-role="peak-dot" class="dot-sm cyc-c${p._colorIdx} justify-start"></span>
+        <span data-role="peak-dot" class="dot-sm color-${p._colorIdx} justify-start"></span>
         <span class="fw-600 justify-start min-w-0">${Math.round(p.cycleLength)}</span>
         ${ai}
         ${stab}

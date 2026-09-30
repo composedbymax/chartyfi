@@ -195,7 +195,7 @@ export class Sidebar {
       const card=document.createElement('div');
       card.className='hov-bg-border p-12 cursor-pointer rounded';
       card.innerHTML=`<div class="text-13 fw-600 text-primary mb-4">${cfg.title||AppClass.name}</div>
-        <div class="text-11 text-muted leading-loose">${cfg.description||''}</div>`;
+        <div class="text-11 text-muted lh-17">${cfg.description||''}</div>`;
       card.onclick=()=>this._miniApps.open(AppClass,this);
       wrap.appendChild(card);
     });
@@ -294,9 +294,9 @@ export class Sidebar {
   }
   _assetCard(t,stream){
     const uid=`${t.symbol}-${t.interval}`.replace(/[^a-z0-9]/gi,'-');
-    const card=document.createElement('div');card.className='asset-card';
-    card.innerHTML=`<div class="asset-card-top">
-      <span class="ac-sym">${t.symbol}</span><span class="ac-int">${t.interval}</span>
+    const card=document.createElement('div');card.className='bg-3 border-soft rounded p-6 m-0-12-6 flex-column gap-6';
+    card.innerHTML=`<div class="flex-center gap-8 border-b pb-6">
+      <span class="fw-600 text-13">${t.symbol}</span><span class="text-11 text-secondary bg-4 p-1-6 squared">${t.interval}</span>
       <div class="ac-actions">
         <button class="btn-sm load-btn">Load</button>
         <button class="btn-sm danger rm-btn">Remove</button>
@@ -315,11 +315,11 @@ export class Sidebar {
       toast('Removed','success');this._renderSidebar();
     };
     const sd=document.createElement('div');
-    sd.className='ac-switch-row';
+    sd.className='flex-center text-12 text-secondary';
     if(stream){
       const tzLabel=stream.stream_timezone&&stream.stream_timezone!=='UTC'?stream.stream_timezone:'UTC';
-      sd.innerHTML=`<span class="stream-id">Stream: ${stream.stream_id}
-        <span class="stream-tz-badge">${tzLabel}</span>
+      sd.innerHTML=`<span class="text-11 text-muted text-ellipsis flex-1">Stream: ${stream.stream_id}
+        <span class="text-10 bg-4 p-1-6 squared text-muted">${tzLabel}</span>
       </span>
       <button class="icon-btn stream-key-btn"></button>
       <button class="icon-btn rm-stream"></button>`;
@@ -352,7 +352,7 @@ export class Sidebar {
     const sidId=`${uid}-sid`;
     const fieldId=`${uid}-field`;
     const tzId=`${uid}-tz`;
-    sd.innerHTML=`<div class="flex-column gap-5 w-full">
+    sd.innerHTML=`<div class="flex-column gap-4 w-full">
      <div class="flex-center gap-6 p-4-0 w-full">
         <label for="${sidId}" class="sr-only">Stream ID</label>
         <input type="text" id="${sidId}" class="flex-1 min-w-0" placeholder="Stream ID">
@@ -361,7 +361,7 @@ export class Sidebar {
       </div>
       <div class="flex-center gap-6 p-4-0">
         <label for="${tzId}" class="sr-only">Stream Timezone</label>
-        <select id="${tzId}" class="stream-tz-select">
+        <select id="${tzId}" class="h-28 text-12 flex-1">
           <option value="UTC">UTC</option>
           ${this._localTz!=='UTC'?`<option value="${this._localTz}">${this._localTz}</option>`:''}
         </select>
@@ -388,7 +388,7 @@ export class Sidebar {
   _collapsible(label,open=true){
     const div=document.createElement('div');
     div.className=`sb-label${open?'':' collapsed'}`;
-    div.classList.add('sb-label-clickable');
+    div.classList.add('cursor-pointer');
     div.innerHTML=`${label} <span class="caret">▾</span>`;
     div.onclick=()=>{
       div.classList.toggle('collapsed');

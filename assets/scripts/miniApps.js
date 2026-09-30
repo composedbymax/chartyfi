@@ -9,7 +9,7 @@ const APPS = [
   [Watchlist],
   [Correlation],
   [Screener],
-  [News,           { authRequired: true }],
+  [News, {authRequired:true}],
   [CycleApp],
   [CycleConsensus],
 ];

@@ -114,7 +114,7 @@ export class Correlation {
         const td = document.createElement('td');
         const last = this._lastValue(values);
         td.className = `p-4-6 text-center fw-600 border ${values.length ? this._cellClass(last) : 'corr-na'}`;
-        if (values.length) td.innerHTML = `<div class="spark-cell flex items-center justify-center w-full">${this._sparkSVG(values)}<span class="relative z-1 shadow text-12 fw-700 p-1-2 rounded">${last == null ? 'n/a' : last.toFixed(2)}</span></div>`;
+        if (values.length) td.innerHTML = `<div class="spark-cell flex items-center justify-center w-full">${this._sparkSVG(values)}<span class="relative z-1 shadow text-12 fw-700 p-1-6 rounded">${last == null ? 'n/a' : last.toFixed(2)}</span></div>`;
         else td.textContent = '—';
         tr.appendChild(td);
       });
